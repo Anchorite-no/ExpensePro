@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "80:3001"
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=expense_pro
+      - JWT_SECRET=${JWT_SECRET}
+      - AI_BASE_URL=${AI_BASE_URL}
+      - HTTP_PROXY=${HTTP_PROXY}
+      - DATABASE_URL=mysql://root:${DB_PASSWORD}@mysql:3306/expense_pro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - mysql
+    restart: always
+
+  mysql:
+    image: mysql:8.0
+    platform: linux/amd64
+    ports:
+      - "127.0.0.1:3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
+      - MYSQL_DATABASE=expense_pro
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: always
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+volumes:
+  mysql_data:

@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+yarn.lock
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs
+*.log
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Build output
+dist/
+build/
+coverage/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker (if sensitive data or temporary)
+# docker-compose.override.yml
