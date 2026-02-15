@@ -2,4 +2,17 @@ node_modules
 # Keep environment variables out of version control
 .env
 
+# Build output
+dist/
+
+# Legacy ORM (migrated to Drizzle)
+prisma/
 /src/generated/prisma
+
+# Debug & test scripts
+debug-*.ts
+test-*.ts
+check-*.ts
+
+# Logs
+*.log

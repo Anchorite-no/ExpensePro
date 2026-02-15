@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build:
@@ -11,35 +9,36 @@ services:
       - DB_HOST=mysql
       - DB_USER=root
       - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=expense_pro
+      - DB_NAME=${DB_NAME:-expense_pro}
       - JWT_SECRET=${JWT_SECRET}
       - AI_BASE_URL=${AI_BASE_URL}
-      - HTTP_PROXY=http://host.docker.internal:7890
-      - HTTPS_PROXY=http://host.docker.internal:7890
+      - DATABASE_URL=mysql://root:${DB_PASSWORD}@mysql:3306/${DB_NAME:-expense_pro}
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
       - NO_PROXY=localhost,127.0.0.1,mysql
-      - DATABASE_URL=mysql://root:${DB_PASSWORD}@mysql:3306/expense_pro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     restart: always
 
   mysql:
     image: mysql:8.0
-    platform: linux/amd64
     ports:
       - "127.0.0.1:3306:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
-      - MYSQL_DATABASE=expense_pro
-    deploy:
-      resources:
-        limits:
-          memory: 1G
+      - MYSQL_DATABASE=${DB_NAME:-expense_pro}
     volumes:
       - mysql_data:/var/lib/mysql
     restart: always
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   mysql_data:
