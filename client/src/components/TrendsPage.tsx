@@ -14,23 +14,13 @@ interface Expense {
   date: string;
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  "餐饮": "#10B981",
-  "交通": "#3B82F6",
-  "购物": "#8B5CF6",
-  "娱乐": "#F59E0B",
-  "服务订阅": "#EC4899",
-  "投资": "#6366F1",
-  "其他": "#6B7280",
-};
-
-const getCategoryColor = (category: string) =>
-  CATEGORY_COLORS[category] || CATEGORY_COLORS["其他"];
+const getCategoryColor = (category: string, categories: Record<string, string>) =>
+  categories[category] || "#6B7280";
 
 // 通用 Tooltip
-const ChartTooltip = ({ active, payload, label, theme }: any) => {
+const ChartTooltip = ({ active, payload, label, theme, currency }: any) => {
   if (!active || !payload?.length) return null;
-  
+
   const activePayload = payload.filter((entry: any) => Number(entry.value) > 0).reverse();
   if (activePayload.length === 0) return null;
 
@@ -39,21 +29,21 @@ const ChartTooltip = ({ active, payload, label, theme }: any) => {
       <p className="tooltip-label">{label}</p>
       {activePayload.map((entry: any, i: number) => (
         <p key={i} className="tooltip-value" style={{ color: entry.color }}>
-          {entry.name}: ¥{Number(entry.value).toFixed(2)}
+          {entry.name}: {currency}{Number(entry.value).toFixed(2)}
         </p>
       ))}
     </div>
   );
 };
 
-const PieTooltip = ({ active, payload, theme }: any) => {
+const PieTooltip = ({ active, payload, theme, currency }: any) => {
   if (!active || !payload?.length) return null;
   const total = payload[0].payload.total;
   const pct = ((payload[0].value / total) * 100).toFixed(1);
   return (
     <div className={`custom-tooltip ${theme}`}>
       <p className="tooltip-label">{payload[0].name}</p>
-      <p className="tooltip-value">¥{payload[0].value.toFixed(2)}</p>
+      <p className="tooltip-value">{currency}{payload[0].value.toFixed(2)}</p>
       <p className="tooltip-pct">{pct}%</p>
     </div>
   );
@@ -64,6 +54,8 @@ type TimeRange = "7d" | "30d" | "90d" | "all";
 interface Props {
   expenses: Expense[];
   theme: "light" | "dark";
+  categories: Record<string, string>;
+  currency: string;
 }
 
 // 获取ISO周号
@@ -96,15 +88,13 @@ function formatGroupKey(key: string, granularity: "day" | "week" | "month"): str
     return new Date(key).toLocaleDateString("zh-CN", { month: "short", day: "numeric" });
   }
   if (granularity === "week") {
-    // "2025-W03" -> "第3周"
     const w = parseInt(key.split("-W")[1], 10);
     return `第${w}周`;
   }
-  // month: "2025-01" -> "1月"
   return parseInt(key.split("-")[1], 10) + "月";
 }
 
-export default function TrendsPage({ expenses, theme }: Props) {
+export default function TrendsPage({ expenses, theme, categories, currency }: Props) {
   const [timeRange, setTimeRange] = useState<TimeRange>("7d");
 
   const chartColors = {
@@ -149,7 +139,7 @@ export default function TrendsPage({ expenses, theme }: Props) {
     return Object.entries(map).map(([name, value]) => ({ name, value, total }));
   }, [filteredExpenses]);
 
-  // 按粒度聚合总支出（柱状图 + 折线图）
+  // 按粒度聚合总支出
   const aggregatedData = useMemo(() => {
     const map: Record<string, number> = {};
     filteredExpenses.forEach((e) => {
@@ -164,7 +154,7 @@ export default function TrendsPage({ expenses, theme }: Props) {
       }));
   }, [filteredExpenses, granularity]);
 
-  // 每日支出分类堆叠数据（按粒度聚合 + 分类分段）
+  // 每日支出分类堆叠数据
   const dailyStackedData = useMemo(() => {
     const groupMap: Record<string, Record<string, number>> = {};
     const allCats = new Set<string>();
@@ -187,7 +177,7 @@ export default function TrendsPage({ expenses, theme }: Props) {
       });
   }, [filteredExpenses, granularity]);
 
-  // 分类堆积面积图（按粒度聚合）
+  // 分类堆积面积图
   const categoryAreaData = useMemo(() => {
     const groupMap: Record<string, Record<string, number>> = {};
     const allCats = new Set<string>();
@@ -245,7 +235,7 @@ export default function TrendsPage({ expenses, theme }: Props) {
           <div className="stat-icon blue"><Wallet size={24} /></div>
           <div className="stat-info">
             <span className="label">总支出</span>
-            <span className="value">¥{stats.total.toFixed(2)}</span>
+            <span className="value">{currency}{stats.total.toFixed(2)}</span>
           </div>
         </div>
         <div className="stat-card">
@@ -259,12 +249,12 @@ export default function TrendsPage({ expenses, theme }: Props) {
           <div className="stat-icon orange"><TrendingUp size={24} /></div>
           <div className="stat-info">
             <span className="label">日均支出</span>
-            <span className="value">¥{stats.avgDaily.toFixed(2)}</span>
+            <span className="value">{currency}{stats.avgDaily.toFixed(2)}</span>
           </div>
         </div>
       </div>
 
-      {/* 第一行：分类堆积面积图（全宽大图，放最上面） */}
+      {/* 分类堆积面积图 */}
       <div className="chart-card chart-full">
         <h3>分类支出趋势</h3>
         {categoryAreaData.length > 0 ? (
@@ -273,15 +263,15 @@ export default function TrendsPage({ expenses, theme }: Props) {
               <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
               <XAxis dataKey="label" stroke={chartColors.axis} fontSize={12} />
               <YAxis stroke={chartColors.axis} fontSize={12} />
-              <Tooltip content={<ChartTooltip theme={theme} />} cursor={cursorLine} />
+              <Tooltip content={<ChartTooltip theme={theme} currency={currency} />} cursor={cursorLine} />
               {activeCategories.map((cat) => (
                 <Area
                   key={cat}
                   type="monotone"
                   dataKey={cat}
                   stackId="1"
-                  stroke={getCategoryColor(cat)}
-                  fill={getCategoryColor(cat)}
+                  stroke={getCategoryColor(cat, categories)}
+                  fill={getCategoryColor(cat, categories)}
                   fillOpacity={0.6}
                 />
               ))}
@@ -291,7 +281,7 @@ export default function TrendsPage({ expenses, theme }: Props) {
         ) : <p className="empty-hint">暂无数据</p>}
       </div>
 
-      {/* 第二行：每日支出明细堆叠柱状图 + 支出对比柱状图 */}
+      {/* 每日支出明细堆叠柱状图 + 支出对比柱状图 */}
       <div className="charts-grid">
         <div className="chart-card">
           <h3>每日支出明细</h3>
@@ -301,14 +291,14 @@ export default function TrendsPage({ expenses, theme }: Props) {
                 <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
                 <XAxis dataKey="label" stroke={chartColors.axis} fontSize={12} />
                 <YAxis stroke={chartColors.axis} fontSize={12} />
-                <Tooltip content={<ChartTooltip theme={theme} />} cursor={cursorBar} />
+                <Tooltip content={<ChartTooltip theme={theme} currency={currency} />} cursor={cursorBar} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 {activeCategories.map((cat, i) => (
                   <Bar
                     key={cat}
                     dataKey={cat}
                     stackId="stack"
-                    fill={getCategoryColor(cat)}
+                    fill={getCategoryColor(cat, categories)}
                     radius={i === activeCategories.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
                   />
                 ))}
@@ -324,7 +314,7 @@ export default function TrendsPage({ expenses, theme }: Props) {
                 <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
                 <XAxis dataKey="label" stroke={chartColors.axis} fontSize={12} />
                 <YAxis stroke={chartColors.axis} fontSize={12} />
-                <Tooltip content={<ChartTooltip theme={theme} />} cursor={cursorBar} />
+                <Tooltip content={<ChartTooltip theme={theme} currency={currency} />} cursor={cursorBar} />
                 <Bar dataKey="支出" fill="#6366F1" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -332,7 +322,7 @@ export default function TrendsPage({ expenses, theme }: Props) {
         </div>
       </div>
 
-      {/* 第三行：支出趋势折线图 + 支出分类占比饼图 */}
+      {/* 支出趋势折线图 + 支出分类占比饼图 */}
       <div className="charts-grid">
         <div className="chart-card">
           <h3>支出趋势</h3>
@@ -342,7 +332,7 @@ export default function TrendsPage({ expenses, theme }: Props) {
                 <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
                 <XAxis dataKey="label" stroke={chartColors.axis} fontSize={12} />
                 <YAxis stroke={chartColors.axis} fontSize={12} />
-                <Tooltip content={<ChartTooltip theme={theme} />} cursor={cursorLine} />
+                <Tooltip content={<ChartTooltip theme={theme} currency={currency} />} cursor={cursorLine} />
                 <Line type="monotone" dataKey="支出" stroke="#10B981" strokeWidth={2.5} dot={{ fill: "#10B981", r: 4 }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
@@ -355,10 +345,10 @@ export default function TrendsPage({ expenses, theme }: Props) {
               <PieChart>
                 <Pie data={categoryData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value">
                   {categoryData.map((entry, i) => (
-                    <Cell key={i} fill={getCategoryColor(entry.name)} />
+                    <Cell key={i} fill={getCategoryColor(entry.name, categories)} />
                   ))}
                 </Pie>
-                <Tooltip content={<PieTooltip theme={theme} />} />
+                <Tooltip content={<PieTooltip theme={theme} currency={currency} />} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
               </PieChart>
             </ResponsiveContainer>

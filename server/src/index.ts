@@ -80,7 +80,7 @@ app.post("/api/auth/register", async (req, res) => {
         username,
         password: hashedPassword,
       });
-      
+
       const newUserId = result.insertId;
 
       // If this is the first user, adopt all orphaned expenses (legacy data)
@@ -150,7 +150,7 @@ app.get("/api/expenses", authenticateToken, async (req: any, res) => {
 app.post("/api/expenses", authenticateToken, async (req: any, res) => {
   try {
     const { title, amount, category, date } = req.body;
-    
+
     if (!title || !amount || !category) {
       res.status(400).json({ error: "信息不完整" });
       return;
@@ -186,6 +186,44 @@ app.delete("/api/expenses/:id", authenticateToken, async (req: any, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "删除失败" });
+  }
+});
+
+// ========== 编辑账单 ==========
+
+// 4. 编辑账单
+app.put("/api/expenses/:id", authenticateToken, async (req: any, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "无效 ID" });
+      return;
+    }
+
+    const { title, amount, category, date } = req.body;
+    if (!title || amount === undefined || !category) {
+      res.status(400).json({ error: "信息不完整" });
+      return;
+    }
+
+    await db.update(expenses)
+      .set({
+        title,
+        amount: String(amount),
+        category,
+        date: date ? new Date(date) : new Date(),
+      })
+      .where(and(eq(expenses.id, id), eq(expenses.userId, req.user.id)));
+
+    const [updated] = await db.select().from(expenses).where(eq(expenses.id, id));
+    if (!updated) {
+      res.status(404).json({ error: "记录不存在" });
+      return;
+    }
+    res.json(updated);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "更新失败" });
   }
 });
 
@@ -233,14 +271,14 @@ function parseDataUrl(dataUrl: string): { mimeType: string; base64: string } {
 }
 
 function extractJson(text: string): Record<string, unknown> | null {
-  try { return JSON.parse(text); } catch {}
+  try { return JSON.parse(text); } catch { }
   const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (codeBlock) {
-    try { return JSON.parse(codeBlock[1].trim()); } catch {}
+    try { return JSON.parse(codeBlock[1].trim()); } catch { }
   }
   const braceMatch = text.match(/\{[\s\S]*\}/);
   if (braceMatch) {
-    try { return JSON.parse(braceMatch[0]); } catch {}
+    try { return JSON.parse(braceMatch[0]); } catch { }
   }
   return null;
 }
@@ -283,7 +321,7 @@ app.post("/api/ai/parse-receipt", async (req, res) => {
     for (let i = 0; i < maxRetries; i++) {
       try {
         if (i > 0) console.log(`Retry attempt ${i + 1}...`);
-        
+
         const response = await undiciFetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -295,8 +333,8 @@ app.post("/api/ai/parse-receipt", async (req, res) => {
           const errBody = await response.text();
           console.error(`Gemini API error (Attempt ${i + 1}):`, response.status, errBody);
           if (response.status >= 400 && response.status < 500) {
-             res.status(response.status).json({ error: `AI 接口调用失败 (${response.status})`, detail: errBody });
-             return;
+            res.status(response.status).json({ error: `AI 接口调用失败 (${response.status})`, detail: errBody });
+            return;
           }
           throw new Error(`API Error ${response.status}`);
         }
@@ -320,9 +358,9 @@ app.post("/api/ai/parse-receipt", async (req, res) => {
     res.status(500).json({ error: "AI 识别失败，已重试 3 次" });
   } catch (error: any) {
     console.error("AI parse error:", error);
-    res.status(500).json({ 
-      error: "AI 识别失败", 
-      detail: error.message || String(error) 
+    res.status(500).json({
+      error: "AI 识别失败",
+      detail: error.message || String(error)
     });
   }
 });

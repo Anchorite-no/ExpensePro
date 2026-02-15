@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Camera, Upload, Settings, X, Check, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { Camera, Upload, Settings, X, Check, Loader2, Sparkles, Trash2, ImagePlus } from "lucide-react";
 import { Select } from "./ui/Select";
 
 interface ParsedItem {
@@ -9,10 +9,17 @@ interface ParsedItem {
   date?: string;
 }
 
+interface ImageEntry {
+  id: string;
+  preview: string;
+  base64: string;
+}
+
 interface AiReceiptParserProps {
   theme: "light" | "dark";
   categories: Record<string, string>;
   onAddExpense: (title: string, amount: number, category: string, date?: string) => void;
+  currency: string;
 }
 
 const DEFAULT_MODEL = "gemini-2.0-flash";
@@ -22,21 +29,23 @@ const AVAILABLE_MODELS = [
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash (推理强 - 更准确)" },
 ];
 
-export default function AiReceiptParser({ theme, categories, onAddExpense }: AiReceiptParserProps) {
+let imageIdCounter = 0;
+
+export default function AiReceiptParser({ theme, categories, onAddExpense, currency }: AiReceiptParserProps) {
   const categoryList = Object.keys(categories);
   // API Key 设置
   const [showSettings, setShowSettings] = useState(false);
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("ai_api_key") || "");
   const [model, setModel] = useState(() => localStorage.getItem("ai_model") || DEFAULT_MODEL);
 
-  // 图片和解析状态
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  // 多图片状态
+  const [images, setImages] = useState<ImageEntry[]>([]);
   const [parsing, setParsing] = useState(false);
   const [parsedItems, setParsedItems] = useState<ParsedItem[]>([]);
   const [error, setError] = useState("");
   const [isDragging, setIsDragging] = useState(false);
-  const [showFullScreen, setShowFullScreen] = useState(false);
+  const [showFullScreen, setShowFullScreen] = useState<string | null>(null);
+  const [parseProgress, setParseProgress] = useState({ current: 0, total: 0 });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -47,26 +56,34 @@ export default function AiReceiptParser({ theme, categories, onAddExpense }: AiR
     setShowSettings(false);
   };
 
-  // 处理文件
-  const handleFile = useCallback((file: File) => {
-    if (!file.type.startsWith("image/")) {
-      setError("请选择图片文件");
-      return;
-    }
-    if (file.size > 15 * 1024 * 1024) {
-      setError("图片大小不能超过 15MB");
-      return;
-    }
-    setError("");
-    setParsedItems([]);
+  // 处理文件（支持多个）
+  const handleFiles = useCallback((files: FileList | File[]) => {
+    const validFiles = Array.from(files).filter(f => {
+      if (!f.type.startsWith("image/")) return false;
+      if (f.size > 15 * 1024 * 1024) return false;
+      return true;
+    });
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      setImagePreview(dataUrl);
-      setImageBase64(dataUrl);
-    };
-    reader.readAsDataURL(file);
+    if (validFiles.length === 0) {
+      setError("请选择有效的图片文件（单个不超过 15MB）");
+      return;
+    }
+
+    setError("");
+
+    validFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        const entry: ImageEntry = {
+          id: `img-${++imageIdCounter}`,
+          preview: dataUrl,
+          base64: dataUrl,
+        };
+        setImages(prev => [...prev, entry]);
+      };
+      reader.readAsDataURL(file);
+    });
   }, []);
 
   // 拖拽事件
@@ -86,25 +103,32 @@ export default function AiReceiptParser({ theme, categories, onAddExpense }: AiR
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
-  }, [handleFile]);
+    if (e.dataTransfer.files.length > 0) {
+      handleFiles(e.dataTransfer.files);
+    }
+  }, [handleFiles]);
 
   // 粘贴事件
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = e.clipboardData.items;
+    const imageFiles: File[] = [];
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.startsWith("image/")) {
         const file = items[i].getAsFile();
-        if (file) handleFile(file);
-        break;
+        if (file) imageFiles.push(file);
       }
     }
-  }, [handleFile]);
+    if (imageFiles.length > 0) handleFiles(imageFiles);
+  }, [handleFiles]);
 
-  // AI 解析
-  const parseReceipt = async () => {
-    if (!imageBase64) return;
+  // 删除单张图片
+  const removeImage = (id: string) => {
+    setImages(prev => prev.filter(img => img.id !== id));
+  };
+
+  // AI 解析（多图逐张）
+  const parseReceipts = async () => {
+    if (images.length === 0) return;
     if (!apiKey) {
       setError("请先配置 API Key（点击右上角齿轮图标）");
       return;
@@ -113,37 +137,52 @@ export default function AiReceiptParser({ theme, categories, onAddExpense }: AiR
     setParsing(true);
     setError("");
     setParsedItems([]);
+    setParseProgress({ current: 0, total: images.length });
 
-    try {
-      const res = await fetch("/api/ai/parse-receipt", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
-        },
-        body: JSON.stringify({
-          image: imageBase64,
-          apiKey,
-          model: model || DEFAULT_MODEL,
-          categories: categoryList,
-        }),
-      });
+    const allItems: ParsedItem[] = [];
+    const errors: string[] = [];
 
-      const data = await res.json();
-      if (!res.ok) {
-        const detail = data.detail ? `\n${typeof data.detail === 'string' ? data.detail.substring(0, 200) : JSON.stringify(data.detail).substring(0, 200)}` : '';
-        throw new Error((data.error || "解析失败") + detail);
+    for (let i = 0; i < images.length; i++) {
+      setParseProgress({ current: i + 1, total: images.length });
+      try {
+        const res = await fetch("/api/ai/parse-receipt", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem("token")}`
+          },
+          body: JSON.stringify({
+            image: images[i].base64,
+            apiKey,
+            model: model || DEFAULT_MODEL,
+            categories: categoryList,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          errors.push(`图片 ${i + 1}: ${data.error || "解析失败"}`);
+          continue;
+        }
+        if (data.items && data.items.length > 0) {
+          allItems.push(...data.items);
+        } else {
+          errors.push(`图片 ${i + 1}: 未识别到消费记录`);
+        }
+      } catch (err: any) {
+        errors.push(`图片 ${i + 1}: ${err.message || "网络错误"}`);
       }
-      if (!data.items || data.items.length === 0) {
-        setError("未能从图片中识别出消费记录");
-        return;
-      }
-      setParsedItems(data.items);
-    } catch (err: any) {
-      setError(err.message || "解析失败，请检查 API 配置");
-    } finally {
-      setParsing(false);
     }
+
+    if (allItems.length > 0) {
+      setParsedItems(allItems);
+    }
+    if (errors.length > 0) {
+      setError(errors.join("\n"));
+    }
+
+    setParsing(false);
+    setParseProgress({ current: 0, total: 0 });
   };
 
   // 添加单条记录
@@ -158,14 +197,12 @@ export default function AiReceiptParser({ theme, categories, onAddExpense }: AiR
       onAddExpense(item.title, item.amount, item.category, item.date);
     });
     setParsedItems([]);
-    setImagePreview(null);
-    setImageBase64(null);
+    setImages([]);
   };
 
-  // 清除图片
-  const clearImage = () => {
-    setImagePreview(null);
-    setImageBase64(null);
+  // 清除全部
+  const clearAll = () => {
+    setImages([]);
     setParsedItems([]);
     setError("");
   };
@@ -218,59 +255,90 @@ export default function AiReceiptParser({ theme, categories, onAddExpense }: AiR
       )}
 
       {/* 图片上传区域 */}
-      {!imagePreview ? (
-        <div
-          className={`ai-dropzone ${isDragging ? "dragging" : ""}`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            hidden
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFile(file);
-              e.target.value = "";
-            }}
-          />
+      <div
+        className={`ai-dropzone ${isDragging ? "dragging" : ""} ${images.length > 0 ? "has-images" : ""}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={() => images.length === 0 && fileInputRef.current?.click()}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          hidden
+          onChange={(e) => {
+            if (e.target.files && e.target.files.length > 0) {
+              handleFiles(e.target.files);
+            }
+            e.target.value = "";
+          }}
+        />
+
+        {images.length === 0 ? (
           <div className="ai-dropzone-content">
             <Camera size={32} />
             <p>拖拽图片到此处、点击选择或 Ctrl+V 粘贴</p>
-            <span>支持账单、收据、外卖截图等</span>
+            <span>支持多张图片同时上传，一次性识别所有小票</span>
           </div>
-        </div>
-      ) : (
-          <div className="ai-preview">
-            <div className="ai-preview-img" onClick={() => setShowFullScreen(true)} title="点击查看大图">
-              <img src={imagePreview} alt="receipt" />
-              <button 
-                className="ai-preview-close" 
-                onClick={(e) => { e.stopPropagation(); clearImage(); }} 
-                title="清除"
-              >
-                <X size={14} />
-              </button>
-            </div>
+        ) : (
+          <div className="ai-image-grid">
+            {images.map((img) => (
+              <div key={img.id} className="ai-thumb" onClick={(e) => e.stopPropagation()}>
+                <img
+                  src={img.preview}
+                  alt="receipt"
+                  onClick={() => setShowFullScreen(img.preview)}
+                  title="点击查看大图"
+                />
+                <button
+                  className="ai-thumb-remove"
+                  onClick={() => removeImage(img.id)}
+                  title="移除"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
             <button
+              className="ai-thumb-add"
+              onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+              title="添加更多图片"
+            >
+              <ImagePlus size={20} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 操作按钮 */}
+      {images.length > 0 && (
+        <div className="ai-actions">
+          <button
             className="ai-parse-btn"
-            onClick={parseReceipt}
+            onClick={parseReceipts}
             disabled={parsing}
           >
             {parsing ? (
-              <><Loader2 size={16} className="spinning" /> 识别中...</>
+              <>
+                <Loader2 size={16} className="spinning" />
+                识别中 ({parseProgress.current}/{parseProgress.total})...
+              </>
             ) : (
-              <><Upload size={16} /> 开始识别</>
+              <>
+                <Upload size={16} /> 开始识别 ({images.length} 张)
+              </>
             )}
+          </button>
+          <button className="ai-clear-btn" onClick={clearAll} disabled={parsing}>
+            <Trash2 size={14} /> 清除
           </button>
         </div>
       )}
 
       {/* 错误提示 */}
-      {error && <div className="ai-error">{error}</div>}
+      {error && <div className="ai-error" style={{ whiteSpace: "pre-line" }}>{error}</div>}
 
       {/* 解析结果 */}
       {parsedItems.length > 0 && (
@@ -321,12 +389,13 @@ export default function AiReceiptParser({ theme, categories, onAddExpense }: AiR
           </div>
         </div>
       )}
+
       {/* Full Screen Preview */}
-      {showFullScreen && imagePreview && (
-        <div className="ai-fullscreen-overlay" onClick={() => setShowFullScreen(false)}>
+      {showFullScreen && (
+        <div className="ai-fullscreen-overlay" onClick={() => setShowFullScreen(null)}>
           <div className="ai-fullscreen-content" onClick={(e) => e.stopPropagation()}>
-            <img src={imagePreview} alt="Full screen receipt" />
-            <button className="ai-fullscreen-close" onClick={() => setShowFullScreen(false)}>
+            <img src={showFullScreen} alt="Full screen receipt" />
+            <button className="ai-fullscreen-close" onClick={() => setShowFullScreen(null)}>
               <X size={24} />
             </button>
           </div>
