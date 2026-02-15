@@ -82,57 +82,116 @@ graph TD
 
 ## 🚀 快速开始
 
-### 1. 环境准备
+### 环境要求
 *   Node.js (v18+)
-*   MySQL Database
+*   MySQL 8.0
+*   Docker & Docker Compose (可选)
 *   Google Gemini API Key (可从 Google AI Studio 获取)
 
-### 2. 安装依赖
+### 配置步骤
+
+#### 1. 复制环境配置
 
 ```bash
-# 安装前端依赖
-cd client
-npm install
-
-# 安装后端依赖
-cd ../server
-npm install
+cp .env.example .env
 ```
 
-### 3. 配置数据库
-在 `server` 目录下创建 `.env` 文件（如果不存在），配置数据库连接：
+编辑 `.env` 文件，配置以下内容：
 
 ```env
-DATABASE_URL="mysql://root:password@localhost:3306/expense_pro"
+# 数据库配置
+DB_PASSWORD=你的数据库密码
+DB_NAME=expense_pro
+
+# 应用密钥
+JWT_SECRET=你的JWT密钥
+# 生成命令: openssl rand -hex 64
+
+# AI 服务配置 (Gemini)
+AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
+
+NODE_ENV=production
 ```
 
-初始化数据库表结构：
+#### 2. 启动方式
+
+##### 方式一：Docker 部署 (推荐)
 
 ```bash
+# 构建并启动所有服务
+docker-compose up -d --build
+
+# 初始化数据库表
+docker exec expensepro-app-1 npx drizzle-kit push
+
+# 查看日志
+docker logs -f expensepro-app-1
+```
+
+访问 **http://localhost** 即可使用。
+
+##### 方式二：本地开发
+
+```bash
+# 安装依赖
+cd client && npm install
+cd ../server && npm install
+
+# 初始化数据库表
 cd server
 npx drizzle-kit push
+
+# 启动服务
+# 方式1: 双击 start.bat (Windows)
+# 方式2: 手动启动
+cd server && npm run dev    # 后端 :3001
+cd client && npm run dev    # 前端 :5173
 ```
 
-### 4. 启动项目
+访问 **http://localhost:5173** 即可使用。
 
-我们提供了一个便捷的启动脚本，可同时启动前后端服务：
+---
 
-**Windows:**
-直接双击根目录下的 `start.bat`。
+## 🐳 Docker 部署说明
 
-**手动启动:**
+### 端口映射
+
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| 前端 | 80 -> 3001 | 直接访问 http://localhost |
+| MySQL | 127.0.0.1:3306 | 本地访问 |
+
+### 常用命令
 
 ```bash
-# 终端 1: 启动后端 (端口 3001)
-cd server
-npm run dev
+# 启动服务
+docker-compose up -d
 
-# 终端 2: 启动前端 (端口 5173)
-cd client
-npm run dev
+# 停止服务
+docker-compose down
+
+# 停止服务并删除数据
+docker-compose down -v
+
+# 查看日志
+docker logs -f expensepro-app-1
+
+# 重启应用
+docker restart expensepro-app-1
+
+# 进入容器
+docker exec -it expensepro-app-1 sh
 ```
 
-访问 `http://localhost:5173` 即可开始使用。
+### 代理配置
+
+如果需要通过代理访问 AI 服务，编辑 `docker-compose.yml` 中的环境变量：
+
+```yaml
+environment:
+  - HTTP_PROXY=http://host.docker.internal:7890
+  - HTTPS_PROXY=http://host.docker.internal:7890
+```
 
 ---
 
