@@ -3,7 +3,7 @@ services:
     build:
       context: .
     ports:
-      - "80:3001"
+      - "3001:3001"
     environment:
       - NODE_ENV=production
       - DB_HOST=mysql
@@ -16,6 +16,10 @@ services:
       - HTTP_PROXY=${HTTP_PROXY:-}
       - HTTPS_PROXY=${HTTPS_PROXY:-}
       - NO_PROXY=localhost,127.0.0.1,mysql
+      # 私有版功能开关（留空则不启用）
+      - INVITE_CODE=${INVITE_CODE:-}
+      - SERVER_AI_KEY=${SERVER_AI_KEY:-}
+      - ENCRYPTION_ENABLED=${ENCRYPTION_ENABLED:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

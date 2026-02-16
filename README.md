@@ -16,6 +16,26 @@
 - **自定义分类** — 添加、删除、排序消费分类
 - **响应式设计** — 桌面端与移动端适配
 
+## 🔐 双版本架构
+
+ExpensePro 支持两种部署模式，**同一套代码**，通过环境变量切换：
+
+| 功能 | 开源版（默认） | 私有版 |
+|------|--------------|--------|
+| 注册方式 | 开放注册 | 邀请码注册 |
+| AI Key | 用户自行配置 | 服务端统一管理，前端不可见 |
+| 数据加密 | 无 | 客户端 E2E 加密（管理员无法查看） |
+
+通过 `.env` 中的三个开关控制：
+
+```env
+INVITE_CODE=your-invite-code    # 留空=开放注册
+SERVER_AI_KEY=AIzaSy...          # 留空=用户自行输入 Key
+ENCRYPTION_ENABLED=true          # 留空=不加密
+```
+
+> **加密说明**：启用 E2E 加密后，`title`、`category`、`note` 字段在用户浏览器端加密后传输存储，服务端和数据库只存密文。`amount` 和 `date` 不加密以保留排序和统计功能。
+
 ## 🛠️ 技术栈
 
 | 层 | 技术 |
@@ -32,16 +52,18 @@ ExpensePro/
 ├── client/                # React 前端 (Vite)
 │   └── src/
 │       ├── components/    # UI 组件
-│       ├── context/       # Auth Context
+│       ├── context/       # Auth Context (含 Master Key 管理)
+│       ├── utils/         # 加密工具 (crypto.ts)
 │       ├── App.tsx        # 主应用
 │       └── App.css        # 全局样式
 ├── server/                # Express 后端
 │   └── src/
 │       ├── db/            # Drizzle Schema & 连接
+│       ├── crypto.ts      # 服务端加密工具
 │       └── index.ts       # API 入口
 ├── docker-compose.yml     # Docker 一键部署
 ├── Dockerfile             # 多阶段构建
-├── .env.example           # 环境变量模板
+├── server/.env.private    # 私有版环境变量模板
 ├── start.bat              # Windows 本地启动脚本
 └── package.json           # 根目录启动脚本
 ```
@@ -52,34 +74,27 @@ ExpensePro/
 
 ### 环境变量配置
 
-无论哪种部署方式，都需要先配置环境变量。复制模板并编辑：
+所有部署方式都需要配置环境变量。
 
-```bash
-cp .env.example .env
-```
-
-编辑 `.env` 文件：
+**Docker 部署**：在项目根目录创建 `.env` 文件：
 
 ```env
-# 数据库密码（请修改为强密码）
 DB_PASSWORD=your_secure_password
 DB_NAME=expense_pro
-
-# JWT 密钥（建议随机生成：openssl rand -hex 64）
 JWT_SECRET=change_me_to_a_secure_secret_key
-
-# Gemini API 地址
 AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
 
-# 网络代理（可选，服务器无法直连 Google API 时配置）
-# Docker 中 host.docker.internal 指向宿主机
+# 私有版功能开关（留空则不启用）
+INVITE_CODE=
+SERVER_AI_KEY=
+ENCRYPTION_ENABLED=
+
+# 代理（可选）
 # HTTP_PROXY=http://host.docker.internal:7890
 # HTTPS_PROXY=http://host.docker.internal:7890
-
-NODE_ENV=production
 ```
 
-> **关于 Gemini API Key**：API Key 不在服务端配置，而是通过前端 UI 设置并保存在浏览器本地。首次使用时打开 Dashboard → AI 智能记账 → 点击 ⚙️ 图标输入你的 Key。
+**本地/手动部署**：参考 `server/.env.private` 模板，复制为 `server/.env` 并填入实际值。
 
 ---
 
@@ -98,7 +113,7 @@ NODE_ENV=production
 docker compose up -d --build
 ```
 
-应用将在 `http://localhost:80` 启动，数据库自动创建并配置完毕。
+应用将在 `http://localhost:3001` 启动，数据库自动创建。
 
 #### 常用命令
 
@@ -113,17 +128,6 @@ docker compose down
 docker compose down -v
 ```
 
-#### 网络代理说明
-
-如果你的服务器需要代理才能访问 Google Gemini API，在 `.env` 中取消注释并配置代理地址：
-
-```env
-HTTP_PROXY=http://host.docker.internal:7890
-HTTPS_PROXY=http://host.docker.internal:7890
-```
-
-`host.docker.internal` 会自动映射到宿主机 IP，端口请根据你的代理软件实际配置修改。
-
 ---
 
 ### 方式二：本地代码部署
@@ -137,80 +141,156 @@ HTTPS_PROXY=http://host.docker.internal:7890
 
 #### 1. 安装 MySQL 并创建数据库
 
-如果你还没有 MySQL，可以参考以下方式安装：
-
-- **Windows**: [MySQL Installer](https://dev.mysql.com/downloads/installer/)
-- **macOS**: `brew install mysql`
-- **Ubuntu/Debian**: `sudo apt install mysql-server`
-
-安装完成后创建数据库：
-
 ```sql
 CREATE DATABASE expense_pro CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-#### 2. 配置数据库连接
+#### 2. 配置环境变量
 
-在 `server/` 目录下创建 `.env` 文件：
-
-```env
-DATABASE_URL="mysql://root:你的数据库密码@localhost:3306/expense_pro"
-PORT=3001
+```bash
+cp server/.env.private server/.env
+# 编辑 server/.env，填入数据库密码等实际值
 ```
-
-> **连接格式说明**：`mysql://用户名:密码@主机地址:端口/数据库名`
-> 
-> 如果 MySQL 运行在其他主机或端口，请相应修改。例如：
-> - 远程数据库：`mysql://user:pass@192.168.1.100:3306/expense_pro`
-> - 自定义端口：`mysql://root:pass@localhost:3307/expense_pro`
 
 #### 3. 安装依赖
 
 ```bash
-# 安装根目录依赖（启动脚本）
 npm install
-
-# 安装前端依赖
-cd client
-npm install
-
-# 安装后端依赖
-cd ../server
-npm install
+cd client && npm install
+cd ../server && npm install
 ```
 
-#### 4. 初始化数据库表结构
+#### 4. 初始化数据库
 
 ```bash
 cd server
 npx drizzle-kit push
 ```
 
-此命令会根据 Drizzle Schema 自动创建所有需要的表。
-
-#### 5. 启动项目
-
-**方式 A：一键启动（Windows）**
-
-直接双击根目录的 `start.bat`，或在根目录执行：
+#### 5. 启动
 
 ```bash
+# 方式 A：一键启动
 npm start
+
+# 方式 B：手动分别启动
+cd server && npm run dev    # 后端 3001
+cd client && npm run dev    # 前端 5173
 ```
 
-**方式 B：手动分别启动**
+访问 `http://localhost:5173`。
+
+---
+
+### 方式三：Docker + 域名 + Nginx 反向代理
+
+> 适合服务器上已有其他 Docker 服务运行、需要通过域名访问的场景。
+
+#### 整体架构
+
+```
+用户浏览器
+  ↓ https://expense.yourdomain.com
+Nginx（宿主机或 Docker 容器，监听 80/443）
+  ↓ proxy_pass http://127.0.0.1:3001
+ExpensePro Docker 容器（监听 3001）
+  ↓
+MySQL Docker 容器（3306 仅内部访问）
+```
+
+#### 步骤 1：启动 ExpensePro
 
 ```bash
-# 终端 1：启动后端 (端口 3001)
-cd server
-npm run dev
-
-# 终端 2：启动前端 (端口 5173)
-cd client
-npm run dev
+cd ExpensePro
+# 编辑 .env 后启动
+docker compose up -d --build
 ```
 
-访问 `http://localhost:5173` 即可使用。前端已配置 Vite 反向代理，所有 `/api` 请求会自动转发到后端。
+此时 ExpensePro 在 `localhost:3001` 运行。
+
+#### 步骤 2：配置 Nginx 反向代理
+
+如果宿主机已安装 Nginx，在 `/etc/nginx/conf.d/` 创建配置：
+
+```nginx
+# /etc/nginx/conf.d/expense.conf
+server {
+    listen 80;
+    server_name expense.yourdomain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # WebSocket 支持（如未来需要）
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        # 上传图片较大，增加 body 限制
+        client_max_body_size 20m;
+    }
+}
+```
+
+```bash
+# 测试配置
+sudo nginx -t
+# 重载
+sudo nginx -s reload
+```
+
+#### 步骤 3：DNS 解析
+
+在域名服务商（如 Cloudflare、阿里云 DNS）添加 A 记录：
+
+| 类型 | 名称 | 值 | TTL |
+|------|------|-----|-----|
+| A | expense | 你的服务器 IP | 自动 |
+
+#### 步骤 4：HTTPS（推荐）
+
+使用 Certbot 自动签发 Let's Encrypt 证书：
+
+```bash
+# 安装 certbot
+sudo apt install certbot python3-certbot-nginx
+
+# 自动签发并配置 Nginx
+sudo certbot --nginx -d expense.yourdomain.com
+
+# 自动续期（每天检查）
+sudo systemctl enable certbot.timer
+```
+
+完成后即可通过 `https://expense.yourdomain.com` 访问。
+
+#### 如果 Nginx 也运行在 Docker 里
+
+如果你的 Nginx 也是 Docker 容器（如 nginx-proxy 或 Traefik），需要让它和 ExpensePro 在同一个 Docker 网络：
+
+```yaml
+# docker-compose.yml 中添加
+services:
+  app:
+    # ... 现有配置 ...
+    networks:
+      - nginx_network   # 加入 Nginx 所在网络
+      - default
+
+networks:
+  nginx_network:
+    external: true       # 引用已存在的 Nginx 网络
+```
+
+然后 Nginx 容器的反向代理配置中，用容器名（而非 `127.0.0.1`）：
+
+```nginx
+proxy_pass http://expensepro-app-1:3001;
+```
 
 ---
 
