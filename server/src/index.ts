@@ -6,12 +6,18 @@ import { eq, desc, and, isNull } from "drizzle-orm";
 import { ProxyAgent, fetch as undiciFetch } from "undici";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { generateMasterKey, generateSalt, deriveKeyFromPassword, encryptMasterKey } from "./crypto";
 
 import path from "path";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-it";
+
+// === 功能开关 ===
+const INVITE_CODE = process.env.INVITE_CODE || "";
+const SERVER_AI_KEY = process.env.SERVER_AI_KEY || "";
+const ENCRYPTION_ENABLED = process.env.ENCRYPTION_ENABLED === "true";
 
 // 代理配置 (优先使用环境变量，否则在非生产环境默认尝试本地代理)
 const PROXY_URL = process.env.HTTP_PROXY || (process.env.NODE_ENV === 'production' ? "" : "http://127.0.0.1:7890");
@@ -39,11 +45,30 @@ const authenticateToken = (req: any, res: any, next: any) => {
 
 // ========== Auth API ==========
 
+// 公共配置端点 (无需认证)
+app.get("/api/auth/config", (_req, res) => {
+  res.json({
+    requireInvite: !!INVITE_CODE,
+    encryption: ENCRYPTION_ENABLED,
+  });
+});
+
+// AI 状态端点 (无需认证)
+app.get("/api/ai/status", (_req, res) => {
+  res.json({ serverAi: !!SERVER_AI_KEY });
+});
+
 app.post("/api/auth/register", async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, inviteCode } = req.body;
     if (!username || !password) {
       res.status(400).json({ error: "请输入用户名和密码" });
+      return;
+    }
+
+    // 邀请码校验
+    if (INVITE_CODE && inviteCode !== INVITE_CODE) {
+      res.status(403).json({ error: "邀请码无效" });
       return;
     }
 
@@ -64,14 +89,13 @@ app.post("/api/auth/register", async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 先查询用户名是否已存在（主动检查，不依赖数据库错误码）
+    // 先查询用户名是否已存在
     const existingUser = await db.select().from(users).where(eq(users.username, username)).limit(1);
     if (existingUser.length > 0) {
       res.status(409).json({ error: "该用户名已被注册" });
       return;
     }
 
-    // Check if this is the first user (for legacy data migration)
     const existingUsers = await db.select().from(users).limit(1);
     const isFirstUser = existingUsers.length === 0;
 
@@ -83,7 +107,20 @@ app.post("/api/auth/register", async (req, res) => {
 
       const newUserId = result.insertId;
 
-      // If this is the first user, adopt all orphaned expenses (legacy data)
+      // 如果启用加密，为新用户生成 Master Key
+      if (ENCRYPTION_ENABLED) {
+        const masterKey = generateMasterKey();
+        const salt = generateSalt();
+        const passwordKey = deriveKeyFromPassword(password, salt);
+        const encMasterKey = encryptMasterKey(masterKey, passwordKey);
+
+        await db.insert(userSettings).values({
+          userId: newUserId,
+          encryptedMasterKey: encMasterKey,
+          masterKeySalt: salt,
+        });
+      }
+
       if (isFirstUser) {
         console.log(`First user registered (ID: ${newUserId}). Migrating legacy expenses...`);
         await db.update(expenses)
@@ -93,7 +130,6 @@ app.post("/api/auth/register", async (req, res) => {
 
       res.status(201).json({ message: "注册成功" });
     } catch (dbError: any) {
-      // 兜底：并发场景下仍可能触发唯一约束冲突
       if (dbError.code === 'ER_DUP_ENTRY' || dbError.errno === 1062 || (dbError.message && dbError.message.includes('Duplicate'))) {
         res.status(409).json({ error: "该用户名已被注册" });
       } else {
@@ -123,7 +159,19 @@ app.post("/api/auth/login", async (req, res) => {
     }
 
     const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
-    res.json({ token, username: user.username });
+
+    // 如果启用加密，返回加密的 Master Key 和 salt
+    const response: any = { token, username: user.username };
+    if (ENCRYPTION_ENABLED) {
+      const [setting] = await db.select().from(userSettings).where(eq(userSettings.userId, user.id));
+      if (setting?.encryptedMasterKey && setting?.masterKeySalt) {
+        response.encryptedMasterKey = setting.encryptedMasterKey;
+        response.masterKeySalt = setting.masterKeySalt;
+      }
+      response.encryption = true;
+    }
+
+    res.json(response);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "登录失败，请稍后重试" });
@@ -363,7 +411,10 @@ function extractJson(text: string): Record<string, unknown> | null {
 
 app.post("/api/ai/parse-receipt", async (req, res) => {
   try {
-    const { image, apiKey, model, categories } = req.body;
+    const { image, apiKey: clientApiKey, model, categories } = req.body;
+
+    // 优先使用服务端密钥，不泄露给前端
+    const apiKey = SERVER_AI_KEY || clientApiKey;
 
     if (!image || !apiKey) {
       res.status(400).json({ error: "缺少图片或 API Key" });

@@ -12,6 +12,7 @@ import { Select } from "./components/ui/Select";
 import { useToast, ToastContainer } from "./components/ui/Toast";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { AuthForm } from "./components/AuthForm";
+import { encryptExpense, decryptExpenses } from "./utils/crypto";
 import "./App.css";
 
 /* ========== Types ========== */
@@ -79,7 +80,7 @@ const getCategoryColor = (category: string, cats: Record<string, string>) =>
 
 /* ========== Main Component ========== */
 function AppContent() {
-  const { user, token, logout } = useAuth();
+  const { user, token, masterKey, encryption, logout } = useAuth();
   const { toasts, addToast, removeToast } = useToast();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -213,12 +214,16 @@ function AppContent() {
       const res = await fetch(API_URL, { headers: { Authorization: `Bearer ${token}` } });
       if (res.status === 401 || res.status === 403) { logout(); return; }
       const data = await res.json();
-      const formatted = data.map((item: any) => ({
+      let formatted = data.map((item: any) => ({
         ...item,
         amount: Number(item.amount),
         date: item.date.split("T")[0],
         note: item.note || "",
       }));
+      // E2E 解密
+      if (masterKey && encryption) {
+        formatted = await decryptExpenses(formatted, masterKey);
+      }
       setExpenses(formatted);
     } catch (err) {
       console.error("Fetch error", err);
@@ -240,9 +245,16 @@ function AppContent() {
     const n = note ?? form.note;
     if (!t || !a) return;
     try {
-      const body: any = { title: t, amount: a, category: c };
+      let body: any = { title: t, amount: a, category: c };
       if (d) body.date = d;
       if (n) body.note = n;
+      // E2E 加密
+      if (masterKey && encryption) {
+        const enc = await encryptExpense({ title: body.title, category: body.category, note: body.note }, masterKey);
+        body.title = enc.title;
+        body.category = enc.category;
+        if (enc.note) body.note = enc.note;
+      }
       const res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -263,8 +275,15 @@ function AppContent() {
   const editExpense = async (id: number, title: string, amount: number, category: string, date: string, note?: string) => {
     if (!token) return;
     try {
-      const body: any = { title, amount, category, date };
+      let body: any = { title, amount, category, date };
       if (note !== undefined) body.note = note;
+      // E2E 加密
+      if (masterKey && encryption) {
+        const enc = await encryptExpense({ title: body.title, category: body.category, note: body.note }, masterKey);
+        body.title = enc.title;
+        body.category = enc.category;
+        if (enc.note !== undefined) body.note = enc.note || "";
+      }
       const res = await fetch(`${API_URL}/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },

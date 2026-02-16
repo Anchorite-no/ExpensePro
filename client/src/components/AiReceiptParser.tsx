@@ -39,6 +39,7 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState(DEFAULT_MODEL);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [serverAiMode, setServerAiMode] = useState(false);
 
   // 多图片状态
   const [images, setImages] = useState<ImageEntry[]>([]);
@@ -50,6 +51,14 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
   const [parseProgress, setParseProgress] = useState({ current: 0, total: 0 });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 检查是否使用服务端 AI 密钥
+  useEffect(() => {
+    fetch("/api/ai/status")
+      .then(r => r.json())
+      .then(data => { if (data.serverAi) setServerAiMode(true); })
+      .catch(() => { /* ignore */ });
+  }, []);
 
   // 从后端加载设置
   useEffect(() => {
@@ -151,7 +160,7 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
   // AI 解析（多图逐张）
   const parseReceipts = async () => {
     if (images.length === 0) return;
-    if (!apiKey) {
+    if (!serverAiMode && !apiKey) {
       setError("请先配置 API Key（点击右上角齿轮图标）");
       return;
     }
@@ -175,7 +184,7 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
           },
           body: JSON.stringify({
             image: images[i].base64,
-            apiKey,
+            ...(serverAiMode ? {} : { apiKey }),
             model: model || DEFAULT_MODEL,
             categories: categoryList,
           }),
@@ -253,15 +262,17 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
       {/* API 设置面板 */}
       {showSettings && (
         <div className="ai-settings">
-          <div className="ai-setting-row">
-            <label>API Key</label>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="AIza..."
-            />
-          </div>
+          {!serverAiMode && (
+            <div className="ai-setting-row">
+              <label>API Key</label>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="AIza..."
+              />
+            </div>
+          )}
           <div className="ai-setting-row">
             <label>模型</label>
             <Select

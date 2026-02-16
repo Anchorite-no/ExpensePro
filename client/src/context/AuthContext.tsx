@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 
 interface User {
   username: string;
@@ -7,7 +7,9 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (token: string, username: string) => void;
+  masterKey: CryptoKey | null;
+  encryption: boolean;
+  login: (token: string, username: string, masterKey?: CryptoKey, encryption?: boolean) => void;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -17,6 +19,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [masterKey, setMasterKey] = useState<CryptoKey | null>(null);
+  const [encryption, setEncryption] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -25,15 +29,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (storedToken && storedUsername) {
       setToken(storedToken);
       setUser({ username: storedUsername });
+      // Note: masterKey must be re-derived on each login (not stored in localStorage for security)
     }
     setIsLoading(false);
   }, []);
 
-  const login = (newToken: string, newUsername: string) => {
+  const login = (newToken: string, newUsername: string, newMasterKey?: CryptoKey, encryptionEnabled?: boolean) => {
     localStorage.setItem('token', newToken);
     localStorage.setItem('username', newUsername);
     setToken(newToken);
     setUser({ username: newUsername });
+    if (newMasterKey) setMasterKey(newMasterKey);
+    if (encryptionEnabled) setEncryption(true);
   };
 
   const logout = () => {
@@ -41,6 +48,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('username');
     setToken(null);
     setUser(null);
+    setMasterKey(null);
+    setEncryption(false);
   };
 
   if (isLoading) {
@@ -48,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, token, masterKey, encryption, login, logout, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );
