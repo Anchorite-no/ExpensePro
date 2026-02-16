@@ -519,19 +519,13 @@ tbody tr:hover {
   box-shadow: 0 0 0 3px var(--primary-bg);
 }
 
-/* iOS Safari/Edge fixes for input width consistency */
+/* iOS width consistency - avoid appearance:none which breaks native inputs */
 .input-group input[type="date"],
-.input-group input[type="password"],
-.auth-input[type="password"] {
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
+.input-group input[type="number"],
+.input-group input[type="text"],
+.input-group input[type="password"] {
+  box-sizing: border-box;
   min-width: 0;
-}
-
-/* Ensure date inputs use consistent font on iOS */
-.input-group input[type="date"] {
-  font-family: inherit;
 }
 
 .submit-btn {
@@ -2603,8 +2597,6 @@ tbody tr:hover {
   align-items: center;
   justify-content: center;
   transition: color 0.2s ease;
-  z-index: 10;
-  pointer-events: auto;
 }
 
 .auth-pw-eye:hover {

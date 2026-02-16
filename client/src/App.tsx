@@ -83,8 +83,9 @@ function AppContent() {
   const { user, token, masterKey, encryption, logout } = useAuth();
   const { toasts, addToast, removeToast } = useToast();
 
+  const todayStr = new Date().toISOString().slice(0, 10);
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [form, setForm] = useState({ title: "", amount: "", category: "餐饮", date: "", note: "" });
+  const [form, setForm] = useState({ title: "", amount: "", category: "餐饮", date: todayStr, note: "" });
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<"light" | "dark">(() =>
     (localStorage.getItem("theme") as "light" | "dark") || "light"
@@ -263,7 +264,7 @@ function AppContent() {
       if (res.status === 401) { logout(); return; }
       if (res.ok) {
         fetchExpenses();
-        if (!title) setForm({ ...form, title: "", amount: "", date: "", note: "" });
+        if (!title) setForm({ ...form, title: "", amount: "", date: todayStr, note: "" });
         addToast(`已记录: ${t} ${currency}${a}`, "success");
       }
     } catch (err) {
