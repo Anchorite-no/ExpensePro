@@ -497,6 +497,7 @@ tbody tr:hover {
   font-size: 14px;
   outline: none;
   transition: all 0.2s;
+  box-sizing: border-box;
 }
 
 /* Custom Select Styling */
@@ -516,6 +517,21 @@ tbody tr:hover {
 .input-group select:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-bg);
+}
+
+/* iOS Safari/Edge fixes for input width consistency */
+.input-group input[type="date"],
+.input-group input[type="password"],
+.auth-input[type="password"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  min-width: 0;
+}
+
+/* Ensure date inputs use consistent font on iOS */
+.input-group input[type="date"] {
+  font-family: inherit;
 }
 
 .submit-btn {
