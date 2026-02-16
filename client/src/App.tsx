@@ -13,6 +13,7 @@ import { useToast, ToastContainer } from "./components/ui/Toast";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { AuthForm } from "./components/AuthForm";
 import { encryptExpense, decryptExpenses } from "./utils/crypto";
+import { DateInput } from "./components/DateInput";
 import "./App.css";
 
 /* ========== Types ========== */
@@ -480,7 +481,7 @@ function AppContent() {
           </div>
           <div className="input-group">
             <label><Calendar size={14} /> 日期</label>
-            <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
+            <DateInput value={form.date} onChange={val => setForm({ ...form, date: val })} />
           </div>
           <div className="input-group">
             <label><Activity size={14} /> 分类</label>
