@@ -377,6 +377,7 @@ select {
 
 .list-card,
 .form-card {
+  min-width: 0;
   background: var(--bg-card);
   padding: 20px;
   border-radius: 12px;
