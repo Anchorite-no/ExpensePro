@@ -136,7 +136,7 @@ app.post("/api/auth/login", async (req, res) => {
 app.get("/api/settings", authenticateToken, async (req: any, res) => {
   try {
     const [setting] = await db.select().from(userSettings).where(eq(userSettings.userId, req.user.id));
-    res.json(setting || { aiApiKey: "", aiModel: "" });
+    res.json(setting || { aiApiKey: "", aiModel: "", currency: "", categories: "", budgetConfig: "" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "获取设置失败" });
@@ -146,18 +146,25 @@ app.get("/api/settings", authenticateToken, async (req: any, res) => {
 // 更新用户设置
 app.put("/api/settings", authenticateToken, async (req: any, res) => {
   try {
-    const { aiApiKey, aiModel } = req.body;
+    const { aiApiKey, aiModel, currency, categories, budgetConfig } = req.body;
     const [existing] = await db.select().from(userSettings).where(eq(userSettings.userId, req.user.id));
 
     if (existing) {
-      await db.update(userSettings)
-        .set({ aiApiKey: aiApiKey ?? existing.aiApiKey, aiModel: aiModel ?? existing.aiModel })
-        .where(eq(userSettings.userId, req.user.id));
+      const updates: any = {};
+      if (aiApiKey !== undefined) updates.aiApiKey = aiApiKey;
+      if (aiModel !== undefined) updates.aiModel = aiModel;
+      if (currency !== undefined) updates.currency = currency;
+      if (categories !== undefined) updates.categories = typeof categories === 'string' ? categories : JSON.stringify(categories);
+      if (budgetConfig !== undefined) updates.budgetConfig = typeof budgetConfig === 'string' ? budgetConfig : JSON.stringify(budgetConfig);
+      await db.update(userSettings).set(updates).where(eq(userSettings.userId, req.user.id));
     } else {
       await db.insert(userSettings).values({
         userId: req.user.id,
         aiApiKey: aiApiKey || "",
         aiModel: aiModel || "gemini-2.0-flash",
+        currency: currency || "¥",
+        categories: categories ? (typeof categories === 'string' ? categories : JSON.stringify(categories)) : "",
+        budgetConfig: budgetConfig ? (typeof budgetConfig === 'string' ? budgetConfig : JSON.stringify(budgetConfig)) : "",
       });
     }
 
@@ -188,7 +195,7 @@ app.get("/api/expenses", authenticateToken, async (req: any, res) => {
 // 2. 记一笔
 app.post("/api/expenses", authenticateToken, async (req: any, res) => {
   try {
-    const { title, amount, category, date } = req.body;
+    const { title, amount, category, date, note } = req.body;
 
     if (!title || !amount || !category) {
       res.status(400).json({ error: "信息不完整" });
@@ -199,6 +206,7 @@ app.post("/api/expenses", authenticateToken, async (req: any, res) => {
       title,
       amount: String(amount),
       category,
+      note: note || null,
       date: date ? new Date(date) : new Date(),
       userId: req.user.id
     });
@@ -239,7 +247,7 @@ app.put("/api/expenses/:id", authenticateToken, async (req: any, res) => {
       return;
     }
 
-    const { title, amount, category, date } = req.body;
+    const { title, amount, category, date, note } = req.body;
     if (!title || amount === undefined || !category) {
       res.status(400).json({ error: "信息不完整" });
       return;
@@ -250,6 +258,7 @@ app.put("/api/expenses/:id", authenticateToken, async (req: any, res) => {
         title,
         amount: String(amount),
         category,
+        note: note !== undefined ? (note || null) : undefined,
         date: date ? new Date(date) : new Date(),
       })
       .where(and(eq(expenses.id, id), eq(expenses.userId, req.user.id)));
@@ -263,6 +272,36 @@ app.put("/api/expenses/:id", authenticateToken, async (req: any, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "更新失败" });
+  }
+});
+
+// 5. 批量导入
+app.post("/api/expenses/import", authenticateToken, async (req: any, res) => {
+  try {
+    const { items } = req.body;
+    if (!Array.isArray(items) || items.length === 0) {
+      res.status(400).json({ error: "导入数据为空" });
+      return;
+    }
+
+    let imported = 0;
+    for (const item of items) {
+      if (!item.title || !item.amount || !item.category) continue;
+      await db.insert(expenses).values({
+        title: String(item.title).slice(0, 255),
+        amount: String(Number(item.amount) || 0),
+        category: String(item.category).slice(0, 50),
+        note: item.note ? String(item.note).slice(0, 500) : null,
+        date: item.date ? new Date(item.date) : new Date(),
+        userId: req.user.id,
+      });
+      imported++;
+    }
+
+    res.json({ imported });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "导入失败" });
   }
 });
 
