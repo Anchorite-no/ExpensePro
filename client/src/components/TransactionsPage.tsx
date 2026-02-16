@@ -504,8 +504,11 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
                     ) : (
                       <>
                         <td className="text-muted">{item.date}</td>
-                        <td className="font-medium" title={item.note || undefined}>
-                          {item.title}
+                        <td className="font-medium">
+                          <div className="txn-title-cell">
+                            <span>{item.title}</span>
+                            {item.note && <span className="txn-note-inline">{item.note}</span>}
+                          </div>
                         </td>
                         <td>
                           <span
@@ -519,7 +522,7 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
                             {item.category}
                           </span>
                         </td>
-                        <td className="text-danger font-bold">-{currency}{item.amount.toFixed(2)}</td>
+                        <td className="text-danger font-bold" style={{ whiteSpace: 'nowrap' }}>-{currency}{item.amount.toFixed(2)}</td>
                         <td>
                           <div style={{ display: "flex", gap: 4 }}>
                             <button className="icon-btn" onClick={() => startSingleEdit(item)} title="编辑" style={{ color: "var(--primary)" }}>

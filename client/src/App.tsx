@@ -489,8 +489,11 @@ function AppContent() {
                 <tbody>
                   {expenses.slice(0, 9).map(item => (
                     <tr key={item.id}>
-                      <td className="font-medium" title={item.note || undefined}>
-                        {item.title}
+                      <td className="font-medium">
+                        <div className="txn-title-cell">
+                          <span>{item.title}</span>
+                          {item.note && <span className="txn-note-inline">{item.note}</span>}
+                        </div>
                       </td>
                       <td>
                         <span
@@ -505,7 +508,7 @@ function AppContent() {
                         </span>
                       </td>
                       <td className="text-muted">{item.date}</td>
-                      <td className="text-danger font-bold">-{currency}{item.amount.toFixed(2)}</td>
+                      <td className="text-danger font-bold" style={{ whiteSpace: 'nowrap' }}>-{currency}{item.amount.toFixed(2)}</td>
                       <td>
                         <button className="icon-btn" onClick={() => deleteExpense(item.id)} title="删除">
                           <Trash2 size={16} />
