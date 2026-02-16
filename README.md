@@ -63,7 +63,7 @@ ExpensePro/
 │       └── index.ts       # API 入口
 ├── docker-compose.yml     # Docker 一键部署
 ├── Dockerfile             # 多阶段构建
-├── .env.example           # Docker 部署环境变量模板
+├── .env.example           # 环境变量模板（Docker 和本地通用）
 ├── start.bat              # Windows 本地启动脚本
 └── package.json           # 根目录启动脚本
 ```
@@ -97,11 +97,7 @@ ENCRYPTION_ENABLED=
 # HTTPS_PROXY=http://host.docker.internal:7890
 ```
 
-**本地/手动部署**：复制 `server/.env.example` 并填入实际值：
-
-```bash
-cp server/.env.example server/.env
-```
+**本地开发**：复制 `.env.example` 中的通用配置到 `server/.env`，并改用 `DATABASE_URL` 格式（见模板中的注释）。
 
 ---
 
@@ -154,9 +150,17 @@ CREATE DATABASE expense_pro CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 #### 2. 配置环境变量
 
-```bash
-cp server/.env.example server/.env
-# 编辑 server/.env，填入数据库密码等实际值
+参考根目录 `.env.example`，在 `server/` 目录下创建 `.env`：
+
+```env
+DATABASE_URL="mysql://root:你的数据库密码@localhost:3306/expense_pro"
+PORT=3001
+JWT_SECRET=随机密钥
+
+# 私有版开关（可选）
+INVITE_CODE=
+SERVER_AI_KEY=
+ENCRYPTION_ENABLED=
 ```
 
 #### 3. 安装依赖
