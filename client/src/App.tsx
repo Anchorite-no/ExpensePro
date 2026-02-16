@@ -84,7 +84,12 @@ function AppContent() {
   const { user, token, masterKey, encryption, logout } = useAuth();
   const { toasts, addToast, removeToast } = useToast();
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Use local time for default date
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  const todayStr = `${year}-${month}-${day}`;
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [form, setForm] = useState({ title: "", amount: "", category: "餐饮", date: todayStr, note: "" });
   const [loading, setLoading] = useState(true);

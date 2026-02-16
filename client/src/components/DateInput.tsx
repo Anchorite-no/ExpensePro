@@ -38,18 +38,24 @@ export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placehold
     }, []);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        let value = e.target.value;
+        const val = e.target.value;
+        const isTyping = val.length > inputValue.length;
 
         // Remove non-digits
-        const digits = value.replace(/\D/g, '').slice(0, 8);
+        const digits = val.replace(/\D/g, '').slice(0, 8);
 
-        // Format as YYYY-MM-DD
         let formatted = digits;
         if (digits.length >= 5) {
             formatted = digits.slice(0, 4) + '-' + digits.slice(4);
         }
         if (digits.length >= 7) {
             formatted = formatted.slice(0, 7) + '-' + formatted.slice(7);
+        }
+
+        // Auto-append hyphen if typing and hitting boundaries
+        if (isTyping) {
+            if (digits.length === 4) formatted += '-';
+            if (digits.length === 6) formatted += '-';
         }
 
         setInputValue(formatted);
