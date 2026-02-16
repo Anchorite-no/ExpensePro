@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Camera, Upload, Settings, X, Check, Loader2, Sparkles, Trash2, ImagePlus } from "lucide-react";
 import { Select } from "./ui/Select";
 
@@ -20,6 +20,7 @@ interface AiReceiptParserProps {
   categories: Record<string, string>;
   onAddExpense: (title: string, amount: number, category: string, date?: string) => void;
   currency: string;
+  token: string | null;
 }
 
 const DEFAULT_MODEL = "gemini-2.0-flash";
@@ -31,12 +32,13 @@ const AVAILABLE_MODELS = [
 
 let imageIdCounter = 0;
 
-export default function AiReceiptParser({ theme, categories, onAddExpense, currency }: AiReceiptParserProps) {
+export default function AiReceiptParser({ theme, categories, onAddExpense, currency, token }: AiReceiptParserProps) {
   const categoryList = Object.keys(categories);
   // API Key 设置
   const [showSettings, setShowSettings] = useState(false);
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem("ai_api_key") || "");
-  const [model, setModel] = useState(() => localStorage.getItem("ai_model") || DEFAULT_MODEL);
+  const [apiKey, setApiKey] = useState("");
+  const [model, setModel] = useState(DEFAULT_MODEL);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   // 多图片状态
   const [images, setImages] = useState<ImageEntry[]>([]);
@@ -49,10 +51,30 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 保存设置
-  const saveSettings = () => {
-    localStorage.setItem("ai_api_key", apiKey);
-    localStorage.setItem("ai_model", model);
+  // 从后端加载设置
+  useEffect(() => {
+    if (!token) return;
+    fetch("/api/settings", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        if (data.aiApiKey) setApiKey(data.aiApiKey);
+        if (data.aiModel) setModel(data.aiModel);
+        setSettingsLoaded(true);
+      })
+      .catch(() => setSettingsLoaded(true));
+  }, [token]);
+
+  // 保存设置到后端
+  const saveSettings = async () => {
+    if (token) {
+      try {
+        await fetch("/api/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ aiApiKey: apiKey, aiModel: model }),
+        });
+      } catch { /* ignore */ }
+    }
     setShowSettings(false);
   };
 

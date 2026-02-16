@@ -371,7 +371,7 @@ function AppContent() {
       <div className="dashboard-body">
         <div className="form-card">
           <h3>快速记账</h3>
-          <AiReceiptParser theme={theme} categories={categories} onAddExpense={(t, a, c, d) => addExpense(t, a, c, d)} currency={currency} />
+          <AiReceiptParser theme={theme} categories={categories} onAddExpense={(t, a, c, d) => addExpense(t, a, c, d)} currency={currency} token={token} />
           <div className="input-group">
             <label><Tag size={14} /> 内容</label>
             <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="例如：午饭" onKeyDown={(e) => e.key === "Enter" && addExpense()} />

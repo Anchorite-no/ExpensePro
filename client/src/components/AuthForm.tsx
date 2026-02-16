@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Eye, EyeOff, Wallet } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -13,17 +13,29 @@ export const AuthForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // 注册成功后暂存用户名密码，切回登录时自动填写
+  const registeredCredentials = useRef<{ username: string; password: string } | null>(null);
+
   const { login } = useAuth();
 
-  // 切换模式时清空状态
+  // 切换模式时清空状态（但注册成功后保留凭据）
   useEffect(() => {
     setError('');
-    setUsername('');
-    setPassword('');
     setConfirmPassword('');
     setAgreeToTerms(false);
     setShowPassword(false);
     setShowConfirmPassword(false);
+
+    if (isLogin && registeredCredentials.current) {
+      // 注册成功回到登录，自动填写
+      setUsername(registeredCredentials.current.username);
+      setPassword(registeredCredentials.current.password);
+      registeredCredentials.current = null;
+      setTimeout(() => setError('注册成功！请使用新账号登录。'), 100);
+    } else {
+      setUsername('');
+      setPassword('');
+    }
   }, [isLogin]);
 
   // 密码实时校验规则
@@ -75,9 +87,9 @@ export const AuthForm = () => {
       if (isLogin) {
         login(data.token, data.username);
       } else {
+        // 暂存注册时填写的用户名密码
+        registeredCredentials.current = { username, password };
         setIsLogin(true);
-        setTimeout(() => setError('注册成功！请使用新账号登录。'), 100);
-        setPassword('');
       }
     } catch (err: any) {
       setError(err.message || '网络或服务器错误');
@@ -113,7 +125,7 @@ export const AuthForm = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} autoComplete="off">
           {/* 用户名 */}
           <div className="auth-field">
             <label className="auth-label">用户名</label>
@@ -124,6 +136,7 @@ export const AuthForm = () => {
               onChange={(e) => setUsername(e.target.value)}
               required
               placeholder="请输入用户名"
+              autoComplete="off"
             />
           </div>
 
@@ -138,6 +151,7 @@ export const AuthForm = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="请输入密码"
+                autoComplete="new-password"
               />
               <button
                 type="button"
@@ -171,6 +185,7 @@ export const AuthForm = () => {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   placeholder="请再次输入密码"
+                  autoComplete="new-password"
                 />
                 <button
                   type="button"

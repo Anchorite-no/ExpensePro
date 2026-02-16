@@ -2431,6 +2431,17 @@ tbody tr:hover {
   padding-right: 42px;
 }
 
+/* 隐藏浏览器原生密码显示按钮 */
+.auth-input-pw::-ms-reveal,
+.auth-input-pw::-ms-clear {
+  display: none;
+}
+
+.auth-input-pw::-webkit-credentials-auto-fill-button,
+.auth-input-pw::-webkit-textfield-decoration-container {
+  display: none !important;
+}
+
 /* Password Wrapper & Eye Toggle */
 .auth-pw-wrapper {
   position: relative;

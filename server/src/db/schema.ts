@@ -1,4 +1,4 @@
-import { mysqlTable, int, varchar, timestamp, decimal } from 'drizzle-orm/mysql-core';
+import { mysqlTable, int, varchar, timestamp, decimal, text } from 'drizzle-orm/mysql-core';
 
 export const users = mysqlTable('users', {
   id: int('id').primaryKey().autoincrement(),
@@ -16,4 +16,12 @@ export const expenses = mysqlTable('expense', {
   category: varchar('category', { length: 50 }).notNull(),
   date: timestamp('date').defaultNow(),
   userId: int('user_id'),
+});
+
+export const userSettings = mysqlTable('user_settings', {
+  id: int('id').primaryKey().autoincrement(),
+  userId: int('user_id').notNull().unique(),
+  aiApiKey: text('ai_api_key'),
+  aiModel: varchar('ai_model', { length: 100 }),
+  updatedAt: timestamp('updated_at').defaultNow(),
 });

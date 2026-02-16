@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { db } from "./db";
-import { expenses, users } from "./db/schema";
+import { expenses, users, userSettings } from "./db/schema";
 import { eq, desc, and, isNull } from "drizzle-orm";
 import { ProxyAgent, fetch as undiciFetch } from "undici";
 import bcrypt from "bcryptjs";
@@ -91,7 +91,7 @@ app.post("/api/auth/register", async (req, res) => {
           .where(isNull(expenses.userId));
       }
 
-      res.status(201).json({ message: "User registered successfully" });
+      res.status(201).json({ message: "注册成功" });
     } catch (dbError: any) {
       // 兜底：并发场景下仍可能触发唯一约束冲突
       if (dbError.code === 'ER_DUP_ENTRY' || dbError.errno === 1062 || (dbError.message && dbError.message.includes('Duplicate'))) {
@@ -112,13 +112,13 @@ app.post("/api/auth/login", async (req, res) => {
     const [user] = await db.select().from(users).where(eq(users.username, username));
 
     if (!user) {
-      res.status(401).json({ error: "Invalid credentials" });
+      res.status(401).json({ error: "用户名或密码错误" });
       return;
     }
 
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
-      res.status(401).json({ error: "Invalid credentials" });
+      res.status(401).json({ error: "用户名或密码错误" });
       return;
     }
 
@@ -126,7 +126,46 @@ app.post("/api/auth/login", async (req, res) => {
     res.json({ token, username: user.username });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Login failed" });
+    res.status(500).json({ error: "登录失败，请稍后重试" });
+  }
+});
+
+// ========== 用户设置 API ==========
+
+// 获取用户设置
+app.get("/api/settings", authenticateToken, async (req: any, res) => {
+  try {
+    const [setting] = await db.select().from(userSettings).where(eq(userSettings.userId, req.user.id));
+    res.json(setting || { aiApiKey: "", aiModel: "" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "获取设置失败" });
+  }
+});
+
+// 更新用户设置
+app.put("/api/settings", authenticateToken, async (req: any, res) => {
+  try {
+    const { aiApiKey, aiModel } = req.body;
+    const [existing] = await db.select().from(userSettings).where(eq(userSettings.userId, req.user.id));
+
+    if (existing) {
+      await db.update(userSettings)
+        .set({ aiApiKey: aiApiKey ?? existing.aiApiKey, aiModel: aiModel ?? existing.aiModel })
+        .where(eq(userSettings.userId, req.user.id));
+    } else {
+      await db.insert(userSettings).values({
+        userId: req.user.id,
+        aiApiKey: aiApiKey || "",
+        aiModel: aiModel || "gemini-2.0-flash",
+      });
+    }
+
+    const [updated] = await db.select().from(userSettings).where(eq(userSettings.userId, req.user.id));
+    res.json(updated);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "保存设置失败" });
   }
 });
 
