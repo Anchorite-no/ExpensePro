@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { format, isValid, parse, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface DateInputProps {
     value: string;
@@ -38,15 +38,30 @@ export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placehold
     }, []);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newVal = e.target.value;
-        setInputValue(newVal);
+        let value = e.target.value;
 
-        // Auto-format if valid
-        const parsed = parse(newVal, 'yyyy-MM-dd', new Date());
-        if (isValid(parsed) && newVal.length === 10) {
-            onChange(format(parsed, 'yyyy-MM-dd'));
-            setViewDate(parsed);
-        } else if (newVal === "") {
+        // Remove non-digits
+        const digits = value.replace(/\D/g, '').slice(0, 8);
+
+        // Format as YYYY-MM-DD
+        let formatted = digits;
+        if (digits.length >= 5) {
+            formatted = digits.slice(0, 4) + '-' + digits.slice(4);
+        }
+        if (digits.length >= 7) {
+            formatted = formatted.slice(0, 7) + '-' + formatted.slice(7);
+        }
+
+        setInputValue(formatted);
+
+        // Auto-format format validation
+        if (formatted.length === 10) {
+            const parsed = parse(formatted, 'yyyy-MM-dd', new Date());
+            if (isValid(parsed)) {
+                onChange(format(parsed, 'yyyy-MM-dd'));
+                setViewDate(parsed);
+            }
+        } else if (formatted === "") {
             onChange("");
         }
     };
@@ -58,11 +73,7 @@ export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placehold
         setIsOpen(false);
     };
 
-    const clearDate = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        onChange(format(new Date(), 'yyyy-MM-dd')); // Reset to today
-        setInputValue((format(new Date(), 'yyyy-MM-dd')));
-    };
+
 
     const days = eachDayOfInterval({
         start: startOfMonth(viewDate),
@@ -90,11 +101,6 @@ export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placehold
                     onClick={() => setIsOpen(true)}
                 />
                 <div className="date-input-actions">
-                    {value && (
-                        <button type="button" className="date-clear-btn" onClick={clearDate} title="重置为今天">
-                            <X size={14} />
-                        </button>
-                    )}
                     <button type="button" className="date-toggle-btn" onClick={() => setIsOpen(!isOpen)}>
                         <CalendarIcon size={16} />
                     </button>
