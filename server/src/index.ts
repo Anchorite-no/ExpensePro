@@ -20,7 +20,7 @@ const SERVER_AI_KEY = process.env.SERVER_AI_KEY || "";
 const ENCRYPTION_ENABLED = process.env.ENCRYPTION_ENABLED === "true";
 
 // 代理配置 (优先使用环境变量，否则在非生产环境默认尝试本地代理)
-const PROXY_URL = process.env.HTTP_PROXY || (process.env.NODE_ENV === 'production' ? "" : "http://127.0.0.1:7890");
+const PROXY_URL = process.env.HTTP_PROXY || "";
 const proxyDispatcher = PROXY_URL ? new ProxyAgent(PROXY_URL) : undefined;
 
 // AI Base URL 配置 (默认为官方地址，可通过环境变量覆盖以使用代理)

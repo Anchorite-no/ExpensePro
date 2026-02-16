@@ -87,10 +87,51 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
     setShowSettings(false);
   };
 
+// 压缩图片 helper
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let width = img.width;
+          let height = img.height;
+          
+          // 限制最大边长为 1024px
+          const MAX_SIZE = 1024;
+          if (width > MAX_SIZE || height > MAX_SIZE) {
+            if (width > height) {
+              height = Math.round((height * MAX_SIZE) / width);
+              width = MAX_SIZE;
+            } else {
+              width = Math.round((width * MAX_SIZE) / height);
+              height = MAX_SIZE;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // 压缩为 JPEG, 质量 0.8
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+          resolve(dataUrl);
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
   // 处理文件（支持多个）
-  const handleFiles = useCallback((files: FileList | File[]) => {
+  const handleFiles = useCallback(async (files: FileList | File[]) => {
     const validFiles = Array.from(files).filter(f => {
       if (!f.type.startsWith("image/")) return false;
+      // 这里的 15MB 限制其实可以放宽了，因为我们会压缩，但作为初筛保留也行
       if (f.size > 15 * 1024 * 1024) return false;
       return true;
     });
@@ -102,19 +143,22 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
 
     setError("");
 
-    validFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
-        const entry: ImageEntry = {
+    // 并行处理所有图片压缩
+    const newImages = await Promise.all(validFiles.map(async (file) => {
+      try {
+        const compressedDataUrl = await compressImage(file);
+        return {
           id: `img-${++imageIdCounter}`,
-          preview: dataUrl,
-          base64: dataUrl,
+          preview: compressedDataUrl,
+          base64: compressedDataUrl,
         };
-        setImages(prev => [...prev, entry]);
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch (err) {
+        console.error("图片压缩失败:", err);
+        return null;
+      }
+    }));
+
+    setImages(prev => [...prev, ...newImages.filter((img): img is ImageEntry => img !== null)]);
   }, []);
 
   // 拖拽事件
