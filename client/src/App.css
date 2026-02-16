@@ -2603,6 +2603,8 @@ tbody tr:hover {
   align-items: center;
   justify-content: center;
   transition: color 0.2s ease;
+  z-index: 10;
+  pointer-events: auto;
 }
 
 .auth-pw-eye:hover {
