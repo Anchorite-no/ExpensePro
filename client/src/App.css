@@ -3560,9 +3560,73 @@ tbody tr:hover {
   box-sizing: border-box;
 }
 
-.date-input-field:focus {
+.date-input-field:focus,
+.date-input-field:focus-within {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-bg);
+}
+
+/* Segmented date input (YYYY-MM-DD) */
+.date-input-field.date-input-segments {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  cursor: text;
+  width: 100%; /* Restore full width */
+  justify-content: flex-start; /* Align content to the left */
+  padding-left: 10px; /* Add some padding on the left */
+}
+
+.date-segment {
+  border: none !important;
+  background: transparent !important;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  padding: 0 !important;
+  margin: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-align: center;
+  min-width: 0;
+  border-radius: 2px;
+}
+
+/* Highlight focused segment slightly */
+.date-segment:focus {
+  background: var(--bg-secondary) !important;
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.date-segment-year {
+  width: 40px; /* Fixed width for 4 digits */
+  flex: 0 0 40px;
+  text-align: center;
+}
+
+.date-segment-month,
+.date-segment-day {
+  width: 24px; /* Fixed width for 2 digits */
+  flex: 0 0 24px;
+  text-align: center;
+}
+
+.date-segment::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.5;
+  font-size: 12px;
+}
+
+.date-separator {
+  color: var(--text-secondary);
+  font-size: 14px;
+  user-select: none;
+  flex: 0 0 auto;
+  line-height: 1;
+  padding: 0;
+  margin: 0 1px;
+  font-weight: bold;
 }
 
 .date-input-actions {

@@ -13,7 +13,7 @@ import { useToast, ToastContainer } from "./components/ui/Toast";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { AuthForm } from "./components/AuthForm";
 import { encryptExpense, decryptExpenses } from "./utils/crypto";
-import { DateInput } from "./components/DateInput";
+import { DateInput, getChinaToday } from "./components/DateInput";
 import "./App.css";
 
 /* ========== Types ========== */
@@ -84,12 +84,8 @@ function AppContent() {
   const { user, token, masterKey, encryption, logout } = useAuth();
   const { toasts, addToast, removeToast } = useToast();
 
-  // Use local time for default date
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
-  const todayStr = `${year}-${month}-${day}`;
+  // Use China timezone for default date
+  const todayStr = getChinaToday();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [form, setForm] = useState({ title: "", amount: "", category: "餐饮", date: todayStr, note: "" });
   const [loading, setLoading] = useState(true);
@@ -349,18 +345,23 @@ function AppContent() {
   const maxExpense = expenses.length > 0 ? Math.max(...expenses.map(e => e.amount)) : 0;
 
   const periodExpenses = useMemo(() => {
-    const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-    const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const dayOfWeek = now.getDay() || 7;
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - dayOfWeek + 1);
-    const weekStartStr = weekStart.toISOString().slice(0, 10);
+    const chinaToday = getChinaToday();
+    const [cy, cm, cd] = chinaToday.split('-');
+    const yearMonth = `${cy}-${cm}`;
+    // Compute week start (Monday) in China timezone
+    const chinaNow = new Date(Number(cy), Number(cm) - 1, Number(cd));
+    const dayOfWeek = chinaNow.getDay() || 7;
+    const weekStart = new Date(chinaNow);
+    weekStart.setDate(chinaNow.getDate() - dayOfWeek + 1);
+    const wy = weekStart.getFullYear();
+    const wm = String(weekStart.getMonth() + 1).padStart(2, '0');
+    const wd = String(weekStart.getDate()).padStart(2, '0');
+    const weekStartStr = `${wy}-${wm}-${wd}`;
 
     let daily = 0, weekly = 0, monthly = 0;
     expenses.forEach(e => {
-      if (e.date === todayStr) daily += e.amount;
-      if (e.date >= weekStartStr && e.date <= todayStr) weekly += e.amount;
+      if (e.date === chinaToday) daily += e.amount;
+      if (e.date >= weekStartStr && e.date <= chinaToday) weekly += e.amount;
       if (e.date.startsWith(yearMonth)) monthly += e.amount;
     });
     return { daily, weekly, monthly };
