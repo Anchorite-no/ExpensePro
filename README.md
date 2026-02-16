@@ -63,7 +63,7 @@ ExpensePro/
 │       └── index.ts       # API 入口
 ├── docker-compose.yml     # Docker 一键部署
 ├── Dockerfile             # 多阶段构建
-├── server/.env.private    # 私有版环境变量模板
+├── .env.example           # Docker 部署环境变量模板
 ├── start.bat              # Windows 本地启动脚本
 └── package.json           # 根目录启动脚本
 ```
@@ -76,7 +76,10 @@ ExpensePro/
 
 所有部署方式都需要配置环境变量。
 
-**Docker 部署**：在项目根目录创建 `.env` 文件：
+**Docker 部署**：复制根目录的 `.env.example` 并填入实际值：
+
+```bash
+cp .env.example .env
 
 ```env
 DB_PASSWORD=your_secure_password
@@ -94,7 +97,11 @@ ENCRYPTION_ENABLED=
 # HTTPS_PROXY=http://host.docker.internal:7890
 ```
 
-**本地/手动部署**：参考 `server/.env.private` 模板，复制为 `server/.env` 并填入实际值。
+**本地/手动部署**：复制 `server/.env.example` 并填入实际值：
+
+```bash
+cp server/.env.example server/.env
+```
 
 ---
 
@@ -148,7 +155,7 @@ CREATE DATABASE expense_pro CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 #### 2. 配置环境变量
 
 ```bash
-cp server/.env.private server/.env
+cp server/.env.example server/.env
 # 编辑 server/.env，填入数据库密码等实际值
 ```
 
