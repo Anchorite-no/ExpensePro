@@ -179,7 +179,9 @@ select {
   border-top: 1px solid var(--border);
 }
 
-.theme-toggle {
+.theme-toggle,
+.sidebar-manage-btn,
+.sidebar-logout-btn {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -194,9 +196,12 @@ select {
   white-space: nowrap;
   overflow: hidden;
   height: 48px;
+  font-size: 14px;
 }
 
-.sidebar.collapsed .theme-toggle {
+.sidebar.collapsed .theme-toggle,
+.sidebar.collapsed .sidebar-manage-btn,
+.sidebar.collapsed .sidebar-logout-btn {
   justify-content: center;
   padding: 0;
 }
@@ -205,9 +210,15 @@ select {
   display: none;
 }
 
-.theme-toggle:hover {
+.theme-toggle:hover,
+.sidebar-manage-btn:hover {
   color: var(--primary);
   background: var(--primary-bg);
+}
+
+.sidebar-logout-btn:hover {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.1);
 }
 
 /* Main Content */
@@ -241,6 +252,28 @@ select {
 
 .mobile-actions {
   display: none;
+}
+
+/* Mobile top-bar icon buttons */
+.theme-toggle-mobile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.theme-toggle-mobile:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: var(--primary-bg);
 }
 
 /* Stats Grid */
