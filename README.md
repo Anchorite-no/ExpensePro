@@ -114,9 +114,12 @@ ENCRYPTION_ENABLED=
 ```bash
 # 构建并启动（后台运行）
 docker compose up -d --build
+
+# ⚠️ 首次启动必须初始化数据库表结构
+docker compose exec app npx drizzle-kit push --force
 ```
 
-应用将在 `http://localhost:3001` 启动，数据库自动创建。
+应用将在 `http://localhost:3001` 启动。
 
 #### 常用命令
 
