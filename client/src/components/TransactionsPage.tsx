@@ -504,9 +504,8 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
                     ) : (
                       <>
                         <td className="text-muted">{item.date}</td>
-                        <td className="font-medium">
-                          <div>{item.title}</div>
-                          {item.note && <div className="txn-note-text">{item.note}</div>}
+                        <td className="font-medium" title={item.note || undefined}>
+                          {item.title}
                         </td>
                         <td>
                           <span

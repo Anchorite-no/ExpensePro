@@ -489,9 +489,8 @@ function AppContent() {
                 <tbody>
                   {expenses.slice(0, 9).map(item => (
                     <tr key={item.id}>
-                      <td className="font-medium">
+                      <td className="font-medium" title={item.note || undefined}>
                         {item.title}
-                        {item.note && <span className="note-badge" title={item.note}><FileText size={12} /></span>}
                       </td>
                       <td>
                         <span
