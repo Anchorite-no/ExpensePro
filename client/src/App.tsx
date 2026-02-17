@@ -1,169 +1,736 @@
-import { QueryClient, QueryClientProvider, useMutation, useQueryClient } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
-import { AuthForm } from "./components/AuthForm";
-import { MainLayout } from "./components/layout/MainLayout";
-import DashboardPage from "./pages/DashboardPage";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import {
+  Wallet, TrendingUp, CreditCard, Activity,
+  PlusCircle, Trash2, Tag, Sun, Moon, BarChart3,
+  ChevronLeft, ChevronRight, Calendar, Plus, X, Settings2,
+  ArrowUp, ArrowDown, LogOut, DollarSign, Target, FileText
+} from "lucide-react";
 import TrendsPage from "./components/TrendsPage";
 import TransactionsPage from "./components/TransactionsPage";
-import { SettingsModal } from "./components/SettingsModal";
-import { useState } from "react";
-import { useExpenses, useSettings } from "./hooks/useData";
-import { updateExpense, importExpenses } from "./api/expenses";
-import { encryptExpense } from "./utils/crypto";
+import AiReceiptParser from "./components/AiReceiptParser";
+import { Select } from "./components/ui/Select";
+import { useToast, ToastContainer } from "./components/ui/Toast";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AuthForm } from "./components/AuthForm";
+import { encryptExpense, decryptExpenses } from "./utils/crypto";
+import { DateInput, getChinaToday } from "./components/DateInput";
 import "./App.css";
 
-// Create a client
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
+/* ========== Types ========== */
+interface Expense {
+  id: number;
+  title: string;
+  amount: number;
+  category: string;
+  note?: string;
+  date: string;
+}
 
-function AppRoutes() {
-  const { isAuthenticated } = useAuth();
+type PageType = "dashboard" | "trends" | "transactions";
+type SettingsTab = "general" | "categories";
+
+interface BudgetConfig {
+  daily: number;
+  weekly: number;
+  monthly: number;
+}
+
+/* ========== Constants ========== */
+const API_URL = "/api/expenses";
+
+const DEFAULT_CATEGORIES: Record<string, string> = {
+  "餐饮": "#10B981",
+  "交通": "#3B82F6",
+  "购物": "#8B5CF6",
+  "娱乐": "#F59E0B",
+  "服务订阅": "#EC4899",
+  "投资": "#6366F1",
+  "其他": "#6B7280",
+};
+
+const COLOR_PALETTE = [
+  "#14B8A6", "#F97316", "#EF4444", "#06B6D4", "#D946EF",
+  "#84CC16", "#E11D48", "#0EA5E9", "#A855F7", "#22D3EE",
+];
+
+const PRESET_COLORS = [
+  "#EF4444", "#F97316", "#F59E0B", "#84CC16", "#10B981",
+  "#06B6D4", "#3B82F6", "#6366F1", "#8B5CF6", "#EC4899",
+  "#6B7280", "#111827"
+];
+
+const CURRENCIES = [
+  { value: "¥", label: "¥ CNY (人民币)" },
+  { value: "$", label: "$ USD (美元)" },
+  { value: "€", label: "€ EUR (欧元)" },
+  { value: "£", label: "£ GBP (英镑)" },
+  { value: "₩", label: "₩ KRW (韩元)" },
+  { value: "₹", label: "₹ INR (印度卢比)" },
+  { value: "A$", label: "A$ AUD (澳元)" },
+  { value: "C$", label: "C$ CAD (加元)" },
+];
+
+const PAGE_TITLES: Record<PageType, string> = {
+  dashboard: "资产概览",
+  trends: "趋势分析",
+  transactions: "交易记录",
+};
+
+const getCategoryColor = (category: string, cats: Record<string, string>) =>
+  cats[category] || "#6B7280";
+
+/* ========== Main Component ========== */
+function AppContent() {
+  const { user, token, masterKey, encryption, logout } = useAuth();
+  const { toasts, addToast, removeToast } = useToast();
+
+  // Use China timezone for default date
+  const todayStr = getChinaToday();
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [form, setForm] = useState({ title: "", amount: "", category: "餐饮", date: todayStr, note: "" });
+  const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState<"light" | "dark">(() =>
+    (localStorage.getItem("theme") as "light" | "dark") || "light"
+  );
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activePage, setActivePage] = useState<PageType>("dashboard");
+
+  // Settings (synced to backend)
+  const [categories, setCategories] = useState<Record<string, string>>(DEFAULT_CATEGORIES);
+  const [currency, setCurrency] = useState("¥");
+  const [budget, setBudget] = useState<BudgetConfig>({ daily: 0, weekly: 0, monthly: 0 });
+
+  // Settings modal
   const [showSettings, setShowSettings] = useState(false);
-  
-  // We need to pass data to old components (TrendsPage, TransactionsPage)
-  // until they are fully refactored to use hooks themselves.
-  // For now, we can wrap them or modify them. 
-  // Ideally, they should use the hooks directly.
-  // To keep it simple for this step, I'll update them to use hooks later or pass data here.
-  // Actually, TrendsPage and TransactionsPage take props. 
-  // Let's create wrappers for them that use the hooks.
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("general");
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryColor, setNewCategoryColor] = useState(COLOR_PALETTE[0]);
+  const [budgetInputs, setBudgetInputs] = useState({ daily: "", weekly: "", monthly: "" });
+  const [editingBudget, setEditingBudget] = useState<string | null>(null);
 
-  if (!isAuthenticated) {
-    return <AuthForm />;
-  }
+  const categoryList = Object.keys(categories);
 
-  return (
+  /* ========== Settings Sync ========== */
+  // Load settings from backend on mount
+  useEffect(() => {
+    if (!token) return;
+    fetch("/api/settings", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        if (data.currency) setCurrency(data.currency);
+        if (data.categories) {
+          try {
+            const parsed = typeof data.categories === 'string' ? JSON.parse(data.categories) : data.categories;
+            if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+              setCategories(parsed);
+            }
+          } catch { /* use defaults */ }
+        }
+        if (data.budgetConfig) {
+          try {
+            const parsed = typeof data.budgetConfig === 'string' ? JSON.parse(data.budgetConfig) : data.budgetConfig;
+            if (parsed) setBudget({ daily: parsed.daily || 0, weekly: parsed.weekly || 0, monthly: parsed.monthly || 0 });
+          } catch { /* use defaults */ }
+        }
+      })
+      .catch(() => { /* ignore */ });
+  }, [token]);
+
+  const saveSettingsToBackend = useCallback((updates: Record<string, any>) => {
+    if (!token) return;
+    fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(updates),
+    }).catch(() => { /* ignore */ });
+  }, [token]);
+
+  // Save categories
+  const saveCategories = useCallback((cats: Record<string, string>) => {
+    setCategories(cats);
+    saveSettingsToBackend({ categories: JSON.stringify(cats) });
+  }, [saveSettingsToBackend]);
+
+  const addCategory = () => {
+    const name = newCategoryName.trim();
+    if (!name || categories[name]) return;
+    const updated = { ...categories, [name]: newCategoryColor };
+    saveCategories(updated);
+    setNewCategoryName("");
+    const usedColors = Object.values(updated);
+    const next = COLOR_PALETTE.find(c => !usedColors.includes(c)) || COLOR_PALETTE[0];
+    setNewCategoryColor(next);
+    addToast(`分类「${name}」已添加`, "success");
+  };
+
+  const removeCategory = (name: string) => {
+    const updated = { ...categories };
+    delete updated[name];
+    saveCategories(updated);
+    addToast(`分类「${name}」已删除`, "info");
+  };
+
+  const moveCategory = (index: number, direction: "up" | "down") => {
+    const entries = Object.entries(categories);
+    if (direction === "up" && index > 0) {
+      [entries[index], entries[index - 1]] = [entries[index - 1], entries[index]];
+    } else if (direction === "down" && index < entries.length - 1) {
+      [entries[index], entries[index + 1]] = [entries[index + 1], entries[index]];
+    } else return;
+    const newCats: Record<string, string> = {};
+    entries.forEach(([key, val]) => { newCats[key] = val; });
+    saveCategories(newCats);
+  };
+
+  const toggleTheme = () => {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    localStorage.setItem("theme", next);
+  };
+
+  const saveCurrency = (val: string) => {
+    setCurrency(val);
+    saveSettingsToBackend({ currency: val });
+  };
+
+  const saveBudgetField = (field: keyof BudgetConfig) => {
+    const val = Number(budgetInputs[field]);
+    if (isNaN(val) || val < 0) return;
+    const updated = { ...budget, [field]: val };
+    setBudget(updated);
+    saveSettingsToBackend({ budgetConfig: JSON.stringify(updated) });
+    setEditingBudget(null);
+    setBudgetInputs(prev => ({ ...prev, [field]: "" }));
+    addToast("预算已更新", "success");
+  };
+
+  const startEditBudget = (field: keyof BudgetConfig) => {
+    setEditingBudget(field);
+    setBudgetInputs(prev => ({ ...prev, [field]: budget[field] > 0 ? String(budget[field]) : "" }));
+  };
+
+  /* ========== Expense CRUD ========== */
+  const fetchExpenses = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(API_URL, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401 || res.status === 403) { logout(); return; }
+      const data = await res.json();
+      let formatted = data.map((item: any) => ({
+        ...item,
+        amount: Number(item.amount),
+        date: item.date.split("T")[0],
+        note: item.note || "",
+      }));
+      // E2E 解密
+      if (masterKey && encryption) {
+        formatted = await decryptExpenses(formatted, masterKey);
+      }
+      setExpenses(formatted);
+    } catch (err) {
+      console.error("Fetch error", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (token) fetchExpenses();
+  }, [token]);
+
+  const addExpense = async (title?: string, amount?: number, category?: string, date?: string, note?: string) => {
+    if (!token) return;
+    const t = title || form.title;
+    const a = amount ?? Number(form.amount);
+    const c = category || form.category;
+    const d = date || form.date || "";
+    const n = note ?? form.note;
+    if (!t || !a) return;
+    try {
+      let body: any = { title: t, amount: a, category: c };
+      if (d) body.date = d;
+      if (n) body.note = n;
+      // E2E 加密
+      if (masterKey && encryption) {
+        const enc = await encryptExpense({ title: body.title, category: body.category, note: body.note }, masterKey);
+        body.title = enc.title;
+        body.category = enc.category;
+        if (enc.note) body.note = enc.note;
+      }
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      if (res.status === 401) { logout(); return; }
+      if (res.ok) {
+        fetchExpenses();
+        if (!title) setForm({ ...form, title: "", amount: "", date: todayStr, note: "" });
+        addToast(`已记录: ${t} ${currency}${a}`, "success");
+      }
+    } catch (err) {
+      console.error("Add error", err);
+      addToast("记账失败", "error");
+    }
+  };
+
+  const editExpense = async (id: number, title: string, amount: number, category: string, date: string, note?: string) => {
+    if (!token) return;
+    try {
+      let body: any = { title, amount, category, date };
+      if (note !== undefined) body.note = note;
+      // E2E 加密
+      if (masterKey && encryption) {
+        const enc = await encryptExpense({ title: body.title, category: body.category, note: body.note }, masterKey);
+        body.title = enc.title;
+        body.category = enc.category;
+        if (enc.note !== undefined) body.note = enc.note || "";
+      }
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      if (res.status === 401) { logout(); return; }
+      if (res.ok) {
+        fetchExpenses();
+        addToast("修改已保存", "success");
+      }
+    } catch (err) {
+      console.error("Edit error", err);
+      addToast("修改失败", "error");
+    }
+  };
+
+  const deleteExpense = async (id: number) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 401) { logout(); return; }
+      setExpenses(expenses.filter(e => e.id !== id));
+      addToast("已删除", "info");
+    } catch (err) {
+      console.error("Delete error", err);
+      addToast("删除失败", "error");
+    }
+  };
+
+  const importExpenses = async (items: any[]) => {
+    if (!token || items.length === 0) return;
+    try {
+      const res = await fetch(`${API_URL}/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ items }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        fetchExpenses();
+        addToast(`成功导入 ${data.imported} 条记录`, "success");
+      } else {
+        addToast("导入失败", "error");
+      }
+    } catch (err) {
+      console.error("Import error", err);
+      addToast("导入失败", "error");
+    }
+  };
+
+  /* ========== Computed ========== */
+  const totalAmount = expenses.reduce((sum, item) => sum + item.amount, 0);
+  const maxExpense = expenses.length > 0 ? Math.max(...expenses.map(e => e.amount)) : 0;
+
+  const periodExpenses = useMemo(() => {
+    const chinaToday = getChinaToday();
+    const [cy, cm, cd] = chinaToday.split('-');
+    const yearMonth = `${cy}-${cm}`;
+    // Compute week start (Monday) in China timezone
+    const chinaNow = new Date(Number(cy), Number(cm) - 1, Number(cd));
+    const dayOfWeek = chinaNow.getDay() || 7;
+    const weekStart = new Date(chinaNow);
+    weekStart.setDate(chinaNow.getDate() - dayOfWeek + 1);
+    const wy = weekStart.getFullYear();
+    const wm = String(weekStart.getMonth() + 1).padStart(2, '0');
+    const wd = String(weekStart.getDate()).padStart(2, '0');
+    const weekStartStr = `${wy}-${wm}-${wd}`;
+
+    let daily = 0, weekly = 0, monthly = 0;
+    expenses.forEach(e => {
+      if (e.date === chinaToday) daily += e.amount;
+      if (e.date >= weekStartStr && e.date <= chinaToday) weekly += e.amount;
+      if (e.date.startsWith(yearMonth)) monthly += e.amount;
+    });
+    return { daily, weekly, monthly };
+  }, [expenses]);
+
+  const activeBudgets = useMemo(() => {
+    const result: { key: keyof BudgetConfig; label: string; limit: number; spent: number }[] = [];
+    if (budget.daily > 0) result.push({ key: "daily", label: "日预算", limit: budget.daily, spent: periodExpenses.daily });
+    if (budget.weekly > 0) result.push({ key: "weekly", label: "周预算", limit: budget.weekly, spent: periodExpenses.weekly });
+    if (budget.monthly > 0) result.push({ key: "monthly", label: "月预算", limit: budget.monthly, spent: periodExpenses.monthly });
+    return result;
+  }, [budget, periodExpenses]);
+
+  if (loading) return <div className={`loading ${theme}`}>Loading...</div>;
+
+  /* ========== Render Helpers ========== */
+  const navItems: { key: PageType; icon: React.ReactNode; label: string }[] = [
+    { key: "dashboard", icon: <Wallet size={20} />, label: "资产概览" },
+    { key: "trends", icon: <TrendingUp size={20} />, label: "趋势分析" },
+    { key: "transactions", icon: <CreditCard size={20} />, label: "交易记录" },
+  ];
+
+  const renderBudgetRow = (field: keyof BudgetConfig, label: string) => (
+    <div className="setting-budget-item" key={field}>
+      <span className="setting-budget-label">{label}</span>
+      {editingBudget === field ? (
+        <div className="setting-budget-edit">
+          <input
+            className="setting-budget-input"
+            type="number"
+            placeholder="0"
+            value={budgetInputs[field]}
+            onChange={e => setBudgetInputs(prev => ({ ...prev, [field]: e.target.value }))}
+            onKeyDown={e => e.key === "Enter" && saveBudgetField(field)}
+            autoFocus
+          />
+          <button className="setting-budget-ok" onClick={() => saveBudgetField(field)}>确定</button>
+          <button className="setting-budget-cancel" onClick={() => setEditingBudget(null)}><X size={12} /></button>
+        </div>
+      ) : (
+        <button className="setting-budget-value" onClick={() => startEditBudget(field)}>
+          {budget[field] > 0 ? `${currency}${budget[field]}` : "未设置"}
+        </button>
+      )}
+    </div>
+  );
+
+  const renderDashboard = () => (
     <>
-      <Routes>
-        <Route path="/" element={<MainLayout onOpenSettings={() => setShowSettings(true)} />}>
-          <Route index element={<DashboardPage />} />
-          <Route path="trends" element={<TrendsWrapper />} />
-          <Route path="transactions" element={<TransactionsWrapper />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
-      
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-icon blue"><Wallet size={24} /></div>
+          <div className="stat-info">
+            <span className="label">总支出</span>
+            <span className="value">{currency}{totalAmount.toFixed(2)}</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon purple"><Activity size={24} /></div>
+          <div className="stat-info">
+            <span className="label">交易笔数</span>
+            <span className="value">{expenses.length}</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon orange"><TrendingUp size={24} /></div>
+          <div className="stat-info">
+            <span className="label">单笔最高</span>
+            <span className="value">{currency}{maxExpense.toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      {activeBudgets.length > 0 && (
+        <div className="budget-card">
+          <div className="budget-card-title">
+            <Target size={16} />
+            <span>预算概览</span>
+          </div>
+          <div className="budget-list">
+            {activeBudgets.map(b => {
+              const pct = Math.min(100, (b.spent / b.limit) * 100);
+              const status = pct >= 100 ? "over" : pct >= 80 ? "warning" : "normal";
+              return (
+                <div key={b.key} className="budget-row">
+                  <div className="budget-row-header">
+                    <span className="budget-label">{b.label}</span>
+                    <div className="budget-amounts">
+                      <span className={`budget-spent ${status}`}>{currency}{b.spent.toFixed(2)}</span>
+                      <span className="budget-separator">/</span>
+                      <span className="budget-total">{currency}{b.limit.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <div className="budget-bar-bg">
+                    <div className={`budget-bar-fill ${status}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <div className="budget-row-footer">
+                    <span className={`budget-pct ${status}`}>{pct.toFixed(1)}%</span>
+                    <span className="budget-remaining">
+                      {status === "over"
+                        ? `超支 ${currency}${(b.spent - b.limit).toFixed(2)}`
+                        : `剩余 ${currency}${(b.limit - b.spent).toFixed(2)}`}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="dashboard-body">
+        <div className="form-card">
+          <h3>快速记账</h3>
+          <AiReceiptParser theme={theme} categories={categories} onAddExpense={(t, a, c, d) => addExpense(t, a, c, d)} currency={currency} token={token} />
+          <div className="input-group">
+            <label><Tag size={14} /> 内容</label>
+            <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="例如：午饭" onKeyDown={e => e.key === "Enter" && addExpense()} />
+          </div>
+          <div className="input-group">
+            <label><CreditCard size={14} /> 金额</label>
+            <input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0.00" onKeyDown={e => e.key === "Enter" && addExpense()} />
+          </div>
+          <div className="input-group">
+            <label><Calendar size={14} /> 日期</label>
+            <DateInput value={form.date} onChange={val => setForm({ ...form, date: val })} />
+          </div>
+          <div className="input-group">
+            <label><Activity size={14} /> 分类</label>
+            <Select
+              value={form.category}
+              onChange={val => setForm({ ...form, category: val })}
+              options={categoryList.map(c => ({ value: c, label: c, color: categories[c] }))}
+              placeholder="选择分类"
+            />
+          </div>
+          <div className="input-group">
+            <label><FileText size={14} /> 备注</label>
+            <input value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} placeholder="可选备注信息" onKeyDown={e => e.key === "Enter" && addExpense()} />
+          </div>
+          <button className="submit-btn" onClick={() => addExpense()}><PlusCircle size={18} /> 确认入账</button>
+        </div>
+
+        <div className="list-card">
+          <h3>近期交易</h3>
+          {expenses.length > 0 ? (
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr><th>项目</th><th>分类</th><th>日期</th><th>金额</th><th>操作</th></tr>
+                </thead>
+                <tbody>
+                  {expenses.slice(0, 9).map(item => (
+                    <tr key={item.id}>
+                      <td className="font-medium">
+                        <div className="txn-title-cell">
+                          <span>{item.title}</span>
+                          {item.note && <span className="txn-note-inline">{item.note}</span>}
+                        </div>
+                      </td>
+                      <td>
+                        <span
+                          className="tag"
+                          style={{
+                            backgroundColor: getCategoryColor(item.category, categories) + "20",
+                            color: getCategoryColor(item.category, categories),
+                            border: `1px solid ${getCategoryColor(item.category, categories)}40`
+                          }}
+                        >
+                          {item.category}
+                        </span>
+                      </td>
+                      <td className="text-muted">{item.date}</td>
+                      <td className="text-danger font-bold" style={{ whiteSpace: 'nowrap' }}>-{currency}{item.amount.toFixed(2)}</td>
+                      <td>
+                        <button className="icon-btn" onClick={() => deleteExpense(item.id)} title="删除">
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <p className="empty-hint">还没有任何消费记录</p>}
+        </div>
+      </div>
     </>
   );
-}
 
-// Wrappers to adapt old components to new data layer
-function TrendsWrapper() {
-  const { expenses } = useExpenses();
-  const { settings } = useSettings();
-  
-  const currency = settings?.currency || "¥";
-  let categories = {};
-  try {
-    if (settings?.categories) {
-      categories = typeof settings.categories === 'string' ? JSON.parse(settings.categories) : settings.categories;
+  const renderPage = () => {
+    switch (activePage) {
+      case "trends":
+        return <TrendsPage expenses={expenses} theme={theme} categories={categories} currency={currency} />;
+      case "transactions":
+        return (
+          <TransactionsPage
+            expenses={expenses}
+            theme={theme}
+            categories={categories}
+            onDelete={deleteExpense}
+            onAdd={(t, a, c, d) => addExpense(t, a, c, d)}
+            onEdit={editExpense}
+            onImport={importExpenses}
+            currency={currency}
+          />
+        );
+      default:
+        return renderDashboard();
     }
-  } catch(e) {}
+  };
 
-  // Current theme is managed in MainLayout/Sidebar but TrendsPage needs it for Charts
-  // We can just pass 'light' as default or get it from localstorage if needed, 
-  // or useOutletContext (which we set up in MainLayout)
-  
-  // Quick fix: read from localStorage or context
-  const theme = (localStorage.getItem("theme") as "light" | "dark") || "light";
-
-  return <TrendsPage expenses={expenses} theme={theme} categories={categories} currency={currency} />;
-}
-
-function TransactionsWrapper() {
-  const { expenses, addExpense, deleteExpense } = useExpenses(); // We need updateExpense too but hook doesn't export it yet?
-  // Wait, useExpenses exported deleteExpense and addExpense. 
-  // TransactionsPage needs onEdit and onImport too.
-  
-  const { settings } = useSettings();
-  const { updateExpense: _update, importExpenses: _import } = useExpensesExtra(); // We need to add these to the hook
-  
-  const currency = settings?.currency || "¥";
-  let categories = {};
-  try {
-    if (settings?.categories) {
-      categories = typeof settings.categories === 'string' ? JSON.parse(settings.categories) : settings.categories;
-    }
-  } catch(e) {}
-  
-  const theme = (localStorage.getItem("theme") as "light" | "dark") || "light";
-
+  /* ========== Main Layout ========== */
   return (
-    <TransactionsPage 
-      expenses={expenses} 
-      theme={theme} 
-      categories={categories} 
-      currency={currency}
-      onAdd={async (t, a, c, d) => { await addExpense({title:t, amount:a, category:c, date:d}) }}
-      onDelete={deleteExpense}
-      onEdit={async (id, t, a, c, d, n) => { await _update(id, {title:t, amount:a, category:c, date:d, note:n}) }}
-      onImport={_import}
-    />
+    <div className={`dashboard ${theme}`}>
+      <aside className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
+        <div className="sidebar-header">
+          {!sidebarCollapsed && (
+            <div className="logo">
+              <BarChart3 size={28} />
+              <span className="logo-text">ExpensePro</span>
+            </div>
+          )}
+          <button className="collapse-btn" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} title={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}>
+            {sidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+          </button>
+        </div>
+
+        <nav>
+          {navItems.map(item => (
+            <a key={item.key} href="#" className={activePage === item.key ? "active" : ""} onClick={e => { e.preventDefault(); setActivePage(item.key); }} title={item.label}>
+              {item.icon} <span className="nav-text">{item.label}</span>
+            </a>
+          ))}
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="user-info" style={{ padding: '10px 20px', fontSize: '14px', color: '#666', display: sidebarCollapsed ? 'none' : 'block' }}>
+            Hi, {user?.username}
+          </div>
+          <button className="sidebar-manage-btn" onClick={() => setShowSettings(true)} title="系统设置">
+            <Settings2 size={18} />
+            <span className="nav-text">系统设置</span>
+          </button>
+          <button className="theme-toggle" onClick={toggleTheme} title={theme === "light" ? "切换到夜间模式" : "切换到日间模式"}>
+            {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+            <span className="nav-text">{theme === "light" ? "夜间模式" : "日间模式"}</span>
+          </button>
+          <button className="sidebar-logout-btn" onClick={logout} title="退出登录">
+            <LogOut size={18} />
+            <span className="nav-text">退出登录</span>
+          </button>
+        </div>
+      </aside>
+
+      <main className="main-content">
+        <div className="content-wrapper">
+          <header className="top-bar">
+            <h2>{PAGE_TITLES[activePage]}</h2>
+            <div className="mobile-actions">
+              <button className="theme-toggle-mobile" onClick={() => setShowSettings(true)} title="系统设置">
+                <Settings2 size={18} />
+              </button>
+              <button className="theme-toggle-mobile" onClick={toggleTheme} title={theme === "light" ? "切换到夜间模式" : "切换到日间模式"}>
+                {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+              </button>
+              <button className="theme-toggle-mobile" onClick={logout} title="退出登录">
+                <LogOut size={18} />
+              </button>
+            </div>
+          </header>
+          {renderPage()}
+        </div>
+      </main>
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+      {/* ========== Settings Modal ========== */}
+      {showSettings && (
+        <div className="category-manager-overlay" onClick={() => setShowSettings(false)}>
+          <div className="category-manager settings-modal" onClick={e => e.stopPropagation()}>
+            <div className="category-manager-header">
+              <h3><Settings2 size={18} /> 系统设置</h3>
+              <button className="icon-btn" onClick={() => setShowSettings(false)}><X size={18} /></button>
+            </div>
+
+            <div className="settings-tabs">
+              <button className={`settings-tab ${settingsTab === "general" ? "active" : ""}`} onClick={() => setSettingsTab("general")}>通用设置</button>
+              <button className={`settings-tab ${settingsTab === "categories" ? "active" : ""}`} onClick={() => setSettingsTab("categories")}>分类管理</button>
+            </div>
+
+            {settingsTab === "general" && (
+              <div className="settings-general">
+                <div className="setting-group">
+                  <div className="setting-group-title"><DollarSign size={15} /><span>默认币种</span></div>
+                  <div style={{ width: 200 }}>
+                    <Select value={currency} onChange={val => saveCurrency(val)} options={CURRENCIES} />
+                  </div>
+                </div>
+                <div className="setting-group">
+                  <div className="setting-group-title"><Target size={15} /><span>预算限额</span></div>
+                  <div className="setting-budget-list">
+                    {renderBudgetRow("daily", "日预算")}
+                    {renderBudgetRow("weekly", "周预算")}
+                    {renderBudgetRow("monthly", "月预算")}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {settingsTab === "categories" && (
+              <>
+                <div className="category-list">
+                  {Object.entries(categories).map(([name, color], index, arr) => (
+                    <div key={name} className="category-item">
+                      <div className="category-info">
+                        <span className="category-color-dot" style={{ backgroundColor: color }} />
+                        <span className="category-name">{name}</span>
+                      </div>
+                      <div className="category-actions">
+                        <button className="action-btn" onClick={() => moveCategory(index, "up")} disabled={index === 0} title="上移"><ArrowUp size={14} /></button>
+                        <button className="action-btn" onClick={() => moveCategory(index, "down")} disabled={index === arr.length - 1} title="下移"><ArrowDown size={14} /></button>
+                        <button className="action-btn delete" onClick={() => removeCategory(name)} title="删除" disabled={categoryList.length <= 1}><Trash2 size={14} /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="category-add-section">
+                  <h4>添加新分类</h4>
+                  <div className="color-presets">
+                    {PRESET_COLORS.map(c => (
+                      <button key={c} className={`color-swatch ${newCategoryColor === c ? 'active' : ''}`} style={{ backgroundColor: c }} onClick={() => setNewCategoryColor(c)} />
+                    ))}
+                    <div className="custom-color-wrapper">
+                      <input type="color" className="color-picker-input" value={newCategoryColor} onChange={e => setNewCategoryColor(e.target.value)} title="自定义颜色" />
+                      <PlusCircle size={16} className="custom-color-icon" />
+                    </div>
+                  </div>
+                  <div className="category-add-row">
+                    <span className="selected-color-preview" style={{ backgroundColor: newCategoryColor }} />
+                    <input className="category-name-input" placeholder="输入分类名称..." value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} onKeyDown={e => e.key === "Enter" && addCategory()} />
+                    <button className="category-add-btn" onClick={addCategory} disabled={!newCategoryName.trim()}>
+                      <Plus size={16} /> 添加
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
-// Helper hook for missing mutations
-function useExpensesExtra() {
-  const { token, masterKey, encryption } = useAuth();
-  const queryClient = useQueryClient();
-
-  const updateMutation = useMutation({
-    mutationFn: async ({id, data}: {id: number, data: any}) => {
-      if (!token) throw new Error("No token");
-      let payload = { ...data };
-      if (masterKey && encryption) {
-         const enc = await encryptExpense({ 
-           title: payload.title!, 
-           category: payload.category!, 
-           note: payload.note 
-         }, masterKey);
-         payload.title = enc.title;
-         payload.category = enc.category;
-         payload.note = enc.note;
-      }
-      return updateExpense(token, id, payload);
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["expenses"] })
-  });
-
-  const importMutation = useMutation({
-    mutationFn: (items: any[]) => {
-      if (!token) throw new Error("No token");
-      // Import usually doesn't need client-side encryption logic here 
-      // because the server handles the bulk insert, 
-      // BUT if E2E is on, we might need to encrypt them one by one? 
-      // The current import implementation in App.tsx didn't seem to encrypt on import?
-      // Checking App.tsx (line 322): It just sends items. 
-      // So let's assume raw import for now or handled elsewhere.
-      return importExpenses(token, items);
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["expenses"] })
-  });
-
-  return {
-    updateExpense: (id: number, data: any) => updateMutation.mutateAsync({id, data}),
-    importExpenses: importMutation.mutateAsync
-  };
-}
-
+/* ========== App Root ========== */
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </AuthProvider>
-    </QueryClientProvider>
+    <AuthProvider>
+      <AuthWrapper />
+    </AuthProvider>
   );
 }
+
+const AuthWrapper = () => {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <AppContent /> : <AuthForm />;
+};
 
 export default App;

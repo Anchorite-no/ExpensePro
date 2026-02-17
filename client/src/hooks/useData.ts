@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
-import { fetchExpenses, createExpense, updateExpense, deleteExpense, type Expense } from "../api/expenses";
+import { fetchExpenses, createExpense, updateExpense, deleteExpense, importExpenses, type Expense } from "../api/expenses";
 import { fetchSettings, updateSettings } from "../api/settings";
 import { useMemo } from "react";
 import { getChinaToday } from "../components/DateInput";
@@ -16,7 +16,8 @@ export function useExpenses() {
       if (!token) return [];
       try {
         const data = await fetchExpenses(token);
-        const formatted = data.map(item => ({
+        
+        const preFormatted = data.map(item => ({
           ...item,
           amount: Number(item.amount),
           date: item.date.split("T")[0],
@@ -24,21 +25,24 @@ export function useExpenses() {
         }));
 
         if (masterKey && encryption) {
-          return await decryptExpenses(formatted, masterKey);
+          return await decryptExpenses(preFormatted, masterKey);
         }
-        return formatted;
+        return preFormatted;
+
       } catch (err: any) {
         if (err.message === "Unauthorized") logout();
         throw err;
       }
     },
     enabled: !!token,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    gcTime: 10 * 60 * 1000,   // Keep unused data for 10 minutes
   });
 
   const addMutation = useMutation({
     mutationFn: async (newExpense: Partial<Expense>) => {
       if (!token) throw new Error("No token");
-      let payload = { ...newExpense };
+      const payload = { ...newExpense };
       
       if (masterKey && encryption) {
         const enc = await encryptExpense({ 
@@ -56,6 +60,40 @@ export function useExpenses() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["expenses"] }),
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<Expense> }) => {
+      if (!token) throw new Error("No token");
+      const payload = { ...data };
+
+      if (masterKey && encryption) {
+        // We need to encrypt fields if they are present
+        // Since encryptExpense expects all 3, we might need to be careful if partial update.
+        // However, usually updates from UI form provide full objects or we can handle it.
+        // If partial, we might need to fetch existing or assume UI sends all.
+        // For simplicity and matching current UI behavior (editing a form), we usually send title/category/note.
+        
+        if (payload.title || payload.category || payload.note) {
+           // This assumes we have all 3 or handled partials. 
+           // If the backend/crypto logic requires all 3 to generate a valid block if they are stored together?
+           // The current crypto.ts encryptExpense returns {title, category, note}. 
+           // If we only update title, we might break things if we don't encrypt others?
+           // Let's assume the Edit Form sends all fields.
+           const enc = await encryptExpense({
+             title: payload.title || "",
+             category: payload.category || "",
+             note: payload.note || ""
+           }, masterKey);
+           if (payload.title) payload.title = enc.title;
+           if (payload.category) payload.category = enc.category;
+           if (payload.note) payload.note = enc.note;
+        }
+      }
+
+      return updateExpense(token, id, payload);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["expenses"] }),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: number) => {
       if (!token) throw new Error("No token");
@@ -64,11 +102,34 @@ export function useExpenses() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["expenses"] }),
   });
 
+  const importMutation = useMutation({
+    mutationFn: async (items: any[]) => {
+      if (!token) throw new Error("No token");
+      let payloadItems = [...items];
+
+      if (masterKey && encryption) {
+        payloadItems = await Promise.all(payloadItems.map(async (item) => {
+          const enc = await encryptExpense({
+            title: item.title,
+            category: item.category,
+            note: item.note
+          }, masterKey);
+          return { ...item, ...enc };
+        }));
+      }
+
+      return importExpenses(token, payloadItems);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["expenses"] }),
+  });
+
   return { 
     expenses: query.data || [], 
     isLoading: query.isLoading, 
     addExpense: addMutation.mutateAsync,
-    deleteExpense: deleteMutation.mutateAsync 
+    updateExpense: updateMutation.mutateAsync,
+    deleteExpense: deleteMutation.mutateAsync,
+    importExpenses: importMutation.mutateAsync
   };
 }
 
@@ -83,6 +144,7 @@ export function useSettings() {
       return fetchSettings(token);
     },
     enabled: !!token,
+    staleTime: Infinity, // Settings rarely change
   });
 
   const mutation = useMutation({
