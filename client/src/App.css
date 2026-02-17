@@ -1777,8 +1777,65 @@ tbody tr:hover {
   .txn-toolbar {
     flex-direction: column;
     align-items: stretch;
-    gap: 10px;
+    gap: 12px;
   }
+
+  .txn-toolbar-left {
+    flex-direction: row; /* Force single row */
+    flex-wrap: nowrap;
+    width: 100%;
+  }
+
+  .txn-search {
+    flex: 1;
+    min-width: 0; /* Allow shrinking */
+  }
+  
+  .txn-search input {
+    width: 100%; /* Fill flex space */
+  }
+
+  .txn-filter {
+    flex-shrink: 0; /* Don't shrink filter */
+  }
+  
+  /* Select component inside filter */
+  .txn-filter > div {
+    width: 100px !important;
+  }
+
+  .txn-toolbar-right {
+    justify-content: flex-end; /* Align buttons to right */
+    width: 100%;
+    flex-wrap: nowrap; /* Don't wrap buttons */
+    gap: 8px; /* Tighter gap */
+  }
+
+  /* Hide summary on mobile to save space */
+  .txn-summary {
+    display: none;
+  }
+
+  /* Hide text labels for secondary buttons on mobile */
+  .txn-edit-mode-btn,
+  .txn-export-btn,
+  .txn-import-btn {
+    padding: 8px;
+    font-size: 0; /* Hide text */
+  }
+  
+  .txn-edit-mode-btn svg,
+  .txn-export-btn svg,
+  .txn-import-btn svg {
+    margin-right: 0;
+  }
+
+  /* Keep "Add" button prominent but fit on line */
+  .txn-add-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+}
 
   .txn-toolbar-left {
     flex-direction: row;
