@@ -1816,18 +1816,25 @@ tbody tr:hover {
     justify-content: flex-end; /* Align right */
   }
 
-  /* Restore Summary - NO Truncation */
+  /* Restore Summary - Scrollable */
   .txn-summary {
     display: block;
     flex: 1; /* Take remaining space */
     min-width: 0;
     font-size: 12px;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-x: auto; /* Enable horizontal scrolling */
+    overflow-y: hidden;
     margin-right: auto;
     padding-right: 8px; /* Spacing before buttons */
     text-align: left;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    scrollbar-width: none; /* Firefox: Hide scrollbar */
+  }
+  
+  /* Hide scrollbar for Chrome/Safari/Edge */
+  .txn-summary::-webkit-scrollbar {
+    display: none;
   }
 
   /* Compact Buttons (Icon only) - Keep styles here for narrow screens */
