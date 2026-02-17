@@ -1781,7 +1781,25 @@ tbody tr:hover {
   }
 
   .txn-toolbar-left {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .txn-search {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .txn-filter {
+    flex-shrink: 0;
+  }
+
+  .txn-filter select {
+    width: 100%;
+    max-width: 100px; /* Limit category width on small screens */
+    text-overflow: ellipsis;
   }
 
   .txn-toolbar-right {
