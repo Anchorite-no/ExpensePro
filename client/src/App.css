@@ -3574,8 +3574,7 @@ tbody tr:hover {
     border-radius: 12px;
   }
 
-/* Remove legacy duplicate styles for narrow screens to prevent conflicts */
-@media (max-width: 480px) {
+  /* Transaction toolbar on very small screens */
   .txn-toolbar-right {
     flex-wrap: wrap;
     gap: 6px;
