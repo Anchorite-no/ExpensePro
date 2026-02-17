@@ -963,7 +963,7 @@ tbody tr:hover {
   gap: 8px;
   color: var(--text-secondary);
   flex: 1;
-  min-width: 150px;
+  min-width: 180px; /* Increased to prevent overlapping */
 }
 
 /* Prevent icons from shrinking */
