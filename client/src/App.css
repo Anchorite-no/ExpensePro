@@ -1142,7 +1142,6 @@ tbody tr:hover {
 /* ================= AI Receipt Parser ================= */
 .ai-parser {
   padding: 16px 0; /* Remove left padding to align with labels */
-  margin-bottom: 16px;
 }
 
 .ai-parser-header {
