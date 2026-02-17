@@ -953,7 +953,7 @@ tbody tr:hover {
 .txn-form-fields {
   display: flex;
   align-items: center;
-  gap: 8px; /* Reduced gap */
+  gap: 12px;
   flex-wrap: wrap;
 }
 
@@ -962,8 +962,8 @@ tbody tr:hover {
   align-items: center;
   gap: 8px;
   color: var(--text-secondary);
-  flex: 1 1 130px; /* Smaller min-width to allow 2 items per row on mobile */
-  max-width: 100%;
+  flex: 1;
+  min-width: 150px;
 }
 
 /* Force date input container to behave like other fields */
@@ -3871,31 +3871,24 @@ tbody tr:hover {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
-/* Mobile Transaction Form Optimization */
 @media (max-width: 640px) {
-  .txn-form-fields {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr; /* Force 2 columns */
-    gap: 10px !important;
-    align-items: stretch;
-  }
-
-  .txn-form-field {
-    width: auto !important;
-    min-width: 0 !important;
-    flex: none !important;
-  }
-
-  /* Make the button fill the last slot naturally */
-  .submit-btn.compact {
-    width: 100%;
-    margin: 0;
-    height: 40px;
-  }
-  
-  /* Ensure toolbar wraps properly */
   .txn-toolbar-right {
     flex-wrap: wrap;
     gap: 6px;
+  }
+
+  .txn-add-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .txn-search input {
+    font-size: 13px;
+    padding: 8px 8px 8px 34px;
+  }
+
+  .budget-progress-header {
+    flex-wrap: wrap;
+    gap: 4px;
   }
 }
