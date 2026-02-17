@@ -6,6 +6,7 @@ import {
   Download, Upload, Pencil, X, Check, CheckCheck, FileText
 } from "lucide-react";
 import { Select } from "./ui/Select";
+import { DateInput, getChinaToday } from "./DateInput";
 
 interface Expense {
   id: number;
@@ -54,7 +55,10 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
   // 新增表单
   const [showForm, setShowForm] = useState(false);
   const defaultCategory = Object.keys(categories)[0] || "餐饮";
-  const [form, setForm] = useState({ title: "", amount: "", category: defaultCategory, date: "", note: "" });
+  const todayStr = getChinaToday();
+  const [form, setForm] = useState({ title: "", amount: "", category: defaultCategory, date: todayStr, note: "" });
+
+
 
   // 编辑模式：支持单个和批量
   const [batchEditMode, setBatchEditMode] = useState(false);
@@ -125,9 +129,10 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
   const handleAdd = () => {
     if (!form.title || !form.amount) return;
     onAdd(form.title, Number(form.amount), form.category, form.date || undefined);
-    setForm({ title: "", amount: "", category: defaultCategory, date: "", note: "" });
+    setForm({ title: "", amount: "", category: defaultCategory, date: todayStr, note: "" });
     setShowForm(false);
   };
+
 
   // === 单条编辑 ===
   const startSingleEdit = (item: Expense) => {
@@ -389,12 +394,9 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
             </div>
             <div className="txn-form-field">
               <Calendar size={14} />
-              <input
-                type="date"
-                placeholder="日期（留空=今天）"
-                value={form.date}
-                onChange={e => setForm({ ...form, date: e.target.value })}
-              />
+              <div style={{ flex: 1 }}>
+                <DateInput value={form.date} onChange={val => setForm({ ...form, date: val })} />
+              </div>
             </div>
             <div className="txn-form-field">
               <Activity size={14} />
@@ -419,6 +421,7 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
           </div>
         </div>
       )}
+
 
       {/* 表格 */}
       <div className="txn-table-card">
