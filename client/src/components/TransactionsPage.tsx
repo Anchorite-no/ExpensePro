@@ -347,9 +347,6 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
               <button className="txn-edit-mode-btn" onClick={enterBatchEdit} disabled={pagedData.length === 0} title="批量编辑当前页">
                 <Pencil size={16} /> <span className="btn-text">编辑</span>
               </button>
-              <button className="txn-export-btn" onClick={exportCSV} title="导出 CSV" disabled={processedData.length === 0}>
-                <Download size={16} /> <span className="btn-text">导出</span>
-              </button>
               <button className="txn-import-btn" onClick={() => importInputRef.current?.click()} title="导入 CSV">
                 <Upload size={16} /> <span className="btn-text">导入</span>
               </button>
@@ -360,6 +357,9 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
                 style={{ display: "none" }}
                 onChange={handleImportCSV}
               />
+              <button className="txn-export-btn" onClick={exportCSV} title="导出 CSV" disabled={processedData.length === 0}>
+                <Download size={16} /> <span className="btn-text">导出</span>
+              </button>
               <button className="txn-add-btn" onClick={() => setShowForm(!showForm)}>
                 <PlusCircle size={16} />
                 记账
