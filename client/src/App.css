@@ -1141,16 +1141,16 @@ tbody tr:hover {
 
 /* ================= AI Receipt Parser ================= */
 .ai-parser {
-  padding: 16px;
-  border-bottom: 1px solid var(--border);
+  padding: 16px 0; /* Remove left padding to align with labels */
   margin-bottom: 24px;
 }
 
 .ai-parser-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-left: 2px; /* Slight adjustment for visual alignment */
 }
 
 .ai-parser-header h3 {
