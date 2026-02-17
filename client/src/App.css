@@ -1835,38 +1835,6 @@ tbody tr:hover {
     white-space: nowrap;
     flex-shrink: 0;
   }
-}
-
-  .txn-toolbar-left {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    gap: 8px;
-    width: 100%;
-  }
-
-  .txn-search {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .txn-filter {
-    flex-shrink: 0;
-  }
-
-  .txn-filter select {
-    width: 100%;
-    max-width: 100px; /* Limit category width on small screens */
-    text-overflow: ellipsis;
-  }
-
-  .txn-toolbar-right {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .txn-search input {
-    width: 100%;
-  }
 
   .txn-form-fields {
     flex-direction: column;
