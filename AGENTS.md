@@ -47,9 +47,10 @@
 │
 ├─ 阅读网页
 │  ├─ 国外网站 → Jina Reader
-│  │  └─ 失败/404 → Browser（降级）
+│  │  └─ 失败/404 → Browser
 │  └─ 中文网站 → Browser
 │
+├─ 网站测试 → Browser
 ├─ 交互操作 → Browser
 └─ Token 管理 → DCP（自动）
 ```
@@ -61,12 +62,15 @@
    - 官方文档/框架 API → Context7
 
 2. **阅读网页**
-   - **用户提供明确网址** → **必须优先使用 Jina Reader**，若无法访问（如报错/404/超时）**立即切换 Browser**
+   - **用户提供明确网址** → **必须优先使用 Jina Reader**
+     - 若失败 → **切换 Browser**
    - **国外网站** → 优先 Jina Reader，失败则 Browser
-   - **中文网站** → 直接 Browser（主流网站反爬强）
-   - **需要登录/交互的页面** → 直接 Browser
+   - **中文网站** → 直接使用 Browser
+   - **需要登录/交互的页面** → 直接使用 Browser
 
-3. **交互操作** → Browser（登录/截图/点击）
+3. **网站测试** → **优先使用 Browser**
+
+4. **交互操作** → Browser（登录/截图/点击）
 
 ---
 

@@ -32,5 +32,7 @@ coverage/
 *.swp
 *.swo
 
+.claude
+
 # Docker (if sensitive data or temporary)
 # docker-compose.override.yml

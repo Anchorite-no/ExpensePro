@@ -1813,36 +1813,36 @@ tbody tr:hover {
     flex-wrap: nowrap !important;
     gap: 4px;
     align-items: center;
-    justify-content: space-between;
-    /* Enable horizontal scrolling to prevent truncation while keeping single line */
-    overflow-x: auto;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
-    -webkit-overflow-scrolling: touch;
-  }
-  
-  .txn-toolbar-right::-webkit-scrollbar {
-    display: none; /* Chrome/Safari */
+    justify-content: flex-end; /* Align right */
   }
 
   /* Restore Summary - NO Truncation */
   .txn-summary {
     display: block;
-    flex: 0 0 auto; /* Don't shrink, allow full width */
+    flex: 1; /* Take remaining space */
+    min-width: 0;
     font-size: 12px;
     white-space: nowrap;
-    /* Remove ellipsis/overflow hidden to show full text */
+    overflow: hidden;
+    text-overflow: ellipsis;
     margin-right: auto;
     padding-right: 8px; /* Spacing before buttons */
+    text-align: left;
   }
 
-  /* Compact Buttons (Icon only) */
+  /* Compact Buttons (Icon only) - Keep styles here for narrow screens */
+  .txn-edit-mode-btn .btn-text,
+  .txn-export-btn .btn-text,
+  .txn-import-btn .btn-text {
+    display: none;
+  }
+  
+  /* Buttons become square on narrow screens */
   .txn-edit-mode-btn,
   .txn-export-btn,
   .txn-import-btn {
-    padding: 6px;
-    font-size: 0; /* Hide text */
-    flex-shrink: 0;
+    padding: 9px;
+    justify-content: center;
   }
   
   .txn-edit-mode-btn svg,
@@ -3254,41 +3254,70 @@ tbody tr:hover {
   background: var(--primary-bg) !important;
 }
 
-/* ================= Toolbar Buttons ================= */
+/* ================= Toolbar Buttons (Unified) ================= */
 .txn-export-btn,
+.txn-import-btn,
 .txn-edit-mode-btn {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 9px 14px;
-  background: transparent;
+  background-color: var(--card-bg); /* Solid background */
   border: 1px solid var(--border);
   color: var(--text-secondary);
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* Slight shadow */
 }
 
-.txn-export-btn:hover:not(:disabled) {
-  border-color: #10B981;
-  color: #10B981;
-  background: rgba(16, 185, 129, 0.06);
-}
-
+/* Force Purple Hover for ALL buttons */
+.txn-export-btn:hover:not(:disabled),
+.txn-import-btn:hover:not(:disabled),
 .txn-edit-mode-btn:hover:not(:disabled) {
   border-color: var(--primary);
   color: var(--primary);
-  background: var(--primary-bg);
+  background-color: rgba(99, 102, 241, 0.05);
+  transform: translateY(-1px); /* Float effect */
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.1);
 }
 
 .txn-export-btn:disabled,
+.txn-import-btn:disabled,
 .txn-edit-mode-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
+
+/* Add Button - Consistent Float Style */
+.txn-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2); /* Initial shadow */
+}
+
+.txn-add-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px); /* Float effect */
+  box-shadow: 0 4px 6px rgba(99, 102, 241, 0.3); /* Deeper shadow on hover */
+}
+
 
 .txn-save-btn {
   display: flex;
@@ -3549,12 +3578,34 @@ tbody tr:hover {
   }
 
   .txn-edit-mode-btn,
-  .txn-export-btn,
-  .txn-import-btn {
-    padding: 6px 8px;
-    font-size: 12px;
-    gap: 4px;
-  }
+.txn-export-btn,
+.txn-import-btn,
+.txn-edit-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background-color: var(--card-bg); /* Use card background for consistency */
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* Slight shadow for depth */
+}
+
+.txn-export-btn:hover,
+.txn-import-btn:hover,
+.txn-edit-mode-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background-color: rgba(99, 102, 241, 0.05); /* Slight purple tint on hover */
+  transform: translateY(-1px); /* Subtle lift effect */
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.1); /* Soft purple shadow */
+}
 
   .txn-add-btn {
     padding: 6px 10px;
