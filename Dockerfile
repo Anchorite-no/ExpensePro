@@ -12,7 +12,7 @@ WORKDIR /app/server
 COPY server/package*.json ./
 RUN npm ci
 COPY server/ ./
-RUN npx tsc
+RUN npm run build
 
 # ---- 运行环境 ----
 FROM node:20-alpine
