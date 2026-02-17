@@ -3563,9 +3563,33 @@ tbody tr:hover {
     padding: 8px 8px 8px 34px;
   }
 
-  .budget-progress-header {
+  /* Transaction Form Mobile Optimization */
+  .txn-form-fields {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .txn-form-field {
+    width: 100%;
+    min-width: 0;
+    flex: none;
+  }
+
+  .submit-btn.compact {
+    width: 100%;
+    margin-top: 4px;
+    height: 44px; /* Larger touch target */
+  }
+
+  .txn-toolbar-right {
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 6px;
+  }
+
+  .txn-add-btn {
+    padding: 6px 10px;
+    font-size: 12px;
   }
 
   .budget-label {
