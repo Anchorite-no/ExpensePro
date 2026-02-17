@@ -3261,7 +3261,7 @@ tbody tr:hover {
 .txn-edit-mode-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   padding: 9px 14px;
   background-color: rgba(99, 102, 241, 0.04); /* Very light purple tint for visibility */
   border: 1px solid var(--border);
