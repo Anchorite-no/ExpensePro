@@ -1808,21 +1808,23 @@ tbody tr:hover {
 
   /* Row 2: Summary and Buttons */
   .txn-toolbar-right {
+    display: flex;
     width: 100%;
-    flex-wrap: nowrap;
-    gap: 8px;
-    justify-content: space-between; /* Summary left, Buttons right */
+    flex-wrap: nowrap !important; /* Force single line */
+    gap: 4px; /* Tight gap for mobile */
     align-items: center;
+    justify-content: flex-start;
   }
 
-  /* Restore Summary */
+  /* Restore Summary with truncation */
   .txn-summary {
     display: block;
+    flex: 1 1 auto; /* Allow shrinking and growing */
+    min-width: 0; /* CRITICAL: Allows text to shrink below content width */
     font-size: 12px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    flex-shrink: 1; /* Allow summary to shrink if needed */
     margin-right: auto;
   }
 
@@ -1830,8 +1832,9 @@ tbody tr:hover {
   .txn-edit-mode-btn,
   .txn-export-btn,
   .txn-import-btn {
-    padding: 8px;
+    padding: 6px;
     font-size: 0; /* Hide text */
+    flex-shrink: 0; /* Don't shrink buttons */
   }
   
   .txn-edit-mode-btn svg,
@@ -1843,8 +1846,9 @@ tbody tr:hover {
   /* "Add" Button stays prominent */
   .txn-add-btn {
     white-space: nowrap;
-    flex-shrink: 0;
-    padding: 6px 12px;
+    flex-shrink: 0; /* Force it to stay full width */
+    padding: 6px 10px;
+    font-size: 13px;
   }
 
   .txn-form-fields {
