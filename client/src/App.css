@@ -1810,22 +1810,30 @@ tbody tr:hover {
   .txn-toolbar-right {
     display: flex;
     width: 100%;
-    flex-wrap: nowrap !important; /* Force single line */
-    gap: 4px; /* Tight gap for mobile */
+    flex-wrap: nowrap !important;
+    gap: 4px;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: space-between;
+    /* Enable horizontal scrolling to prevent truncation while keeping single line */
+    overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .txn-toolbar-right::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
   }
 
-  /* Restore Summary with truncation */
+  /* Restore Summary - NO Truncation */
   .txn-summary {
     display: block;
-    flex: 1 1 auto; /* Allow shrinking and growing */
-    min-width: 0; /* CRITICAL: Allows text to shrink below content width */
+    flex: 0 0 auto; /* Don't shrink, allow full width */
     font-size: 12px;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    /* Remove ellipsis/overflow hidden to show full text */
     margin-right: auto;
+    padding-right: 8px; /* Spacing before buttons */
   }
 
   /* Compact Buttons (Icon only) */
@@ -1834,7 +1842,7 @@ tbody tr:hover {
   .txn-import-btn {
     padding: 6px;
     font-size: 0; /* Hide text */
-    flex-shrink: 0; /* Don't shrink buttons */
+    flex-shrink: 0;
   }
   
   .txn-edit-mode-btn svg,
