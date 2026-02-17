@@ -966,6 +966,11 @@ tbody tr:hover {
   min-width: 150px;
 }
 
+/* Prevent icons from shrinking */
+.txn-form-field > svg {
+  flex-shrink: 0;
+}
+
 /* Force date input container to behave like other fields */
 .txn-form-field .date-input-container {
   width: 100%;
