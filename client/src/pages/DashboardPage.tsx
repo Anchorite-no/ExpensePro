@@ -139,33 +139,67 @@ export default function DashboardPage() {
           </div>
           <div className="budget-list">
             {activeBudgets.map(b => {
-              const pct = Math.min(100, (b.spent / b.limit) * 100);
-              const status = pct >= 100 ? "over" : pct >= 80 ? "warning" : "normal";
+              const remaining = b.limit - b.spent;
+              const remainingPct = Math.max(0, (remaining / b.limit) * 100);
+
+              // 进度条颜色逻辑：<20%红，<50%黄，其余绿
+              let status = "normal";
+              if (remainingPct < 20) status = "over";
+              else if (remainingPct < 50) status = "warning";
+
+              // 计算剩余天数日均可用
+              let dailyAvgInfo = null;
+              if (remaining > 0 && (b.key === "weekly" || b.key === "monthly")) {
+                const [y, m, d] = todayStr.split('-').map(Number);
+                const now = new Date(y, m - 1, d);
+                let daysRemaining = 0;
+                
+                if (b.key === "weekly") {
+                  const day = now.getDay();
+                  const currentDay = day === 0 ? 7 : day;
+                  daysRemaining = 8 - currentDay;
+                } else if (b.key === "monthly") {
+                  const daysInMonth = new Date(y, m, 0).getDate();
+                  daysRemaining = daysInMonth - d + 1;
+                }
+
+                if (daysRemaining > 0) {
+                  const avg = remaining / daysRemaining;
+                  dailyAvgInfo = `日均可花 ${currency}${avg.toFixed(0)}`;
+                }
+              }
+
               return (
                 <div key={b.key} className="budget-row">
                   <div className="budget-row-header">
                     <span className="budget-label">{b.label}</span>
                     <div className="budget-amounts">
-                      <span className={`budget-spent ${status}`}>{currency}{b.spent.toFixed(2)}</span>
+                      <span className={`budget-spent ${status}`}>{currency}{remaining.toFixed(2)}</span>
                       <span className="budget-separator">/</span>
                       <span className="budget-total">{currency}{b.limit.toFixed(2)}</span>
                     </div>
                   </div>
                   <div className="budget-bar-bg">
-                    <div className={`budget-bar-fill ${status}`} style={{ width: `${pct}%` }} />
+                    <div className={`budget-bar-fill ${status}`} style={{ width: `${remainingPct}%` }} />
                   </div>
                   <div className="budget-row-footer">
-                    <span className={`budget-pct ${status}`}>{pct.toFixed(1)}%</span>
-                    <span className="budget-remaining">
-                      {status === "over"
-                        ? `超支 ${currency}${(b.spent - b.limit).toFixed(2)}`
-                        : `剩余 ${currency}${(b.limit - b.spent).toFixed(2)}`}
-                    </span>
+                    <span className={`budget-pct ${status}`}>{remainingPct.toFixed(1)}%</span>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      {dailyAvgInfo && (
+                        <span style={{ fontSize: "10px", color: "#9CA3AF" }}>
+                          {dailyAvgInfo}
+                        </span>
+                      )}
+                      <span className="budget-remaining">
+                        已支 {currency}{b.spent.toFixed(2)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
+
         </div>
       )}
 

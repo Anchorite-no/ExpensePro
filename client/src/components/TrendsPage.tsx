@@ -49,7 +49,7 @@ const PieTooltip = ({ active, payload, theme, currency }: any) => {
   );
 };
 
-type TimeRange = "7d" | "30d" | "90d" | "all";
+type TimeRange = "current-week" | "current-month" | "last-3-months" | "all";
 
 interface Props {
   expenses: Expense[];
@@ -69,9 +69,9 @@ function getWeekKey(dateStr: string): string {
 
 // 根据时间范围决定聚合粒度
 function getGranularity(range: TimeRange): "day" | "week" | "month" {
-  if (range === "7d") return "day";
-  if (range === "30d") return "day";
-  if (range === "90d") return "week";
+  if (range === "current-week") return "day";
+  if (range === "current-month") return "day";
+  if (range === "last-3-months") return "week";
   return "month";
 }
 
@@ -95,7 +95,7 @@ function formatGroupKey(key: string, granularity: "day" | "week" | "month"): str
 }
 
 export default function TrendsPage({ expenses, theme, categories, currency }: Props) {
-  const [timeRange, setTimeRange] = useState<TimeRange>("7d");
+  const [timeRange, setTimeRange] = useState<TimeRange>("current-week");
 
   const chartColors = {
     grid: theme === "dark" ? "#374151" : "#E5E7EB",
@@ -107,22 +107,56 @@ export default function TrendsPage({ expenses, theme, categories, currency }: Pr
   // 根据时间范围过滤数据
   const filteredExpenses = useMemo(() => {
     if (timeRange === "all") return expenses;
+    
     const now = new Date();
-    const days = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90;
-    const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-    return expenses.filter((e) => new Date(e.date) >= cutoff);
+    // 重置时间为当天 00:00:00，避免时分秒干扰日期比较
+    now.setHours(0, 0, 0, 0);
+
+    let cutoff = new Date(now);
+
+    if (timeRange === "current-week") {
+      // 获取当前周的周一
+      const day = now.getDay() || 7; // 0 is Sunday, make it 7
+      if (day !== 1) {
+        cutoff.setDate(now.getDate() - day + 1);
+      }
+    } else if (timeRange === "current-month") {
+      // 获取当月1号
+      cutoff.setDate(1);
+    } else if (timeRange === "last-3-months") {
+      // 近三个月 (90天)
+      cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    }
+
+    // 比较时统一转为 YYYY-MM-DD 字符串或时间戳
+    // 注意：expenses.date 是 YYYY-MM-DD 字符串
+    const cutoffStr = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}-${String(cutoff.getDate()).padStart(2, '0')}`;
+
+    return expenses.filter((e) => e.date >= cutoffStr);
   }, [expenses, timeRange]);
 
   // 统计卡片数据
   const stats = useMemo(() => {
     const total = filteredExpenses.reduce((s, e) => s + e.amount, 0);
     const count = filteredExpenses.length;
-    const days = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : timeRange === "90d" ? 90 : Math.max(1, new Set(filteredExpenses.map(e => e.date)).size);
+    // 计算天数用于日均
+    // 对于 current-week / current-month，分母应该是"已经过的天数"还是"总天数"？
+    // 通常趋势分析看的是"在此期间内的日均"。
+    // 简单起见，用 filteredExpenses 中最早和最晚日期的跨度，或者 range 的固定天数。
+    // 这里使用数据跨度，如果数据为空则为 1
+    let days = 1;
+    if (filteredExpenses.length > 0) {
+        const dates = filteredExpenses.map(e => e.date).sort();
+        const start = new Date(dates[0]);
+        const end = new Date(dates[dates.length - 1]);
+        days = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+    }
     const avgDaily = days > 0 ? total / days : 0;
     return { total, count, avgDaily };
-  }, [filteredExpenses, timeRange]);
+  }, [filteredExpenses]);
 
   // 活跃分类
+
   const activeCategories = useMemo(() => {
     const cats = new Set<string>();
     filteredExpenses.forEach((e) => cats.add(e.category));
@@ -201,11 +235,12 @@ export default function TrendsPage({ expenses, theme, categories, currency }: Pr
   }, [filteredExpenses, granularity]);
 
   const timeRanges: { key: TimeRange; label: string }[] = [
-    { key: "7d", label: "近7天" },
-    { key: "30d", label: "近30天" },
-    { key: "90d", label: "近90天" },
+    { key: "current-week", label: "本周" },
+    { key: "current-month", label: "本月" },
+    { key: "last-3-months", label: "近三个月" },
     { key: "all", label: "全部" },
   ];
+
 
   const cursorBar = { fill: theme === "dark" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)" };
   const cursorLine = { stroke: theme === "dark" ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)" };
