@@ -589,6 +589,21 @@ tbody tr:hover {
     width: 100%;
   }
 
+  /* Fix: Reset collapsed sidebar styles on mobile to match expanded state */
+  .sidebar.collapsed .logo-text {
+    display: block;
+  }
+
+  .sidebar.collapsed .sidebar-header {
+    padding: 0 20px;
+    justify-content: space-between;
+  }
+
+  .sidebar.collapsed nav a {
+    padding: 8px 12px;
+    justify-content: center;
+  }
+
   .sidebar-header {
     height: 50px;
     border-bottom: none;
