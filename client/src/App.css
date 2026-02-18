@@ -67,6 +67,8 @@ select {
   display: flex;
   height: 100vh;
   overflow: hidden;
+  background-color: var(--bg-body); /* Ensure background changes with theme */
+  transition: background-color 0.3s ease;
 }
 
 

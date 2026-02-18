@@ -280,8 +280,9 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: var(--bg-body);
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 30%, #c7d2fe 60%, #ddd6fe 100%);
   padding: 20px;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 .auth-card {
@@ -404,6 +405,11 @@
   padding-right: 40px;
 }
 
+.auth-input-pw::-ms-reveal,
+.auth-input-pw::-ms-clear {
+  display: none;
+}
+
 .auth-pw-eye {
   position: absolute;
   right: 0;
@@ -423,9 +429,9 @@
   list-style: none;
   padding: 0;
   margin: 8px 0 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .auth-pw-rules li {
