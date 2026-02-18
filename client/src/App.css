@@ -105,7 +105,7 @@ select {
   overflow: hidden;
 }
 
-.sidebar.collapsed .logo-text {
+.sidebar.collapsed .logo {
   display: none;
 }
 
@@ -590,6 +590,10 @@ tbody tr:hover {
   }
 
   /* Fix: Reset collapsed sidebar styles on mobile to match expanded state */
+  .sidebar.collapsed .logo {
+    display: flex;
+  }
+
   .sidebar.collapsed .logo-text {
     display: block;
   }
