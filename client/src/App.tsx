@@ -613,12 +613,11 @@ function AppContent() {
     <div className={`dashboard ${theme}`}>
       <aside className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
         <div className="sidebar-header">
-          {!sidebarCollapsed && (
-            <div className="logo">
-              <BarChart3 size={28} />
-              <span className="logo-text">ExpensePro</span>
-            </div>
-          )}
+          {/* Logo 始终渲染，通过 CSS 控制移动端/桌面端的显示 */}
+          <div className="logo">
+            <BarChart3 size={28} />
+            <span className="logo-text">ExpensePro</span>
+          </div>
           <button className="collapse-btn" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} title={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}>
             {sidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
           </button>
