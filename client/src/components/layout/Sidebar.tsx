@@ -1,69 +1,70 @@
-import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { 
-  Wallet, TrendingUp, CreditCard, Settings2, Sun, Moon, LogOut, 
-  BarChart3, ChevronLeft, ChevronRight 
+import React from "react";
+import {
+  BarChart3, ChevronRight, ChevronLeft, Settings2, Moon, Sun, LogOut,
+  Wallet, TrendingUp, CreditCard
 } from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
+import type { PageType } from "../../types";
 
 interface SidebarProps {
+  activePage: PageType;
+  setActivePage: (page: PageType) => void;
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  user: any;
+  logout: () => void;
+  openSettings: () => void;
   theme: "light" | "dark";
   toggleTheme: () => void;
-  onOpenSettings: () => void;
 }
 
-export function Sidebar({ theme, toggleTheme, onOpenSettings }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState(false);
-  const location = useLocation();
-  const { user, logout } = useAuth();
+const navItems: { key: PageType; icon: React.ReactNode; label: string }[] = [
+  { key: "dashboard", icon: <Wallet size={20} />, label: "资产概览" },
+  { key: "trends", icon: <TrendingUp size={20} />, label: "趋势分析" },
+  { key: "transactions", icon: <CreditCard size={20} />, label: "交易记录" },
+];
 
-  const navItems = [
-    { key: "/", icon: <Wallet size={20} />, label: "资产概览" },
-    { key: "/trends", icon: <TrendingUp size={20} />, label: "趋势分析" },
-    { key: "/transactions", icon: <CreditCard size={20} />, label: "交易记录" },
-  ];
-
+const Sidebar = React.memo(({
+  activePage,
+  setActivePage,
+  sidebarCollapsed,
+  setSidebarCollapsed,
+  user,
+  logout,
+  openSettings,
+  theme,
+  toggleTheme
+}: SidebarProps) => {
   return (
-    <aside className={`sidebar ${collapsed ? "collapsed" : ""}`}>
+    <aside className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
       <div className="sidebar-header">
-        {!collapsed && (
-          <div className="logo">
-            <BarChart3 size={28} />
-            <span className="logo-text">ExpensePro</span>
-          </div>
-        )}
-        <button 
-          className="collapse-btn" 
-          onClick={() => setCollapsed(!collapsed)}
-          title={collapsed ? "展开侧边栏" : "收起侧边栏"}
-        >
-          {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+        <div className="logo">
+          <BarChart3 size={28} />
+          <span className="logo-text">ExpensePro</span>
+        </div>
+        <button className="collapse-btn" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} title={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}>
+          {sidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </button>
       </div>
 
       <nav>
         {navItems.map(item => (
-          <Link 
+          <a 
             key={item.key} 
-            to={item.key} 
-            className={location.pathname === item.key ? "active" : ""}
+            href="#" 
+            className={activePage === item.key ? "active" : ""} 
+            onClick={e => { e.preventDefault(); setActivePage(item.key); }} 
             title={item.label}
           >
             {item.icon} <span className="nav-text">{item.label}</span>
-          </Link>
+          </a>
         ))}
       </nav>
 
       <div className="sidebar-footer">
-        <div className="user-info" style={{ 
-          padding: '10px 20px', 
-          fontSize: '14px', 
-          color: '#666', 
-          display: collapsed ? 'none' : 'block' 
-        }}>
+        <div className="user-info" style={{ padding: '10px 20px', fontSize: '14px', color: '#666', display: sidebarCollapsed ? 'none' : 'block' }}>
           Hi, {user?.username}
         </div>
-        <button className="sidebar-manage-btn" onClick={onOpenSettings} title="系统设置">
+        <button className="sidebar-manage-btn" onClick={openSettings} title="系统设置">
           <Settings2 size={18} />
           <span className="nav-text">系统设置</span>
         </button>
@@ -78,4 +79,6 @@ export function Sidebar({ theme, toggleTheme, onOpenSettings }: SidebarProps) {
       </div>
     </aside>
   );
-}
+});
+
+export default Sidebar;
