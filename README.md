@@ -95,6 +95,9 @@ ENCRYPTION_ENABLED=
 # 代理（可选）
 # HTTP_PROXY=http://host.docker.internal:7890
 # HTTPS_PROXY=http://host.docker.internal:7890
+
+# 时区
+TZ=Asia/Shanghai
 ```
 
 **本地开发**：复制 `.env.example` 中的通用配置到 `server/.env`，并改用 `DATABASE_URL` 格式（见模板中的注释）。
@@ -116,7 +119,7 @@ ENCRYPTION_ENABLED=
 docker compose up -d --build
 
 # ⚠️ 首次启动必须初始化数据库表结构
-docker compose exec app npx drizzle-kit push --force
+docker compose exec app npx drizzle-kit push
 ```
 
 应用将在 `http://localhost:3001` 启动。

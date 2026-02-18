@@ -16,6 +16,8 @@ RUN npm run build
 
 # ---- 运行环境 ----
 FROM node:20-alpine
+# 安装时区数据
+RUN apk add --no-cache tzdata
 WORKDIR /app
 # 复制编译后的代码
 COPY --from=server-build /app/server/dist ./dist
