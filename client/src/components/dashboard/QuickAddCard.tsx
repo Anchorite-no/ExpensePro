@@ -3,6 +3,7 @@ import { Tag, CreditCard, Calendar, Activity, FileText, PlusCircle } from "lucid
 import { Select } from "../ui/Select";
 import { DateInput, getChinaToday } from "../DateInput";
 import AiReceiptParser from "../AiReceiptParser";
+import "./QuickAddCard.css";
 
 interface QuickAddCardProps {
   categories: Record<string, string>;

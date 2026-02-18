@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Eye, EyeOff, Wallet } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { deriveKeyFromPassword, decryptMasterKey } from '../utils/crypto';
+import './AuthForm.css';
 
 export const AuthForm = () => {
   const [isLogin, setIsLogin] = useState(true);

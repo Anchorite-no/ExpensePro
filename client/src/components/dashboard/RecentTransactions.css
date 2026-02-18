@@ -1,0 +1,17 @@
+.list-card {
+    /* Relying on global .list-card for now or we can copy it here if we want full isolation */
+    /* For now, just component specific overrides */
+}
+
+.txn-title-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.txn-note-inline {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* Ensure empty hint is handled if we move it out of global, but it is global now */

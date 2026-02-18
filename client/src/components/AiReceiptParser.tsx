@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Camera, Upload, Settings, X, Check, Loader2, Sparkles, Trash2, ImagePlus } from "lucide-react";
 import { Select } from "./ui/Select";
+import "./AiReceiptParser.css";
 
 interface ParsedItem {
   title: string;

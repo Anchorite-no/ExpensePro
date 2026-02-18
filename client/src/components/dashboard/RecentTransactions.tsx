@@ -1,5 +1,6 @@
 import React from "react";
 import { Trash2 } from "lucide-react";
+import "./RecentTransactions.css";
 import type { Expense } from "../../types";
 import { getCategoryColor } from "../../utils/helpers";
 

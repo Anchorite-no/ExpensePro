@@ -6,6 +6,7 @@ import { Select } from "../ui/Select";
 import { useToast } from "../ui/Toast";
 import { COLOR_PALETTE, PRESET_COLORS, CURRENCIES } from "../../constants/appConfig";
 import type { SettingsTab, BudgetConfig } from "../../types";
+import "./SettingsModal.css";
 
 interface SettingsModalProps {
   isOpen: boolean;

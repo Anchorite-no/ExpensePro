@@ -4,6 +4,7 @@ import {
   Wallet, TrendingUp, CreditCard
 } from "lucide-react";
 import type { PageType } from "../../types";
+import "./Sidebar.css";
 
 interface SidebarProps {
   activePage: PageType;

@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { Target } from "lucide-react";
 import type { BudgetConfig } from "../../types";
 import { getChinaToday } from "../../utils/helpers";
+import "./BudgetOverview.css";
 
 interface BudgetOverviewProps {
   budget: BudgetConfig;

@@ -1,5 +1,6 @@
 import React from "react";
 import { Wallet, Activity, TrendingUp } from "lucide-react";
+import "./StatsGrid.css";
 
 interface StatsGridProps {
   totalAmount: number;

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { Select } from "./ui/Select";
 import { DateInput, getChinaToday } from "./DateInput";
+import "./TransactionsPage.css";
 
 interface Expense {
   id: number;

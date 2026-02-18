@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { format, isValid, parse, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import "./DateInput.css";
 
 interface DateInputProps {
     value: string;

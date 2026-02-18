@@ -5,6 +5,7 @@ import {
   LineChart, Line, AreaChart, Area
 } from "recharts";
 import { Wallet, Activity, TrendingUp, Calendar } from "lucide-react";
+import "./TrendsPage.css";
 
 interface Expense {
   id: number;
