@@ -82,9 +82,9 @@
 
 /* ... (rest of the file) ... */
 
-/* Scrollbar styles for dropdown - Ultra thin */
+/* Scrollbar styles for dropdown */
 .custom-select-dropdown::-webkit-scrollbar {
-  width: 3px; /* Very thin */
+  width: 6px;
 }
 
 .custom-select-dropdown::-webkit-scrollbar-track {
