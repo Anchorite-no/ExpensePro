@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tag Cloud Demo (Wordle Style)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.2.2/wordcloud2.min.js"></script>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text: #1e293b;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--surface);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h2 { margin-top: 0; margin-bottom: 20px; font-size: 18px; color: #334155; }
+
+        /* Canvas container */
+        .cloud-wrapper {
+            width: 100%;
+            height: 400px;
+            position: relative;
+            background: #fff;
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        button {
+            padding: 8px 16px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover { background: #2563eb; }
+        button.secondary { background: #64748b; }
+        button.secondary:hover { background: #475569; }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>标签云效果 (Wordle 风格)</h2>
+    
+    <div class="cloud-wrapper" id="canvas-container">
+        <canvas id="my_canvas"></canvas>
+    </div>
+
+    <div class="controls">
+        <button onclick="renderCloud()">⟳ 刷新布局</button>
+        <button class="secondary" onclick="changeShape('circle')">圆形</button>
+        <button class="secondary" onclick="changeShape('square')">方形</button>
+    </div>
+    
+    <p style="font-size: 12px; color: #94a3b8; margin-top: 10px;">
+        提示：这种效果会将文字紧密“混”在一起，并根据频率决定大小。
+    </p>
+</div>
+
+<script>
+    // 模拟数据： [标签名, 权重/频率]
+    const tags = [
+        ['餐饮', 50], ['外卖', 35], ['交通', 30], ['地铁', 25],
+        ['购物', 28], ['零食', 22], ['水果', 18], ['聚会', 26],
+        ['房租', 40], ['水电', 15], ['话费', 12], ['医疗', 10],
+        ['打车', 14], ['电影', 16], ['咖啡', 20], ['奶茶', 18],
+        ['衣服', 24], ['日用品', 15], ['买菜', 20], ['加油', 18],
+        ['停车', 10], ['早饭', 15], ['午饭', 25], ['晚饭', 30],
+        ['旅行', 12], ['机票', 18], ['酒店', 16], ['门票', 8],
+        ['运动', 14], ['健身', 20], ['游泳', 10], ['书籍', 6]
+    ];
+
+    let currentShape = 'circle';
+
+    function renderCloud() {
+        const canvas = document.getElementById('my_canvas');
+        const container = document.getElementById('canvas-container');
+        
+        // 设置 Canvas 分辨率以匹配显示尺寸（防止模糊）
+        canvas.width = container.offsetWidth;
+        canvas.height = container.offsetHeight;
+
+        WordCloud(canvas, {
+            list: tags,
+            gridSize: 8,       // 间距
+            weightFactor: function (size) {
+                // 动态调整字体大小比例
+                return size * (canvas.width / 500); 
+            },
+            fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+            color: function (word, weight) {
+                // 随机蓝色系颜色
+                const opacity = 0.6 + Math.random() * 0.4;
+                return `rgba(59, 130, 246, ${opacity})`; 
+            },
+            rotateRatio: 0,    // 0 = 全部水平，0.5 = 随机垂直
+            rotationSteps: 2,
+            backgroundColor: '#ffffff',
+            shape: currentShape,
+            drawOutOfBound: false,
+            shrinkToFit: true
+        });
+    }
+
+    function changeShape(shape) {
+        currentShape = shape;
+        renderCloud();
+    }
+
+    // 页面加载完成后渲染
+    window.onload = renderCloud;
+    
+    // 窗口大小改变时重绘
+    let resizeTimer;
+    window.onresize = () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(renderCloud, 200);
+    };
+
+</script>
+
+</body>
+</html>

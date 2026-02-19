@@ -640,9 +640,6 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
                   </div>
 
                   <div className="ai-result-actions">
-                    <button className="icon-btn" onClick={() => addItem(item, i)} title="确认添加">
-                      <Check size={16} className="text-success" />
-                    </button>
                     <button className="icon-btn" onClick={() => removeItem(i)} title="删除">
                       <Trash2 size={16} className="text-danger" />
                     </button>
