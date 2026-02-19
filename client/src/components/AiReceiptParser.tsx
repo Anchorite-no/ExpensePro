@@ -265,16 +265,14 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
 
   // 添加单条记录
   const addItem = (item: ParsedItem, index: number) => {
-    onAddExpense(item.title, item.amount, item.category, item.date);
-    // TODO: Support note in onAddExpense
+    onAddExpense(item.title, item.amount, item.category, item.date, item.note);
     setParsedItems((prev) => prev.filter((_, i) => i !== index));
   };
 
   // 添加全部
   const addAll = () => {
     parsedItems.forEach((item) => {
-      onAddExpense(item.title, item.amount, item.category, item.date);
-      // TODO: Support note in onAddExpense
+      onAddExpense(item.title, item.amount, item.category, item.date, item.note);
     });
     setParsedItems([]);
     setImages([]);
