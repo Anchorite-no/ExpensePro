@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Camera, Upload, Settings, X, Check, Loader2, Sparkles, Trash2, ImagePlus } from "lucide-react";
 import { Select } from "./ui/Select";
+import { DateInput } from "./DateInput";
 import "./AiReceiptParser.css";
 
 interface ParsedItem {
@@ -8,6 +9,7 @@ interface ParsedItem {
   amount: number;
   category: string;
   date?: string;
+  note?: string;
 }
 
 interface ImageEntry {
@@ -264,6 +266,7 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
   // 添加单条记录
   const addItem = (item: ParsedItem, index: number) => {
     onAddExpense(item.title, item.amount, item.category, item.date);
+    // TODO: Support note in onAddExpense
     setParsedItems((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -271,6 +274,7 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
   const addAll = () => {
     parsedItems.forEach((item) => {
       onAddExpense(item.title, item.amount, item.category, item.date);
+      // TODO: Support note in onAddExpense
     });
     setParsedItems([]);
     setImages([]);
@@ -430,37 +434,55 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
           <div className="ai-results-list">
             {parsedItems.map((item, i) => (
               <div key={i} className="ai-result-item">
-                <input
-                  className="ai-result-title"
-                  value={item.title}
-                  onChange={(e) => updateItem(i, "title", e.target.value)}
-                />
-                <input
-                  className="ai-result-amount"
-                  type="number"
-                  value={item.amount}
-                  onChange={(e) => updateItem(i, "amount", Number(e.target.value))}
-                />
-                <div style={{ width: 100, flexShrink: 0 }}>
-                  <Select
-                    value={item.category}
-                    onChange={(val) => updateItem(i, "category", val)}
-                    options={categoryList.map(c => ({ value: c, label: c }))}
+                <div className="ai-result-info">
+                  <input
+                    className="ai-result-title"
+                    value={item.title}
+                    onChange={(e) => updateItem(i, "title", e.target.value)}
+                    placeholder="消费内容"
+                  />
+                  <input
+                    className="ai-result-note"
+                    value={item.note || ""}
+                    onChange={(e) => updateItem(i, "note", e.target.value)}
+                    placeholder="备注（可选）"
                   />
                 </div>
-                <input
-                  className="ai-result-date"
-                  type="date"
-                  value={item.date || ""}
-                  onChange={(e) => updateItem(i, "date", e.target.value)}
-                />
-                <div className="ai-result-actions">
-                  <button className="icon-btn" onClick={() => addItem(item, i)} title="添加">
-                    <Check size={14} />
-                  </button>
-                  <button className="icon-btn" onClick={() => removeItem(i)} title="删除">
-                    <Trash2 size={14} />
-                  </button>
+                
+                <div className="ai-result-meta">
+                  <div className="ai-result-amount-wrapper">
+                    <span className="currency-symbol">{currency}</span>
+                    <input
+                      className="ai-result-amount"
+                      type="number"
+                      value={item.amount}
+                      onChange={(e) => updateItem(i, "amount", Number(e.target.value))}
+                    />
+                  </div>
+
+                  <div style={{ width: 120 }}>
+                    <Select
+                      value={item.category}
+                      onChange={(val) => updateItem(i, "category", val)}
+                      options={categoryList.map(c => ({ value: c, label: c, color: categories[c] }))}
+                    />
+                  </div>
+                  
+                  <div style={{ width: 140 }}>
+                    <DateInput 
+                      value={item.date || ""} 
+                      onChange={(val) => updateItem(i, "date", val)} 
+                    />
+                  </div>
+
+                  <div className="ai-result-actions">
+                    <button className="icon-btn" onClick={() => addItem(item, i)} title="确认添加">
+                      <Check size={18} className="text-success" />
+                    </button>
+                    <button className="icon-btn" onClick={() => removeItem(i)} title="删除">
+                      <Trash2 size={18} className="text-danger" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
