@@ -442,7 +442,17 @@
   margin: 0;
 }
 
-.ai-category-wrapper,
+.ai-category-wrapper {
+  width: 100px;
+}
+
+.ai-category-wrapper .custom-select-trigger {
+  min-height: 32px;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 13px;
+}
+
 .ai-date-wrapper {
   width: 125px;
 }
