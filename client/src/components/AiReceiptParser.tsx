@@ -458,7 +458,7 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
                     />
                   </div>
 
-                  <div style={{ width: 120 }}>
+                  <div style={{ width: 110 }}>
                     <Select
                       value={item.category}
                       onChange={(val) => updateItem(i, "category", val)}
