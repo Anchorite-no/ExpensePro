@@ -27,6 +27,11 @@ router.post("/parse-receipt", async (req: any, res: any) => {
     }
 
     const modelName = model || "gemini-2.0-flash";
+    
+    // 针对 Thinking 模型或 Gemini 3 系列（可能包含思考过程），移除 JSON 强制模式
+    // 这样可以避免 "Mode not supported" 或输出截断错误
+    const isComplexModel = modelName.includes("thinking") || modelName.includes("gemini-3");
+
     const prompt = buildPrompt(categories);
     const { mimeType, base64 } = parseDataUrl(image);
 
@@ -44,8 +49,8 @@ router.post("/parse-receipt", async (req: any, res: any) => {
       ],
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 2048,
-        response_mime_type: "application/json",
+        maxOutputTokens: 8192, // 增加 Token 上限以容纳思考过程
+        ...(isComplexModel ? {} : { response_mime_type: "application/json" }),
       },
     };
 
