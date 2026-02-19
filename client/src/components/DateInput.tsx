@@ -140,8 +140,8 @@ export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placehold
                 onChange(result);
                 setViewDate(parse(result, 'yyyy-MM-dd', new Date()));
             }
-            // Blur to dismiss keyboard on mobile
-            dayRef.current?.blur();
+            // Blur to dismiss keyboard on mobile (Removed to prevent premature validation)
+            // dayRef.current?.blur();
         }
     };
 
