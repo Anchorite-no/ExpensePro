@@ -220,7 +220,7 @@ export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placehold
                         placeholder="YYYY"
                         maxLength={4}
                     />
-                    <span className="date-separator">-</span>
+                    <span className="date-separator">/</span>
                     <input
                         ref={monthRef}
                         type="text"
@@ -232,7 +232,7 @@ export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placehold
                         placeholder="MM"
                         maxLength={2}
                     />
-                    <span className="date-separator">-</span>
+                    <span className="date-separator">/</span>
                     <input
                         ref={dayRef}
                         type="text"
