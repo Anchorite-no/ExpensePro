@@ -50,7 +50,12 @@ export const Select: React.FC<SelectProps> = ({
     };
 
     // Close on scroll to prevent floating menu issues
-    const handleScroll = () => {
+    const handleScroll = (e: Event) => {
+      // Don't close if scrolling inside the dropdown itself
+      const dropdown = document.getElementById('select-dropdown-portal');
+      if (dropdown && dropdown.contains(e.target as Node)) {
+        return;
+      }
       if (isOpen) setIsOpen(false);
     };
 
