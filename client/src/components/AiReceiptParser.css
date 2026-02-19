@@ -348,7 +348,7 @@
   flex-direction: column;
   gap: 2px; /* Tighter gap between title and note */
   flex: 1;
-  min-width: 170px; /* Prevent title/note from collapsing */
+  min-width: 165px; /* Prevent title/note from collapsing */
 }
 
 .ai-result-meta {

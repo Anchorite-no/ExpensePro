@@ -108,7 +108,7 @@ const CompactDateInput: React.FC<{ value: string; onChange: (date: string) => vo
       if (raw.length === 1 && num > 3) { raw = '0' + raw; setParts(prev => ({ ...prev, day: raw })); }
       const result = parseDisplayDate(parts.year, parts.month, raw);
       if (result) { onChange(result); setViewDate(parse(result, 'yyyy-MM-dd', new Date())); }
-      dayRef.current?.blur();
+      // dayRef.current?.blur(); // Removed to prevent premature reset
     }
   };
 
