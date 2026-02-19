@@ -27,10 +27,6 @@ router.post("/parse-receipt", async (req: any, res: any) => {
     }
 
     const modelName = model || "gemini-2.0-flash";
-    // 如果是 gemini-2.0-flash-thinking-exp-01-21 模型，必须移除 response_mime_type 字段
-    // 因为 Thinking 模型目前不支持 JSON Mode
-    const isThinkingModel = modelName.includes("thinking");
-
     const prompt = buildPrompt(categories);
     const { mimeType, base64 } = parseDataUrl(image);
 
@@ -49,8 +45,7 @@ router.post("/parse-receipt", async (req: any, res: any) => {
       generationConfig: {
         temperature: 0.1,
         maxOutputTokens: 2048,
-        // Thinking 模型不支持 JSON Mode，移除该字段
-        ...(isThinkingModel ? {} : { response_mime_type: "application/json" }),
+        response_mime_type: "application/json",
       },
     };
 
