@@ -330,7 +330,7 @@
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: 8px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   transition: all 0.2s ease;
 }
 
@@ -345,7 +345,7 @@
   flex-direction: column;
   gap: 2px; /* Tighter gap between title and note */
   flex: 1;
-  min-width: 0;
+  min-width: 240px;
 }
 
 .ai-result-meta {
