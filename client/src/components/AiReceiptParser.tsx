@@ -195,8 +195,8 @@ const DEFAULT_MODEL = "gemini-2.0-flash";
 
 const AVAILABLE_MODELS = [
   { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash (标准版 - 速度快)" },
+  { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash (平衡版 - 综合强)" },
   { value: "gemini-3-flash-preview", label: "Gemini 3.0 Flash (预览版 - 更智能)" },
-  { value: "gemini-2.0-flash-thinking-exp-01-21", label: "Gemini 2.0 Thinking (思考版 - 逻辑强)" },
 ];
 
 let imageIdCounter = 0;
