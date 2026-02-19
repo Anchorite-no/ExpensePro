@@ -80,7 +80,56 @@
   }
 }
 
-/* ... (rest of the file) ... */
+.custom-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.custom-select-option:hover {
+  background: var(--bg-input);
+}
+
+.custom-select-option.selected {
+  background: var(--primary-bg);
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.custom-select-option.no-results {
+  color: var(--text-secondary);
+  cursor: default;
+  justify-content: center;
+}
+
+.option-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.option-icon {
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+}
+
+.check-icon {
+  color: var(--primary);
+}
 
 /* Scrollbar styles for dropdown */
 .custom-select-dropdown::-webkit-scrollbar {
