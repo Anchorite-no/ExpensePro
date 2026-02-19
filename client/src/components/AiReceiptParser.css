@@ -324,6 +324,24 @@
   padding-bottom: 8px; /* Space for scrollbar */
 }
 
+/* Scrollbar Styling */
+.ai-results-list::-webkit-scrollbar {
+  height: 6px;
+}
+
+.ai-results-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ai-results-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.ai-results-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
 .ai-result-item {
   display: flex;
   align-items: center; /* Center align vertically */
