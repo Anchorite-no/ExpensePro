@@ -131,9 +131,9 @@
   color: var(--primary);
 }
 
-/* Scrollbar styles for dropdown */
+/* Scrollbar styles for dropdown - Ultra thin */
 .custom-select-dropdown::-webkit-scrollbar {
-  width: 6px;
+  width: 2px; /* Ultra thin */
 }
 
 .custom-select-dropdown::-webkit-scrollbar-track {
@@ -142,9 +142,10 @@
 
 .custom-select-dropdown::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
 .custom-select-dropdown::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
+  width: 4px; /* Expand on hover */
 }
