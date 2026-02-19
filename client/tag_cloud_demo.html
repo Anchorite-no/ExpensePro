@@ -26,7 +26,7 @@
 
         .container {
             width: 100%;
-            max-width: 600px;
+            max-width: 800px;
             background: var(--surface);
             padding: 24px;
             border-radius: 12px;
@@ -39,12 +39,15 @@
         /* Canvas container */
         .cloud-wrapper {
             width: 100%;
-            height: 400px;
+            height: 500px;
             position: relative;
             background: #fff;
             border: 1px dashed #cbd5e1;
             border-radius: 8px;
             overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         canvas {
@@ -57,103 +60,139 @@
             margin-top: 20px;
             display: flex;
             justify-content: center;
+            flex-wrap: wrap;
             gap: 10px;
         }
 
         button {
             padding: 8px 16px;
-            background: #3b82f6;
-            color: white;
-            border: none;
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
+            transition: all 0.2s;
         }
         
-        button:hover { background: #2563eb; }
-        button.secondary { background: #64748b; }
-        button.secondary:hover { background: #475569; }
+        button:hover { background: #e2e8f0; border-color: #cbd5e1; }
+        button.active { background: #3b82f6; color: white; border-color: #3b82f6; }
+        button.primary { background: #3b82f6; color: white; border-color: #3b82f6; font-weight: 500; }
+        button.primary:hover { background: #2563eb; }
 
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>标签云效果 (Wordle 风格)</h2>
+    <h2>多彩标签云 (Wordle 风格)</h2>
     
     <div class="cloud-wrapper" id="canvas-container">
         <canvas id="my_canvas"></canvas>
     </div>
 
     <div class="controls">
-        <button onclick="renderCloud()">⟳ 刷新布局</button>
-        <button class="secondary" onclick="changeShape('circle')">圆形</button>
-        <button class="secondary" onclick="changeShape('square')">方形</button>
+        <button class="primary" onclick="renderCloud()">⟳ 刷新布局</button>
+        <div style="width: 100%; height: 0;"></div> <!-- Break line -->
+        
+        <span>形状:</span>
+        <button class="shape-btn active" onclick="setShape(this, 'circle')">圆形</button>
+        <button class="shape-btn" onclick="setShape(this, 'cardioid')">心形</button>
+        <button class="shape-btn" onclick="setShape(this, 'diamond')">菱形</button>
+        <button class="shape-btn" onclick="setShape(this, 'triangle-forward')">三角形</button>
+        <button class="shape-btn" onclick="setShape(this, 'star')">五角星</button>
     </div>
     
     <p style="font-size: 12px; color: #94a3b8; margin-top: 10px;">
-        提示：这种效果会将文字紧密“混”在一起，并根据频率决定大小。
+        提示：使用了多种柔和的莫兰迪色系，支持不同形状的填充。
     </p>
 </div>
 
 <script>
     // 模拟数据： [标签名, 权重/频率]
     const tags = [
-        ['餐饮', 50], ['外卖', 35], ['交通', 30], ['地铁', 25],
-        ['购物', 28], ['零食', 22], ['水果', 18], ['聚会', 26],
-        ['房租', 40], ['水电', 15], ['话费', 12], ['医疗', 10],
-        ['打车', 14], ['电影', 16], ['咖啡', 20], ['奶茶', 18],
-        ['衣服', 24], ['日用品', 15], ['买菜', 20], ['加油', 18],
-        ['停车', 10], ['早饭', 15], ['午饭', 25], ['晚饭', 30],
-        ['旅行', 12], ['机票', 18], ['酒店', 16], ['门票', 8],
-        ['运动', 14], ['健身', 20], ['游泳', 10], ['书籍', 6]
+        ['餐饮', 60], ['外卖', 45], ['交通', 40], ['地铁', 35],
+        ['购物', 38], ['零食', 32], ['水果', 28], ['聚会', 36],
+        ['房租', 50], ['水电', 25], ['话费', 22], ['医疗', 20],
+        ['打车', 24], ['电影', 26], ['咖啡', 30], ['奶茶', 28],
+        ['衣服', 34], ['日用品', 25], ['买菜', 30], ['加油', 28],
+        ['停车', 20], ['早饭', 25], ['午饭', 35], ['晚饭', 40],
+        ['旅行', 22], ['机票', 28], ['酒店', 26], ['门票', 18],
+        ['运动', 24], ['健身', 30], ['游泳', 20], ['书籍', 16],
+        ['游戏', 22], ['充值', 18], ['理发', 25], ['护肤', 32],
+        ['礼物', 28], ['红包', 35], ['捐款', 12], ['彩票', 10],
+        ['维修', 15], ['保养', 20], ['洗车', 18], ['过路费', 14],
+        ['快递', 16], ['宽带', 24], ['会员', 22], ['订阅', 18]
     ];
 
     let currentShape = 'circle';
+
+    // 莫兰迪色系 / 多彩配色
+    const colors = [
+        '#E63946', '#F1FAEE', '#A8DADC', '#457B9D', '#1D3557', // Classic
+        '#2A9D8F', '#E9C46A', '#F4A261', '#E76F51', // Earth
+        '#845EC2', '#D65DB1', '#FF6F91', '#FF9671', '#FFC75F', '#F9F871', // Vibrant
+        '#008744', '#0057e7', '#d62d20', '#ffa700'  // Google-ish
+    ];
+    
+    // 生成随机颜色的函数
+    function getRandomColor() {
+        // 方法1: 从预设调色板取
+        // return colors[Math.floor(Math.random() * colors.length)];
+        
+        // 方法2: 随机生成高饱和度颜色 (HSL)
+        const hue = Math.floor(Math.random() * 360);
+        return `hsl(${hue}, 70%, 50%)`;
+    }
 
     function renderCloud() {
         const canvas = document.getElementById('my_canvas');
         const container = document.getElementById('canvas-container');
         
-        // 设置 Canvas 分辨率以匹配显示尺寸（防止模糊）
+        // 设置 Canvas 分辨率
         canvas.width = container.offsetWidth;
         canvas.height = container.offsetHeight;
 
+        // 清空画布
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
         WordCloud(canvas, {
             list: tags,
-            gridSize: 8,       // 间距
+            gridSize: Math.round(16 * canvas.width / 1024),
             weightFactor: function (size) {
-                // 动态调整字体大小比例
-                return size * (canvas.width / 500); 
+                return Math.pow(size, 2.3) * canvas.width / 1024 * 0.15; // 指数缩放让大的更大
             },
-            fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+            fontFamily: 'Impact, "Microsoft YaHei", sans-serif', // 用粗体更好看
             color: function (word, weight) {
-                // 随机蓝色系颜色
-                const opacity = 0.6 + Math.random() * 0.4;
-                return `rgba(59, 130, 246, ${opacity})`; 
+                return getRandomColor();
             },
-            rotateRatio: 0,    // 0 = 全部水平，0.5 = 随机垂直
-            rotationSteps: 2,
+            rotateRatio: 0.5, // 50% 概率旋转
+            rotationSteps: 2, // 仅 0 和 90 度
             backgroundColor: '#ffffff',
             shape: currentShape,
             drawOutOfBound: false,
-            shrinkToFit: true
+            shrinkToFit: true,
+            minSize: 4 // 最小字体大小
         });
     }
 
-    function changeShape(shape) {
+    function setShape(btn, shape) {
+        // Update active button
+        document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
         currentShape = shape;
         renderCloud();
     }
 
     // 页面加载完成后渲染
-    window.onload = renderCloud;
+    window.onload = () => {
+        setTimeout(renderCloud, 100);
+    };
     
-    // 窗口大小改变时重绘
-    let resizeTimer;
     window.onresize = () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(renderCloud, 200);
+        renderCloud();
     };
 
 </script>

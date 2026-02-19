@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Check } from 'lucide-react';
 import './Select.css';
 
@@ -28,25 +29,55 @@ export const Select: React.FC<SelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
 
   const selectedOption = options.find((opt) => opt.value === value);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // Check if click is outside the trigger AND the dropdown (which is portaled)
+      const dropdown = document.getElementById('select-dropdown-portal');
+      
       if (
         containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
+        !containerRef.current.contains(event.target as Node) &&
+        dropdown &&
+        !dropdown.contains(event.target as Node)
       ) {
         setIsOpen(false);
       }
     };
 
+    // Close on scroll to prevent floating menu issues
+    const handleScroll = () => {
+      if (isOpen) setIsOpen(false);
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', handleScroll, true); // Capture phase to catch scroll in any container
+    window.addEventListener('resize', handleScroll);
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleScroll);
     };
-  }, []);
+  }, [isOpen]);
+
+  const toggleOpen = () => {
+    if (disabled) return;
+    
+    if (!isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY + 4, // 4px margin
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+    setIsOpen(!isOpen);
+  };
 
   const handleSelect = (optionValue: string) => {
     onChange(optionValue);
@@ -60,7 +91,7 @@ export const Select: React.FC<SelectProps> = ({
     >
       <div
         className={`custom-select-trigger ${isOpen ? 'open' : ''}`}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={toggleOpen}
       >
         <span className="selected-value">
           {selectedOption ? (
@@ -83,8 +114,18 @@ export const Select: React.FC<SelectProps> = ({
         <ChevronDown className={`arrow-icon ${isOpen ? 'rotate' : ''}`} size={16} />
       </div>
 
-      {isOpen && (
-        <div className="custom-select-dropdown">
+      {isOpen && createPortal(
+        <div 
+          id="select-dropdown-portal"
+          className="custom-select-dropdown"
+          style={{
+            position: 'fixed',
+            top: coords.top - window.scrollY, // Adjust for fixed positioning
+            left: coords.left - window.scrollX,
+            width: coords.width,
+            zIndex: 9999, // Ensure it's on top
+          }}
+        >
           {options.length > 0 ? (
             options.map((option) => (
               <div
@@ -112,7 +153,8 @@ export const Select: React.FC<SelectProps> = ({
           ) : (
             <div className="custom-select-option no-results">No options</div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
