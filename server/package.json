@@ -20,6 +20,7 @@
     "dotenv": "^17.2.4",
     "drizzle-orm": "^0.45.1",
     "express": "^5.2.1",
+    "jimp": "^1.6.0",
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.16.3",
     "undici": "^7.21.0"

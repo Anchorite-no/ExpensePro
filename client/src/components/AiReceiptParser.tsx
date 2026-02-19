@@ -269,8 +269,8 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
           let width = img.width;
           let height = img.height;
           
-          // 限制最大边长为 1024px
-          const MAX_SIZE = 1024;
+          // 限制最大边长为 1280px (平衡速度与清晰度)
+          const MAX_SIZE = 1280;
           if (width > MAX_SIZE || height > MAX_SIZE) {
             if (width > height) {
               height = Math.round((height * MAX_SIZE) / width);
@@ -286,8 +286,8 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
           const ctx = canvas.getContext("2d");
           ctx?.drawImage(img, 0, 0, width, height);
           
-          // 压缩为 JPEG, 质量 0.8
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+          // 优化：使用 WebP 格式，质量 0.8 (同画质下体积更小)
+          const dataUrl = canvas.toDataURL("image/webp", 0.8);
           resolve(dataUrl);
         };
         img.onerror = (err) => reject(err);
