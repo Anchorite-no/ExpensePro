@@ -472,7 +472,7 @@
 
 .compact-date-wrapper .year { width: 34px; }
 .compact-date-wrapper .month, .compact-date-wrapper .day { width: 18px; }
-.compact-date-wrapper .sep { color: var(--text-secondary); margin: 0; font-weight: bold; } /* Removed margin for tighter spacing */
+.compact-date-wrapper .sep { color: var(--border); margin: 0; font-weight: bold; opacity: 0.7; } /* Lighter separator */
 
 .compact-toggle-btn {
   margin-left: auto;

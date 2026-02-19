@@ -631,7 +631,7 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
                     />
                   </div>
                   
-                  <div style={{ width: 135 }}>
+                  <div style={{ width: 125 }}>
                     <CompactDateInput 
                       value={item.date || ""} 
                       onChange={(val) => updateItem(i, "date", val)} 
@@ -640,10 +640,10 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
 
                   <div className="ai-result-actions">
                     <button className="icon-btn" onClick={() => addItem(item, i)} title="确认添加">
-                      <Check size={18} className="text-success" />
+                      <Check size={16} className="text-success" />
                     </button>
                     <button className="icon-btn" onClick={() => removeItem(i)} title="删除">
-                      <Trash2 size={18} className="text-danger" />
+                      <Trash2 size={16} className="text-danger" />
                     </button>
                   </div>
                 </div>
