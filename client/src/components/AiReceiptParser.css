@@ -371,7 +371,6 @@
 
 .ai-result-title:hover {
   background: var(--bg-input);
-  padding-left: 6px;
   border-radius: 4px;
 }
 
@@ -397,7 +396,6 @@
 .ai-result-note:hover {
   color: var(--text-primary);
   background: var(--bg-input);
-  padding-left: 6px;
   border-radius: 4px;
 }
 
