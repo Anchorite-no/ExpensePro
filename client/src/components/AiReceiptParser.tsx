@@ -1,8 +1,173 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Camera, Upload, Settings, X, Check, Loader2, Sparkles, Trash2, ImagePlus } from "lucide-react";
+import { Camera, Upload, Settings, X, Check, Loader2, Sparkles, Trash2, ImagePlus, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { format, isValid, parse, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from "date-fns";
+import { zhCN } from "date-fns/locale";
 import { Select } from "./ui/Select";
-import { DateInput } from "./DateInput";
 import "./AiReceiptParser.css";
+
+// --- Compact Date Input (Local Component) ---
+function getChinaToday(): string {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const parts = formatter.formatToParts(now);
+  const y = parts.find(p => p.type === 'year')!.value;
+  const m = parts.find(p => p.type === 'month')!.value;
+  const d = parts.find(p => p.type === 'day')!.value;
+  return `${y}-${m}-${d}`;
+}
+
+function parseDisplayDate(year: string, month: string, day: string): string | null {
+  const y = parseInt(year, 10);
+  const m = parseInt(month, 10);
+  const d = parseInt(day, 10);
+  if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+  if (y < 1900 || y > 2100) return null;
+  if (m < 1 || m > 12) return null;
+  if (d < 1 || d > 31) return null;
+  const dateStr = `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  const parsed = parse(dateStr, 'yyyy-MM-dd', new Date());
+  if (!isValid(parsed)) return null;
+  if (parsed.getFullYear() !== y || parsed.getMonth() + 1 !== m || parsed.getDate() !== d) return null;
+  return dateStr;
+}
+
+const CompactDateInput: React.FC<{ value: string; onChange: (date: string) => void }> = ({ value, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [viewDate, setViewDate] = useState(new Date());
+  const containerRef = useRef<HTMLDivElement>(null);
+  const yearRef = useRef<HTMLInputElement>(null);
+  const monthRef = useRef<HTMLInputElement>(null);
+  const dayRef = useRef<HTMLInputElement>(null);
+
+  const splitValue = useCallback((val: string) => {
+    if (val && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      const [y, m, d] = val.split('-');
+      return { year: y, month: m, day: d };
+    }
+    return { year: '', month: '', day: '' };
+  }, []);
+
+  const [parts, setParts] = useState(() => splitValue(value));
+
+  useEffect(() => {
+    setParts(splitValue(value));
+    if (value && isValid(parse(value, 'yyyy-MM-dd', new Date()))) {
+      setViewDate(parse(value, 'yyyy-MM-dd', new Date()));
+    }
+  }, [value, splitValue]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const commitOrReset = useCallback(() => {
+    const result = parseDisplayDate(parts.year, parts.month, parts.day);
+    if (result) {
+      onChange(result);
+      setViewDate(parse(result, 'yyyy-MM-dd', new Date()));
+    } else {
+      const today = getChinaToday();
+      onChange(today);
+      setParts(splitValue(today));
+      setViewDate(parse(today, 'yyyy-MM-dd', new Date()));
+    }
+  }, [parts, onChange, splitValue]);
+
+  const handleYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '').slice(0, 4);
+    setParts(prev => ({ ...prev, year: raw }));
+    if (raw.length === 4) { monthRef.current?.focus(); monthRef.current?.select(); }
+  };
+
+  const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let raw = e.target.value.replace(/\D/g, '').slice(0, 2);
+    setParts(prev => ({ ...prev, month: raw }));
+    const num = parseInt(raw, 10);
+    if (raw.length === 2 || (raw.length === 1 && num > 1)) {
+      if (raw.length === 1 && num > 1) { raw = '0' + raw; setParts(prev => ({ ...prev, month: raw })); }
+      dayRef.current?.focus(); dayRef.current?.select();
+    }
+  };
+
+  const handleDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let raw = e.target.value.replace(/\D/g, '').slice(0, 2);
+    setParts(prev => ({ ...prev, day: raw }));
+    const num = parseInt(raw, 10);
+    if (raw.length === 2 || (raw.length === 1 && num > 3)) {
+      if (raw.length === 1 && num > 3) { raw = '0' + raw; setParts(prev => ({ ...prev, day: raw })); }
+      const result = parseDisplayDate(parts.year, parts.month, raw);
+      if (result) { onChange(result); setViewDate(parse(result, 'yyyy-MM-dd', new Date())); }
+      dayRef.current?.blur();
+    }
+  };
+
+  const handleKeyDown = (field: 'year' | 'month' | 'day') => (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace') {
+      if (field === 'month' && parts.month === '') yearRef.current?.focus();
+      else if (field === 'day' && parts.day === '') monthRef.current?.focus();
+    }
+    if (e.key === 'Enter') { commitOrReset(); setIsOpen(false); }
+    if (e.key === '/' || e.key === '-') {
+      e.preventDefault();
+      if (field === 'year') { monthRef.current?.focus(); monthRef.current?.select(); }
+      else if (field === 'month') { dayRef.current?.focus(); dayRef.current?.select(); }
+    }
+  };
+
+  const handleGroupBlur = (e: React.FocusEvent) => {
+    if (containerRef.current?.contains(e.relatedTarget as Node)) return;
+    commitOrReset();
+  };
+
+  const days = eachDayOfInterval({ start: startOfMonth(viewDate), end: endOfMonth(viewDate) });
+  const startDay = startOfMonth(viewDate).getDay();
+  const prefixDays = Array(startDay).fill(null);
+
+  return (
+    <div className="compact-date-input" ref={containerRef} onBlur={handleGroupBlur}>
+      <div className="compact-date-wrapper" onClick={(e) => { if ((e.target as HTMLElement).tagName !== 'INPUT') dayRef.current?.focus(); }}>
+        <input ref={yearRef} className="date-seg year" value={parts.year} onChange={handleYearChange} onKeyDown={handleKeyDown('year')} placeholder="YYYY" maxLength={4} inputMode="numeric" />
+        <span className="sep">-</span>
+        <input ref={monthRef} className="date-seg month" value={parts.month} onChange={handleMonthChange} onKeyDown={handleKeyDown('month')} placeholder="MM" maxLength={2} inputMode="numeric" />
+        <span className="sep">-</span>
+        <input ref={dayRef} className="date-seg day" value={parts.day} onChange={handleDayChange} onKeyDown={handleKeyDown('day')} placeholder="DD" maxLength={2} inputMode="numeric" />
+        <button className="compact-toggle-btn" onClick={() => setIsOpen(!isOpen)}><CalendarIcon size={14} /></button>
+      </div>
+      {isOpen && (
+        <div className="date-picker-dropdown">
+           <div className="calendar-header">
+              <button onClick={() => setViewDate(subMonths(viewDate, 1))}><ChevronLeft size={16} /></button>
+              <span className="current-month">{format(viewDate, 'yyyy年 MM月', { locale: zhCN })}</span>
+              <button onClick={() => setViewDate(addMonths(viewDate, 1))}><ChevronRight size={16} /></button>
+          </div>
+          <div className="calendar-weekdays">{['日', '一', '二', '三', '四', '五', '六'].map(d => <span key={d}>{d}</span>)}</div>
+          <div className="calendar-grid">
+            {prefixDays.map((_, i) => <div key={`empty-${i}`} className="calendar-day empty"></div>)}
+            {days.map(day => {
+              const dateStr = format(day, 'yyyy-MM-dd');
+              return <button key={dateStr} className={`calendar-day ${value === dateStr ? 'selected' : ''} ${isToday(day) ? 'today' : ''}`} onClick={() => { onChange(dateStr); setParts(splitValue(dateStr)); setIsOpen(false); }}>{format(day, 'd')}</button>
+            })}
+          </div>
+          <div className="calendar-footer">
+            <button className="today-btn" onClick={() => { const today = getChinaToday(); onChange(today); setParts(splitValue(today)); setViewDate(parse(today, 'yyyy-MM-dd', new Date())); setIsOpen(false); }}>今天</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+// --- End Compact Date Input ---
 
 interface ParsedItem {
   title: string;
@@ -458,7 +623,7 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
                     />
                   </div>
 
-                  <div style={{ width: 110 }}>
+                  <div style={{ width: 100 }}>
                     <Select
                       value={item.category}
                       onChange={(val) => updateItem(i, "category", val)}
@@ -466,8 +631,8 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
                     />
                   </div>
                   
-                  <div style={{ width: 140 }}>
-                    <DateInput 
+                  <div style={{ width: 135 }}>
+                    <CompactDateInput 
                       value={item.date || ""} 
                       onChange={(val) => updateItem(i, "date", val)} 
                     />
