@@ -623,7 +623,7 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
                     />
                   </div>
 
-                  <div style={{ width: 100 }}>
+                  <div className="ai-category-wrapper">
                     <Select
                       value={item.category}
                       onChange={(val) => updateItem(i, "category", val)}
@@ -631,7 +631,7 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
                     />
                   </div>
                   
-                  <div style={{ width: 125 }}>
+                  <div className="ai-date-wrapper">
                     <CompactDateInput 
                       value={item.date || ""} 
                       onChange={(val) => updateItem(i, "date", val)} 

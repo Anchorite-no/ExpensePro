@@ -431,8 +431,20 @@
 }
 
 .ai-result-amount {
-  width: 70px;
+  width: 90px;
   padding-left: 18px !important;
+  -moz-appearance: textfield; /* Firefox */
+}
+
+.ai-result-amount::-webkit-outer-spin-button,
+.ai-result-amount::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.ai-category-wrapper,
+.ai-date-wrapper {
+  width: 125px;
 }
 
 /* Compact Date Input Styles (Local Scope) */
