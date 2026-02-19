@@ -138,9 +138,9 @@ const CompactDateInput: React.FC<{ value: string; onChange: (date: string) => vo
     <div className="compact-date-input" ref={containerRef} onBlur={handleGroupBlur}>
       <div className="compact-date-wrapper" onClick={(e) => { if ((e.target as HTMLElement).tagName !== 'INPUT') dayRef.current?.focus(); }}>
         <input ref={yearRef} className="date-seg year" value={parts.year} onChange={handleYearChange} onKeyDown={handleKeyDown('year')} placeholder="YYYY" maxLength={4} inputMode="numeric" />
-        <span className="sep">-</span>
+        <span className="sep">/</span>
         <input ref={monthRef} className="date-seg month" value={parts.month} onChange={handleMonthChange} onKeyDown={handleKeyDown('month')} placeholder="MM" maxLength={2} inputMode="numeric" />
-        <span className="sep">-</span>
+        <span className="sep">/</span>
         <input ref={dayRef} className="date-seg day" value={parts.day} onChange={handleDayChange} onKeyDown={handleKeyDown('day')} placeholder="DD" maxLength={2} inputMode="numeric" />
         <button className="compact-toggle-btn" onClick={() => setIsOpen(!isOpen)}><CalendarIcon size={14} /></button>
       </div>

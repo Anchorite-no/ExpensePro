@@ -467,12 +467,12 @@
   padding: 0;
   text-align: center;
   outline: none;
-  font-family: monospace; /* Better alignment */
+  font-family: inherit; /* Restored original font */
 }
 
 .compact-date-wrapper .year { width: 34px; }
 .compact-date-wrapper .month, .compact-date-wrapper .day { width: 18px; }
-.compact-date-wrapper .sep { color: var(--text-secondary); margin: 0 1px; font-weight: bold; }
+.compact-date-wrapper .sep { color: var(--text-secondary); margin: 0; font-weight: bold; } /* Removed margin for tighter spacing */
 
 .compact-toggle-btn {
   margin-left: auto;
