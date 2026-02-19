@@ -29,12 +29,7 @@ export const Select: React.FC<SelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [coords, setCoords] = useState<{
-    top?: number;
-    left: number;
-    width: number;
-    bottom?: number;
-  }>({ left: 0, width: 0 });
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
 
   const selectedOption = options.find((opt) => opt.value === value);
 
@@ -75,28 +70,11 @@ export const Select: React.FC<SelectProps> = ({
     
     if (!isOpen && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top;
-      const DROPDOWN_MAX_HEIGHT = 260; // 250px + padding/margin
-
-      // Decide whether to flip: if not enough space below AND more space above
-      if (spaceBelow < DROPDOWN_MAX_HEIGHT && spaceAbove > spaceBelow) {
-        // Render ABOVE
-        setCoords({
-          bottom: window.innerHeight - rect.top + 4, // 4px margin from top of trigger
-          left: rect.left,
-          width: rect.width,
-          top: undefined
-        });
-      } else {
-        // Render BELOW (Default)
-        setCoords({
-          top: rect.bottom + 4, // 4px margin from bottom of trigger
-          left: rect.left,
-          width: rect.width,
-          bottom: undefined
-        });
-      }
+      setCoords({
+        top: rect.bottom + window.scrollY + 4, // 4px margin
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
     }
     setIsOpen(!isOpen);
   };
@@ -142,12 +120,10 @@ export const Select: React.FC<SelectProps> = ({
           className="custom-select-dropdown"
           style={{
             position: 'fixed',
-            top: coords.top !== undefined ? coords.top : 'auto',
-            bottom: coords.bottom !== undefined ? coords.bottom : 'auto',
-            left: coords.left,
+            top: coords.top - window.scrollY, // Adjust for fixed positioning
+            left: coords.left - window.scrollX,
             width: coords.width,
             zIndex: 9999, // Ensure it's on top
-            transformOrigin: coords.bottom !== undefined ? 'bottom center' : 'top center'
           }}
         >
           {options.length > 0 ? (
