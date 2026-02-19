@@ -334,7 +334,7 @@
   border-radius: 8px;
   flex-wrap: nowrap;
   transition: all 0.2s ease;
-  min-width: 600px; /* Force horizontal scroll on small screens */
+  min-width: fit-content; /* Only take space needed by content */
 }
 
 .ai-result-item:hover {
