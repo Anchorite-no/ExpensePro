@@ -201,8 +201,8 @@ const CompactDateInput: React.FC<{ value: string; onChange: (date: string) => vo
           style={{
             position: 'fixed',
             top: coords.top,
-            ...(coords.left !== undefined ? { left: coords.left } : {}),
-            ...(coords.right !== undefined ? { right: coords.right } : {}),
+            left: coords.left !== undefined ? coords.left : 'auto',
+            right: coords.right !== undefined ? coords.right : 'auto',
             zIndex: 9999,
           }}
         >
