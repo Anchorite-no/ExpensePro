@@ -101,26 +101,10 @@ const CompactDateInput: React.FC<{ value: string; onChange: (date: string) => vo
 
     if (!isOpen && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
-      const CALENDAR_WIDTH = 260;
-      const isMobile = window.innerWidth <= 768;
-      
-      let computedLeft: number | undefined = rect.left;
-      let computedRight: number | undefined = undefined;
-
-      if (rect.left + CALENDAR_WIDTH > window.innerWidth) {
-        computedLeft = undefined;
-        computedRight = window.innerWidth - rect.right;
-      }
-      
-      if (isMobile && computedRight !== undefined && window.innerWidth < CALENDAR_WIDTH) {
-          computedLeft = (window.innerWidth - CALENDAR_WIDTH) / 2;
-          computedRight = undefined;
-      }
-
+      // Always align the right edge of the calendar to the right edge of the input
       setCoords({
         top: rect.bottom + 4,
-        left: computedLeft,
-        right: computedRight,
+        right: window.innerWidth - rect.right,
       });
     }
     setIsOpen(!isOpen);
