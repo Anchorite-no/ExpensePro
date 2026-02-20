@@ -569,12 +569,14 @@
 
   .ai-result-amount-wrapper {
     flex: 0 0 auto; /* Keep exact size, don't grow or shrink */
+    width: 75px; /* Force width */
   }
 
   .ai-result-amount {
     width: 100%;
     min-width: 70px; /* Protect amount from being eaten */
-    text-align: right;
+    max-width: 80px; /* Prevent taking too much space */
+    text-align: left; /* Keep left aligned as requested */
   }
 
   /* Bottom row logic */
