@@ -39,7 +39,6 @@ function parseDisplayDate(year: string, month: string, day: string): string | nu
 const CompactDateInput: React.FC<{ value: string; onChange: (date: string) => void }> = ({ value, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
-  const [coords, setCoords] = useState({ top: 0, left: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const yearRef = useRef<HTMLInputElement>(null);
   const monthRef = useRef<HTMLInputElement>(null);
@@ -64,51 +63,13 @@ const CompactDateInput: React.FC<{ value: string; onChange: (date: string) => vo
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const dropdown = document.getElementById('compact-date-portal');
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node) &&
-        dropdown &&
-        !dropdown.contains(event.target as Node)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
-    
-    const handleScroll = () => {
-      if (isOpen) setIsOpen(false);
-    };
-
     document.addEventListener("mousedown", handleClickOutside);
-    window.addEventListener('scroll', handleScroll, true);
-    window.addEventListener('resize', handleScroll);
-    
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      window.removeEventListener('scroll', handleScroll, true);
-      window.removeEventListener('resize', handleScroll);
-    };
-  }, [isOpen]);
-
-  const toggleOpen = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Blur any active input to prevent mobile keyboard from popping up
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-
-    if (!isOpen && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      // Position below the input
-      setCoords({
-        top: rect.bottom + window.scrollY + 4,
-        left: rect.left + window.scrollX,
-      });
-    }
-    setIsOpen(!isOpen);
-  };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const commitOrReset = useCallback(() => {
     const result = parseDisplayDate(parts.year, parts.month, parts.day);
@@ -147,7 +108,7 @@ const CompactDateInput: React.FC<{ value: string; onChange: (date: string) => vo
       if (raw.length === 1 && num > 3) { raw = '0' + raw; setParts(prev => ({ ...prev, day: raw })); }
       const result = parseDisplayDate(parts.year, parts.month, raw);
       if (result) { onChange(result); setViewDate(parse(result, 'yyyy-MM-dd', new Date())); }
-      // dayRef.current?.blur(); // Removed to prevent premature reset
+      setTimeout(() => dayRef.current?.blur(), 0);
     }
   };
 
@@ -166,19 +127,7 @@ const CompactDateInput: React.FC<{ value: string; onChange: (date: string) => vo
 
   const handleGroupBlur = (e: React.FocusEvent) => {
     if (containerRef.current?.contains(e.relatedTarget as Node)) return;
-    // Don't commit if clicking the portal
-    const dropdown = document.getElementById('compact-date-portal');
-    if (dropdown && dropdown.contains(e.relatedTarget as Node)) return;
-    
     commitOrReset();
-  };
-
-  const handleWrapperClick = (e: React.MouseEvent) => {
-    // Only focus if clicking the background, NOT the button or inputs
-    const target = e.target as HTMLElement;
-    if (target.tagName !== 'INPUT' && target.tagName !== 'BUTTON' && !target.closest('button')) {
-      dayRef.current?.focus();
-    }
   };
 
   const days = eachDayOfInterval({ start: startOfMonth(viewDate), end: endOfMonth(viewDate) });
@@ -187,43 +136,33 @@ const CompactDateInput: React.FC<{ value: string; onChange: (date: string) => vo
 
   return (
     <div className="compact-date-input" ref={containerRef} onBlur={handleGroupBlur}>
-      <div className="compact-date-wrapper" onClick={handleWrapperClick}>
+      <div className="compact-date-wrapper" onClick={(e) => { if ((e.target as HTMLElement).tagName !== 'INPUT') dayRef.current?.focus(); }}>
         <input ref={yearRef} className="date-seg year" value={parts.year} onChange={handleYearChange} onKeyDown={handleKeyDown('year')} placeholder="" maxLength={4} inputMode="numeric" />
         <span className="sep">/</span>
         <input ref={monthRef} className="date-seg month" value={parts.month} onChange={handleMonthChange} onKeyDown={handleKeyDown('month')} placeholder="" maxLength={2} inputMode="numeric" />
         <span className="sep">/</span>
         <input ref={dayRef} className="date-seg day" value={parts.day} onChange={handleDayChange} onKeyDown={handleKeyDown('day')} placeholder="" maxLength={2} inputMode="numeric" />
-        <button type="button" className="compact-toggle-btn" onClick={toggleOpen}><CalendarIcon size={14} /></button>
+        <button className="compact-toggle-btn" onClick={() => setIsOpen(!isOpen)}><CalendarIcon size={14} /></button>
       </div>
-      {isOpen && createPortal(
-        <div 
-          id="compact-date-portal"
-          className="date-picker-dropdown"
-          style={{
-            position: 'fixed',
-            top: coords.top - window.scrollY,
-            left: coords.left - window.scrollX,
-            zIndex: 9999,
-          }}
-        >
+      {isOpen && (
+        <div className="date-picker-dropdown">
            <div className="calendar-header">
-              <button type="button" onClick={() => setViewDate(subMonths(viewDate, 1))}><ChevronLeft size={16} /></button>
+              <button onClick={() => setViewDate(subMonths(viewDate, 1))}><ChevronLeft size={16} /></button>
               <span className="current-month">{format(viewDate, 'yyyy年 MM月', { locale: zhCN })}</span>
-              <button type="button" onClick={() => setViewDate(addMonths(viewDate, 1))}><ChevronRight size={16} /></button>
+              <button onClick={() => setViewDate(addMonths(viewDate, 1))}><ChevronRight size={16} /></button>
           </div>
           <div className="calendar-weekdays">{['日', '一', '二', '三', '四', '五', '六'].map(d => <span key={d}>{d}</span>)}</div>
           <div className="calendar-grid">
             {prefixDays.map((_, i) => <div key={`empty-${i}`} className="calendar-day empty"></div>)}
             {days.map(day => {
               const dateStr = format(day, 'yyyy-MM-dd');
-              return <button type="button" key={dateStr} className={`calendar-day ${value === dateStr ? 'selected' : ''} ${isToday(day) ? 'today' : ''}`} onClick={() => { onChange(dateStr); setParts(splitValue(dateStr)); setIsOpen(false); }}>{format(day, 'd')}</button>
+              return <button key={dateStr} className={`calendar-day ${value === dateStr ? 'selected' : ''} ${isToday(day) ? 'today' : ''}`} onClick={() => { onChange(dateStr); setParts(splitValue(dateStr)); setIsOpen(false); }}>{format(day, 'd')}</button>
             })}
           </div>
           <div className="calendar-footer">
-            <button type="button" className="today-btn" onClick={() => { const today = getChinaToday(); onChange(today); setParts(splitValue(today)); setViewDate(parse(today, 'yyyy-MM-dd', new Date())); setIsOpen(false); }}>今天</button>
+            <button className="today-btn" onClick={() => { const today = getChinaToday(); onChange(today); setParts(splitValue(today)); setViewDate(parse(today, 'yyyy-MM-dd', new Date())); setIsOpen(false); }}>今天</button>
           </div>
-        </div>,
-        document.body
+        </div>
       )}
     </div>
   );
