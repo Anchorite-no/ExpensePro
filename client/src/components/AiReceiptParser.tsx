@@ -95,35 +95,30 @@ const CompactDateInput: React.FC<{ value: string; onChange: (date: string) => vo
     e.preventDefault();
     e.stopPropagation();
     
-    // Blur any active input to prevent mobile keyboard from popping up
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
 
     if (!isOpen && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
-      const CALENDAR_WIDTH = 260; // Approximate width of the date picker
+      const CALENDAR_WIDTH = 260;
       const isMobile = window.innerWidth <= 768;
       
-      // Right edge detection
       let computedLeft: number | undefined = rect.left;
       let computedRight: number | undefined = undefined;
 
       if (rect.left + CALENDAR_WIDTH > window.innerWidth) {
-        // If it overflows right, align it to the right edge of the input
-        // Subtracted scrollX logic since fixed positioning doesn't need it if we don't scroll while open
         computedLeft = undefined;
         computedRight = window.innerWidth - rect.right;
       }
       
-      // On very small screens, just center it or give it a fixed margin
       if (isMobile && computedRight !== undefined && window.innerWidth < CALENDAR_WIDTH) {
           computedLeft = (window.innerWidth - CALENDAR_WIDTH) / 2;
           computedRight = undefined;
       }
 
       setCoords({
-        top: rect.bottom + 4, // use fixed viewport coordinate
+        top: rect.bottom + 4,
         left: computedLeft,
         right: computedRight,
       });
@@ -188,7 +183,6 @@ const CompactDateInput: React.FC<{ value: string; onChange: (date: string) => vo
   const handleGroupBlur = (e: React.FocusEvent) => {
     if (containerRef.current?.contains(e.relatedTarget as Node)) return;
     
-    // Don't commit if clicking the portal
     const dropdown = document.getElementById('compact-date-portal');
     if (dropdown && dropdown.contains(e.relatedTarget as Node)) return;
     
@@ -196,7 +190,6 @@ const CompactDateInput: React.FC<{ value: string; onChange: (date: string) => vo
   };
 
   const handleWrapperClick = (e: React.MouseEvent) => {
-    // Only focus if clicking the background, NOT the button or inputs
     const target = e.target as HTMLElement;
     if (target.tagName !== 'INPUT' && target.tagName !== 'BUTTON' && !target.closest('button')) {
       dayRef.current?.focus();

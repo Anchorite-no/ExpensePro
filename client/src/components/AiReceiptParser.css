@@ -554,12 +554,11 @@
     padding: 12px;
   }
 
-  /* Top Row logic for mobile */
   .ai-result-top-row {
     width: 100%;
     justify-content: space-between;
     align-items: flex-start;
-    min-width: 0; /* Override desktop protection */
+    min-width: 0;
     gap: 8px;
   }
 
@@ -568,18 +567,17 @@
   }
 
   .ai-result-amount-wrapper {
-    flex: 0 0 auto; /* Keep exact size, don't grow or shrink */
-    width: 75px; /* Force width */
+    flex: 0 0 auto;
+    width: 75px;
   }
 
   .ai-result-amount {
     width: 100%;
-    min-width: 70px; /* Protect amount from being eaten */
-    max-width: 80px; /* Prevent taking too much space */
-    text-align: left; /* Keep left aligned as requested */
+    min-width: 70px;
+    max-width: 80px;
+    text-align: left;
   }
 
-  /* Bottom row logic */
   .ai-result-meta {
     justify-content: space-between;
     width: 100%;
