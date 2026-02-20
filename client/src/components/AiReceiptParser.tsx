@@ -40,7 +40,7 @@ function parseDisplayDate(year: string, month: string, day: string): string | nu
 const CompactDateInput: React.FC<{ value: string; onChange: (date: string) => void }> = ({ value, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
-  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const [coords, setCoords] = useState<{top: number; left?: number; right?: number}>({ top: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const yearRef = useRef<HTMLInputElement>(null);
   const monthRef = useRef<HTMLInputElement>(null);
@@ -95,11 +95,37 @@ const CompactDateInput: React.FC<{ value: string; onChange: (date: string) => vo
     e.preventDefault();
     e.stopPropagation();
     
+    // Blur any active input to prevent mobile keyboard from popping up
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
     if (!isOpen && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
+      const CALENDAR_WIDTH = 260; // Approximate width of the date picker
+      const isMobile = window.innerWidth <= 768;
+      
+      // Right edge detection
+      let computedLeft: number | undefined = rect.left;
+      let computedRight: number | undefined = undefined;
+
+      if (rect.left + CALENDAR_WIDTH > window.innerWidth) {
+        // If it overflows right, align it to the right edge of the input
+        // Subtracted scrollX logic since fixed positioning doesn't need it if we don't scroll while open
+        computedLeft = undefined;
+        computedRight = window.innerWidth - rect.right;
+      }
+      
+      // On very small screens, just center it or give it a fixed margin
+      if (isMobile && computedRight !== undefined && window.innerWidth < CALENDAR_WIDTH) {
+          computedLeft = (window.innerWidth - CALENDAR_WIDTH) / 2;
+          computedRight = undefined;
+      }
+
       setCoords({
-        top: rect.bottom + window.scrollY + 4,
-        left: rect.left + window.scrollX,
+        top: rect.bottom + 4, // use fixed viewport coordinate
+        left: computedLeft,
+        right: computedRight,
       });
     }
     setIsOpen(!isOpen);
@@ -197,8 +223,9 @@ const CompactDateInput: React.FC<{ value: string; onChange: (date: string) => vo
           className="date-picker-dropdown"
           style={{
             position: 'fixed',
-            top: coords.top - window.scrollY,
-            left: coords.left - window.scrollX,
+            top: coords.top,
+            ...(coords.left !== undefined ? { left: coords.left } : {}),
+            ...(coords.right !== undefined ? { right: coords.right } : {}),
             zIndex: 9999,
           }}
         >
