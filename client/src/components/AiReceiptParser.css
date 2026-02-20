@@ -343,6 +343,14 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
+.ai-result-top-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1; /* Take up main space */
+  min-width: 250px; /* Base protection for both title and amount */
+}
+
 .ai-result-info {
   display: flex;
   flex-direction: column;
@@ -546,25 +554,35 @@
     padding: 12px;
   }
 
+  /* Top Row logic for mobile */
+  .ai-result-top-row {
+    width: 100%;
+    justify-content: space-between;
+    align-items: flex-start;
+    min-width: 0; /* Override desktop protection */
+    gap: 8px;
+  }
+
   .ai-result-info {
     min-width: 0;
   }
 
+  .ai-result-amount-wrapper {
+    flex: 0 0 auto; /* Keep exact size, don't grow or shrink */
+  }
+
+  .ai-result-amount {
+    width: 100%;
+    min-width: 70px; /* Protect amount from being eaten */
+    text-align: right;
+  }
+
+  /* Bottom row logic */
   .ai-result-meta {
     justify-content: space-between;
     width: 100%;
     gap: 6px;
   }
-  
-  .ai-result-amount-wrapper {
-    flex: 1;
-  }
-  
-  .ai-result-amount {
-    width: 100%;
-  }
-
-  /* Hide date on very small screens or make it full width? Let's keep it visible but stacked if needed */
 }
 
 /* Full Screen Image Preview */

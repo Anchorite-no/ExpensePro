@@ -655,22 +655,22 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
           <div className="ai-results-list">
             {parsedItems.map((item, i) => (
               <div key={i} className="ai-result-item">
-                <div className="ai-result-info">
-                  <input
-                    className="ai-result-title"
-                    value={item.title}
-                    onChange={(e) => updateItem(i, "title", e.target.value)}
-                    placeholder="消费内容"
-                  />
-                  <input
-                    className="ai-result-note"
-                    value={item.note || ""}
-                    onChange={(e) => updateItem(i, "note", e.target.value)}
-                    placeholder="备注（可选）"
-                  />
-                </div>
-                
-                <div className="ai-result-meta">
+                <div className="ai-result-top-row">
+                  <div className="ai-result-info">
+                    <input
+                      className="ai-result-title"
+                      value={item.title}
+                      onChange={(e) => updateItem(i, "title", e.target.value)}
+                      placeholder="消费内容"
+                    />
+                    <input
+                      className="ai-result-note"
+                      value={item.note || ""}
+                      onChange={(e) => updateItem(i, "note", e.target.value)}
+                      placeholder="备注（可选）"
+                    />
+                  </div>
+                  
                   <div className="ai-result-amount-wrapper">
                     <span className="currency-symbol">{currency}</span>
                     <input
@@ -680,7 +680,9 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
                       onChange={(e) => updateItem(i, "amount", Number(e.target.value))}
                     />
                   </div>
-
+                </div>
+                
+                <div className="ai-result-meta">
                   <div className="ai-category-wrapper">
                     <Select
                       value={item.category}
