@@ -922,9 +922,6 @@ tbody tr:hover {
 
 /* ================= Extra Small Screens (≤480px) ================= */
 @media (max-width: 480px) {
-  .main-content {
-    padding: 10px;
-  }
 
   .content-wrapper {
     gap: 14px;
