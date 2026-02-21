@@ -355,8 +355,8 @@ tbody tr:hover {
 
   /* Offset content below the newly fixed top navigation */
   .main-content {
-    /* 50px header + nav + safe area = approx 100px */
-    padding-top: calc(env(safe-area-inset-top) + 100px);
+    /* 50px header + nav + safe area = approx 65px */
+    padding-top: calc(env(safe-area-inset-top) + 65px);
     height: 100dvh;
     padding-bottom: env(safe-area-inset-bottom);
   }

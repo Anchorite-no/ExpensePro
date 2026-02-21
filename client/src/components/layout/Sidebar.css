@@ -240,7 +240,7 @@
     border-bottom: 1px solid var(--border);
     padding: 0;
     flex-direction: row;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     overflow: visible;
     position: fixed;
     top: 0;
@@ -295,6 +295,7 @@
     align-items: center;
     gap: 4px;
     padding: 0 12px 0 0;
+    overflow: visible;
   }
 
   .sidebar nav a {
@@ -313,7 +314,6 @@
     position: relative;
     display: flex;
     align-items: center;
-    margin-left: auto;
     /* Push to the extreme right */
   }
 
