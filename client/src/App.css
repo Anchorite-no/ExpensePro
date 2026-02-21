@@ -33,6 +33,101 @@ html.dark,
   --tooltip-text: #f3f4f6;
 }
 
+/* ================= Loading Screen ================= */
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-body);
+  z-index: 99999;
+  gap: 32px;
+  transition: background-color 0.3s ease;
+}
+
+.loading-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  animation: loadingFadeIn 0.6s ease-out;
+}
+
+.loading-logo-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--primary), #a78bfa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
+  animation: loadingPulse 2s ease-in-out infinite;
+}
+
+.loading-logo-icon svg {
+  width: 28px;
+  height: 28px;
+  color: white;
+}
+
+.loading-app-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.loading-spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  animation: loadingFadeIn 0.6s ease-out 0.2s both;
+}
+
+.loading-spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  animation: loadingSpin 0.8s linear infinite;
+}
+
+.loading-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  animation: loadingDots 1.5s ease-in-out infinite;
+}
+
+@keyframes loadingSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes loadingPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3); }
+  50% { transform: scale(1.05); box-shadow: 0 12px 32px rgba(99, 102, 241, 0.4); }
+}
+
+@keyframes loadingFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes loadingDots {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Dark theme adjustments for loading */
+.loading-screen.dark .loading-logo-icon {
+  box-shadow: 0 8px 24px rgba(129, 140, 248, 0.25);
+}
+
 /* ================= Global Reset ================= */
 * {
   box-sizing: border-box;
