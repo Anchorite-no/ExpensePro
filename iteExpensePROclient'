@@ -1,0 +1,10 @@
+[33m9567d21[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m fix(css): add env syntax fallback to fix discarded calculation causing mobile overlapping
+[33m8bfb9f0[m fix(pwa): add apple-touch-icon for safari and tweak mobile layout padding gap
+[33m552a8a4[m fix(layout): remove conflicting 480px padding and add PWA logo
+[33m46818d2[m fix(mobile): enforce exact height on mobile sidebar to prevent overlapping content
+[33mcc0315e[m fix(mobile): beautify more dropdown menu and fix main content overlapping title
+[33m1f98208[m fix(mobile): resolve top menu layout alignment and content overlap issues
+[33me317aeb[m fix(ui): resolve mobile layout bugs
+[33mbf15da6[m feat(ui): implement solid native WeChat-style top menu and scrollable layout
+[33md3ebb73[m feat(ui): reintegrate PWA with standalone mode and transparent status bar padding
+[33m042a856[m fix(ui): enforce touch-action pan-x pan-y on body to strictly prevent pinch-to-zoom on mobile edge/safari
