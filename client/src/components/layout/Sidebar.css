@@ -231,6 +231,11 @@
   color: #EF4444;
 }
 
+/* Hide mobile more action by default on desktop */
+.mobile-more-action {
+  display: none;
+}
+
 /* Responsive Sidebar */
 @media (max-width: 768px) {
   .sidebar {
