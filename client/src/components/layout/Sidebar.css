@@ -235,7 +235,9 @@
 @media (max-width: 768px) {
   .sidebar {
     width: 100%;
-    height: auto;
+    height: calc(56px + env(safe-area-inset-top));
+    /* prevent any dynamic expansion */
+    max-height: calc(56px + env(safe-area-inset-top));
     border-right: none;
     border-bottom: 1px solid var(--border);
     padding: 0;
