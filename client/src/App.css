@@ -355,8 +355,8 @@ tbody tr:hover {
 
   /* Offset content below the newly fixed top navigation */
   .main-content {
-    /* 56px header + 24px gap = 80px */
-    padding-top: 80px;
+    /* 56px header + 19px gap = 75px */
+    padding-top: 75px;
     padding-left: 0;
     padding-right: 0;
     height: auto;
@@ -372,7 +372,7 @@ tbody tr:hover {
   .top-bar {
     margin-top: 0;
     padding-top: 0;
-    margin-bottom: 8px;
+    margin-bottom: 0px;
   }
 
   .mobile-actions {
