@@ -235,9 +235,9 @@
 @media (max-width: 768px) {
   .sidebar {
     width: 100%;
-    height: calc(56px + env(safe-area-inset-top));
+    height: calc(56px + env(safe-area-inset-top, 0px));
     /* prevent any dynamic expansion */
-    max-height: calc(56px + env(safe-area-inset-top));
+    max-height: calc(56px + env(safe-area-inset-top, 0px));
     border-right: none;
     border-bottom: 1px solid var(--border);
     padding: 0;
@@ -251,7 +251,7 @@
     z-index: 1000;
     /* Create solid background taking dynamic island into account */
     background: var(--bg-sidebar);
-    padding-top: env(safe-area-inset-top);
+    padding-top: env(safe-area-inset-top, 0px);
   }
 
   .sidebar.collapsed {

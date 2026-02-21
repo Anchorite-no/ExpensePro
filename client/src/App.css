@@ -356,11 +356,11 @@ tbody tr:hover {
   /* Offset content below the newly fixed top navigation */
   .main-content {
     /* 56px header + 4px gap + safe area = 60px */
-    padding-top: calc(env(safe-area-inset-top) + 60px);
+    padding-top: calc(env(safe-area-inset-top, 0px) + 60px);
     padding-left: 0;
     padding-right: 0;
     height: 100dvh;
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   .content-wrapper {
