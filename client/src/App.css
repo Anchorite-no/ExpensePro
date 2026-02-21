@@ -357,12 +357,15 @@ tbody tr:hover {
   .main-content {
     /* 50px header + nav + safe area = approx 65px */
     padding-top: calc(env(safe-area-inset-top) + 65px);
+    padding-left: 0;
+    padding-right: 0;
     height: 100dvh;
     padding-bottom: env(safe-area-inset-bottom);
   }
 
   .content-wrapper {
-    padding: 0;
+    /* Explicit horizontal padding, keep top padding unchanged */
+    padding: 0 12px;
   }
 
   /* Since sidebar is global menu, hide bottom border of top-bar */
@@ -375,15 +378,6 @@ tbody tr:hover {
   .mobile-actions {
     display: flex;
     gap: 6px;
-  }
-
-  .top-bar {
-    margin-bottom: 16px;
-  }
-
-  .main-content,
-  .content-wrapper {
-    padding: 12px;
   }
 
   .stats-grid {
