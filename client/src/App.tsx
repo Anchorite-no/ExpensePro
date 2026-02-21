@@ -104,13 +104,23 @@ function AppContent() {
     localStorage.setItem("theme", next);
   }, [theme]);
 
-  // Apply theme to document element
+  // Apply theme to document element and update mobile browser theme-color
   useEffect(() => {
-    if (theme === "dark") {
+    const isDark = theme === "dark";
+    if (isDark) {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
     }
+
+    // Sync browser overscroll and status bar color for Edge/Chrome/Safari
+    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (!metaThemeColor) {
+      metaThemeColor = document.createElement("meta");
+      metaThemeColor.setAttribute("name", "theme-color");
+      document.head.appendChild(metaThemeColor);
+    }
+    metaThemeColor.setAttribute("content", isDark ? "#111827" : "#f3f4f6");
   }, [theme]);
 
   /* ========== Expense CRUD ========== */
