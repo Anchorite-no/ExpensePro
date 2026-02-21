@@ -15,6 +15,8 @@
   --tooltip-text: #1f2937;
 }
 
+:root.dark,
+html.dark,
 .dashboard.dark {
   /* Dark Theme */
   --primary: #818cf8;
@@ -36,8 +38,10 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
+  padding: 0;
   font-family: 'Inter', system-ui, sans-serif;
   background-color: var(--bg-body);
   color: var(--text-primary);
@@ -65,9 +69,10 @@ select {
 /* ================= Layout Structure ================= */
 .dashboard {
   display: flex;
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
-  background-color: var(--bg-body); /* Ensure background changes with theme */
+  background-color: var(--bg-body);
+  /* Ensure background changes with theme */
   transition: background-color 0.3s ease;
 }
 
@@ -1144,9 +1149,12 @@ tbody tr:hover {
   align-items: center;
   gap: 2px;
   cursor: text;
-  width: 100%; /* Restore full width */
-  justify-content: flex-start; /* Align content to the left */
-  padding-left: 10px; /* Add some padding on the left */
+  width: 100%;
+  /* Restore full width */
+  justify-content: flex-start;
+  /* Align content to the left */
+  padding-left: 10px;
+  /* Add some padding on the left */
 }
 
 .date-segment {
@@ -1172,14 +1180,16 @@ tbody tr:hover {
 }
 
 .date-segment-year {
-  width: 40px; /* Fixed width for 4 digits */
+  width: 40px;
+  /* Fixed width for 4 digits */
   flex: 0 0 40px;
   text-align: center;
 }
 
 .date-segment-month,
 .date-segment-day {
-  width: 24px; /* Fixed width for 2 digits */
+  width: 24px;
+  /* Fixed width for 2 digits */
   flex: 0 0 24px;
   text-align: center;
 }

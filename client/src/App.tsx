@@ -104,6 +104,15 @@ function AppContent() {
     localStorage.setItem("theme", next);
   }, [theme]);
 
+  // Apply theme to document element
+  useEffect(() => {
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [theme]);
+
   /* ========== Expense CRUD ========== */
   const fetchExpenses = useCallback(async () => {
     if (!token) return;
@@ -264,32 +273,32 @@ function AppContent() {
 
   const renderDashboard = () => (
     <>
-      <StatsGrid 
-        totalAmount={totalAmount} 
-        expenseCount={expenses.length} 
-        maxExpense={maxExpense} 
-        currency={currency} 
+      <StatsGrid
+        totalAmount={totalAmount}
+        expenseCount={expenses.length}
+        maxExpense={maxExpense}
+        currency={currency}
       />
 
-      <BudgetOverview 
-        budget={budget} 
-        periodExpenses={periodExpenses} 
-        currency={currency} 
+      <BudgetOverview
+        budget={budget}
+        periodExpenses={periodExpenses}
+        currency={currency}
       />
 
       <div className="dashboard-body">
-        <QuickAddCard 
-          categories={categories} 
-          onAdd={addExpense} 
-          currency={currency} 
-          theme={theme} 
-          token={token} 
+        <QuickAddCard
+          categories={categories}
+          onAdd={addExpense}
+          currency={currency}
+          theme={theme}
+          token={token}
         />
-        <RecentTransactions 
-          expenses={expenses} 
-          categories={categories} 
-          currency={currency} 
-          onDelete={deleteExpense} 
+        <RecentTransactions
+          expenses={expenses}
+          categories={categories}
+          currency={currency}
+          onDelete={deleteExpense}
         />
       </div>
     </>
@@ -319,7 +328,7 @@ function AppContent() {
 
   return (
     <div className={`dashboard ${theme}`}>
-      <Sidebar 
+      <Sidebar
         activePage={activePage}
         setActivePage={setActivePage}
         sidebarCollapsed={sidebarCollapsed}
@@ -353,7 +362,7 @@ function AppContent() {
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-      <SettingsModal 
+      <SettingsModal
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
         categories={categories}
