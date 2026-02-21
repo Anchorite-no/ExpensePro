@@ -355,8 +355,8 @@ tbody tr:hover {
 
   /* Offset content below the newly fixed top navigation */
   .main-content {
-    /* 50px header height + padding top + safety */
-    padding-top: calc(env(safe-area-inset-top) + 60px);
+    /* 50px header + nav + safe area = approx 100px */
+    padding-top: calc(env(safe-area-inset-top) + 100px);
     height: 100dvh;
     padding-bottom: env(safe-area-inset-bottom);
   }
@@ -369,80 +369,7 @@ tbody tr:hover {
   .top-bar {
     margin-top: 0;
     padding-top: 0;
-  }
-
-  /* Reset padding as mobile-actions is no longer used here */
-  .top-bar {
-    margin: 0 0 16px 0;
-    padding: 0;
-  }
-
-  .sidebar {
-    width: 100%;
-    height: auto;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding: 0;
-    flex-direction: row;
-    flex-wrap: wrap;
-    overflow: visible;
-  }
-
-  .sidebar.collapsed {
-    width: 100%;
-  }
-
-  /* Fix: Reset collapsed sidebar styles on mobile to match expanded state */
-  .sidebar.collapsed .logo {
-    display: flex;
-  }
-
-  .sidebar.collapsed .logo-text {
-    display: block;
-  }
-
-  .sidebar.collapsed .sidebar-header {
-    padding: 0 20px;
-    justify-content: space-between;
-  }
-
-  .sidebar.collapsed nav a {
-    padding: 8px 12px;
-    justify-content: center;
-  }
-
-  .sidebar-header {
-    height: 50px;
-    border-bottom: none;
-    flex: 1;
-    min-width: 140px;
-  }
-
-  .sidebar nav {
-    display: flex;
-    flex-direction: row;
-    flex: 1;
-    justify-content: center;
-    gap: 4px;
-    padding: 4px 8px;
-  }
-
-  .sidebar nav a {
-    padding: 8px 12px;
-    font-size: 13px;
-    border-radius: 8px;
-  }
-
-  .sidebar nav a .nav-text {
-    display: none;
-  }
-
-  .sidebar .sidebar-footer {
-    display: none;
-  }
-
-  .collapse-btn {
-    display: none;
+    margin-bottom: 16px;
   }
 
   .mobile-actions {

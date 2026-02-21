@@ -280,22 +280,26 @@
   .sidebar-header {
     height: 50px;
     border-bottom: none;
-    flex: 1;
-    min-width: 140px;
+    /* Adjust flex behavior so the logo doesn't get squished */
+    flex: 0 0 auto;
+    padding-left: 16px;
+    min-width: auto;
   }
 
   .sidebar nav {
     display: flex;
     flex-direction: row;
     flex: 1;
-    justify-content: space-between;
-    /* Space out nav items and more button */
+    justify-content: flex-end;
+    /* Align links and More button to the right */
+    align-items: center;
     gap: 4px;
-    padding: 4px 12px;
+    padding: 0 12px 0 0;
   }
 
   .sidebar nav a {
-    padding: 8px 12px;
+    padding: 8px;
+    /* Slightly reduce padding to fit mobile screens perfectly */
     font-size: 13px;
     border-radius: 8px;
   }
@@ -340,8 +344,8 @@
     display: flex;
     flex-direction: column;
     min-width: 160px;
-    overflow: hidden;
-    z-index: 2000;
+    /* Ensure no other layers block the dropdown */
+    z-index: 9999;
   }
 
   .mobile-dropdown-item {
