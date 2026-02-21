@@ -37,3 +37,25 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
 }
+
+/* ================= Native App Feel ================= */
+/* Prevent double-tap to zoom on interactive elements, making taps instantly responsive */
+a,
+button,
+input,
+select,
+textarea,
+.stat-card,
+.list-card {
+  touch-action: manipulation;
+}
+
+/* Prevent iOS Safari from auto-zooming when focusing on inputs */
+@media screen and (max-width: 768px) {
+
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
