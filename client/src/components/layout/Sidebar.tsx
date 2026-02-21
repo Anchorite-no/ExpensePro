@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   BarChart3, ChevronRight, ChevronLeft, Settings2, Moon, Sun, LogOut,
-  Wallet, TrendingUp, CreditCard
+  Wallet, TrendingUp, CreditCard, MoreHorizontal
 } from "lucide-react";
 import type { PageType } from "../../types";
 import "./Sidebar.css";
@@ -35,6 +35,20 @@ const Sidebar = React.memo(({
   theme,
   toggleTheme
 }: SidebarProps) => {
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMobileMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
     <aside className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
       <div className="sidebar-header">
@@ -49,16 +63,42 @@ const Sidebar = React.memo(({
 
       <nav>
         {navItems.map(item => (
-          <a 
-            key={item.key} 
-            href="#" 
-            className={activePage === item.key ? "active" : ""} 
-            onClick={e => { e.preventDefault(); setActivePage(item.key); }} 
+          <a
+            key={item.key}
+            href="#"
+            className={activePage === item.key ? "active" : ""}
+            onClick={e => { e.preventDefault(); setActivePage(item.key); }}
             title={item.label}
           >
             {item.icon} <span className="nav-text">{item.label}</span>
           </a>
         ))}
+        {/* Mobile Dropdown Extender immediately following the nav links */}
+        <div className="mobile-more-action" ref={menuRef}>
+          <button
+            className="mobile-more-btn"
+            onClick={(e) => { e.preventDefault(); setShowMobileMenu(!showMobileMenu); }}
+            title="更多菜单"
+          >
+            <MoreHorizontal size={20} />
+          </button>
+          {showMobileMenu && (
+            <div className="mobile-dropdown-menu">
+              <button className="mobile-dropdown-item" onClick={() => { openSettings(); setShowMobileMenu(false); }}>
+                <Settings2 size={18} />
+                <span>系统设置</span>
+              </button>
+              <button className="mobile-dropdown-item" onClick={() => { toggleTheme(); setShowMobileMenu(false); }}>
+                {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+                <span>{theme === "light" ? "夜间模式" : "日间模式"}</span>
+              </button>
+              <button className="mobile-dropdown-item logout" onClick={() => { logout(); setShowMobileMenu(false); }}>
+                <LogOut size={18} />
+                <span>退出登录</span>
+              </button>
+            </div>
+          )}
+        </div>
       </nav>
 
       <div className="sidebar-footer">

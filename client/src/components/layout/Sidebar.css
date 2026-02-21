@@ -242,6 +242,14 @@
     flex-direction: row;
     flex-wrap: wrap;
     overflow: visible;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    /* Create solid background taking dynamic island into account */
+    background: var(--bg-sidebar);
+    padding-top: env(safe-area-inset-top);
   }
 
   .sidebar.collapsed {
@@ -280,9 +288,10 @@
     display: flex;
     flex-direction: row;
     flex: 1;
-    justify-content: center;
+    justify-content: space-between;
+    /* Space out nav items and more button */
     gap: 4px;
-    padding: 4px 8px;
+    padding: 4px 12px;
   }
 
   .sidebar nav a {
@@ -295,6 +304,73 @@
     display: none;
   }
 
+  /* Mobile More Dropdown Layout */
+  .mobile-more-action {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    /* Push to the extreme right */
+  }
+
+  .mobile-more-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 8px 12px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .mobile-more-btn:active {
+    background: var(--bg-input);
+  }
+
+  .mobile-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 5px);
+    right: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    min-width: 160px;
+    overflow: hidden;
+    z-index: 2000;
+  }
+
+  .mobile-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 14px 16px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+    font-size: 15px;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .mobile-dropdown-item:last-child {
+    border-bottom: none;
+  }
+
+  .mobile-dropdown-item:active {
+    background: var(--bg-input);
+  }
+
+  .mobile-dropdown-item.logout {
+    color: var(--danger);
+  }
+
   .sidebar .sidebar-footer {
     display: none;
   }
@@ -302,7 +378,7 @@
   .collapse-btn {
     display: none;
   }
-  
+
   .sidebar-user {
     display: none;
   }

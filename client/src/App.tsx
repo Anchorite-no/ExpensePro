@@ -354,17 +354,6 @@ function AppContent() {
         <div className="content-wrapper">
           <header className="top-bar">
             <h2>{PAGE_TITLES[activePage]}</h2>
-            <div className="mobile-actions">
-              <button className="theme-toggle-mobile" onClick={() => setShowSettings(true)} title="系统设置">
-                <Settings2 size={18} />
-              </button>
-              <button className="theme-toggle-mobile" onClick={toggleTheme} title={theme === "light" ? "切换到夜间模式" : "切换到日间模式"}>
-                {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
-              </button>
-              <button className="theme-toggle-mobile" onClick={logout} title="退出登录">
-                <LogOut size={18} />
-              </button>
-            </div>
           </header>
           {renderPage()}
         </div>

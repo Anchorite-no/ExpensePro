@@ -50,6 +50,10 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
+#root {
+  min-height: 100dvh;
+}
+
 /* Add transitions to all theme-sensitive elements */
 .stat-card,
 .chart-card,
@@ -111,32 +115,6 @@ select {
   margin: 0;
   font-size: 24px;
   color: var(--text-primary);
-}
-
-.mobile-actions {
-  display: none;
-}
-
-/* Mobile top-bar icon buttons */
-.theme-toggle-mobile {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: 8px;
-  transition: all 0.2s;
-  padding: 0;
-}
-
-.theme-toggle-mobile:hover {
-  color: var(--primary);
-  border-color: var(--primary);
-  background: var(--primary-bg);
 }
 
 /* Stats Grid styles moved to components/dashboard/StatsGrid.css */
@@ -373,6 +351,30 @@ tbody tr:hover {
     overflow: auto;
     height: auto;
     min-height: 100vh;
+  }
+
+  /* Offset content below the newly fixed top navigation */
+  .main-content {
+    /* 50px header height + padding top + safety */
+    padding-top: calc(env(safe-area-inset-top) + 60px);
+    height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .content-wrapper {
+    padding: 0;
+  }
+
+  /* Since sidebar is global menu, hide bottom border of top-bar */
+  .top-bar {
+    margin-top: 0;
+    padding-top: 0;
+  }
+
+  /* Reset padding as mobile-actions is no longer used here */
+  .top-bar {
+    margin: 0 0 16px 0;
+    padding: 0;
   }
 
   .sidebar {
