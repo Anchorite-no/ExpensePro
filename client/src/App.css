@@ -45,6 +45,8 @@ body {
   font-family: 'Inter', system-ui, sans-serif;
   background-color: var(--bg-body);
   color: var(--text-primary);
+  /* Strictly disable pinch-to-zoom at CSS level while allowing normal scrolling */
+  touch-action: pan-x pan-y;
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
