@@ -34,14 +34,6 @@ export const AuthForm = () => {
         setEncryptionEnabled(!!data.encryption);
       })
       .catch(() => { /* ignore */ });
-
-    // iOS PWA First Render White Gap Hack
-    // 利用 CSS 中 calc(100dvh + 1px) 预留的极微小滚动空间
-    // 瞬间滚动 1px 强制触发 iOS 底层重新计算视口高度，吞掉底部白边底漆
-    const timer = setTimeout(() => {
-      window.scrollTo({ top: 1, behavior: 'instant' });
-    }, 50);
-    return () => clearTimeout(timer);
   }, []);
 
   // 切换模式时清空状态（但注册成功后保留凭据）
