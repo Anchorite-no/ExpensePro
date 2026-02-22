@@ -276,12 +276,29 @@
 
 /* ================= Auth Form New Styles ================= */
 
+/* 1. Global override: when Auth page is mounted, force html/body to adopt the gradient as their actual background.
+   This ensures that no matter how hard iOS overscrolls the page, the bottom-most layer matches the gradient */
+html:has(.auth-page-container),
+body:has(.auth-page-container) {
+  margin: 0;
+  padding: 0;
+  background-color: #ddd6fe !important; 
+  background-image: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 30%, #c7d2fe 60%, #ddd6fe 100%) !important;
+  background-attachment: fixed !important;
+}
+
+/* 2. Remove default root padding to prevent double padding */
+#root:has(.auth-page-container) {
+  padding: 0 !important;
+}
+
 .auth-page-container {
   display: flex;
   flex-direction: column;
   min-height: 100dvh; 
-  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 30%, #c7d2fe 60%, #ddd6fe 100%);
   position: relative;
+  /* Remove gradient here because we pushed it to the body */
+  background: transparent;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-top: env(safe-area-inset-top);
