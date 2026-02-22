@@ -355,7 +355,7 @@ body:has(.auth-page-container) {
 
 .auth-card.is-login {
   /* 在登录状态下，底部增加间距，将卡片整体向上推 */
-  margin-bottom: 15vh;
+  margin-bottom: 25vh;
 }
 
 .auth-brand {

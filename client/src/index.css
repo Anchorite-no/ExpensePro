@@ -54,3 +54,19 @@ textarea,
 .list-card {
   touch-action: manipulation;
 }
+
+/* ================= PWA 专属体验 ================= */
+/* 仅当网页被安装为 PWA 并独立运行时，隐藏所有滚动条以模拟原生 App */
+@media (display-mode: standalone) {
+  /* 隐藏基于 WebKit (iOS Safari, Chrome 等) 的滚动条 */
+  ::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  /* 隐藏 Firefox 的滚动条 */
+  * {
+    scrollbar-width: none !important;
+  }
+}
