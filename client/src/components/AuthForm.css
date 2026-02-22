@@ -276,22 +276,40 @@
 
 /* ================= Auth Form New Styles ================= */
 /* PWA Background Fix for iOS 18 */
-html:has(.pwa-gradient-canvas),
-body:has(.pwa-gradient-canvas) {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  background-color: transparent !important; 
-  overflow: hidden; 
+
+/* 1. Only apply strict hidden overflow in standalone mode to avoid breaking browser bottom bar */
+@media (display-mode: standalone) {
+  html:has(.pwa-gradient-canvas),
+  body:has(.pwa-gradient-canvas) {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    /* Use the bottom color of the gradient as fallback instead of transparent */
+    background-color: #ddd6fe !important; 
+    overflow: hidden; 
+  }
+}
+
+/* 2. For standard browsers, provide fallback background but allow normal scrolling */
+@media all and (display-mode: browser) {
+  html:has(.pwa-gradient-canvas),
+  body:has(.pwa-gradient-canvas) {
+    background-color: #ddd6fe !important; 
+  }
+}
+
+/* 3. Remove #root padding when gradient canvas is present to prevent double padding */
+#root:has(.pwa-gradient-canvas) {
+  padding: 0 !important;
 }
 
 .pwa-gradient-canvas {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
+  right: 0;
+  bottom: 0;
   background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 30%, #c7d2fe 60%, #ddd6fe 100%);
   z-index: -999;
   pointer-events: none; 
@@ -301,13 +319,14 @@ body:has(.pwa-gradient-canvas) {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100dvh;
+  right: 0;
+  bottom: 0;
   z-index: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-top: env(safe-area-inset-top); 
-  padding-bottom: env(safe-area-inset-bottom);
+  /* Add extra padding at the bottom to ensure content isn't flush against the home indicator */
+  padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
   box-sizing: border-box;
 }
 
