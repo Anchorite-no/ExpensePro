@@ -136,11 +136,13 @@ export const AuthForm = () => {
   };
 
   return (
-    <div className="auth-page-container">
-      <div className="auth-page">
-        <div className="auth-card">
-          {/* 品牌区域 */}
-          <div className="auth-brand">
+    <>
+      <div className="pwa-gradient-canvas"></div>
+      <div className="auth-page-container">
+        <div className="auth-page">
+          <div className="auth-card">
+            {/* 品牌区域 */}
+            <div className="auth-brand">
           <div className="auth-brand-icon">
             <Wallet size={28} />
           </div>
@@ -303,5 +305,6 @@ export const AuthForm = () => {
       </div>
     </div>
     </div>
+    </>
   );
 };
