@@ -310,6 +310,10 @@ body:has(.auth-page-container) {
   display: flex;
   flex-direction: column;
   min-height: 100dvh; 
+  /* Safari iOS PWA First Load Hack: force minimal scroll space to allow scrollTo reflow */
+  @supports (-webkit-touch-callout: none) {
+    min-height: calc(100dvh + 1px);
+  }
   position: relative;
   /* Transparent container reveals the fixed gradient canvas underneath */
   background: transparent;
