@@ -293,14 +293,14 @@ body:has(.auth-page-container) {
 }
 
 /* 3. The true infinite background: fixed peek layer that never scrolls. 
-   Height is set to 120vh to guarantee it covers any aggressive overscroll areas 
-   without calculating complex safe-area insets. */
+   Use absolute overstretching (top/bottom -100px) instead of vh units to 
+   guarantee no initial rendering white gaps on iOS PWA startup. */
 .pwa-gradient-canvas {
   position: fixed;
-  top: -10vh; /* Shift up slightly to ensure top overscroll is covered */
+  top: -100px;
+  bottom: -100px;
   left: 0;
   right: 0;
-  height: 120vh; /* Oversized height to ensure bottom overscroll is covered */
   background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 30%, #c7d2fe 60%, #ddd6fe 100%);
   z-index: -999;
   pointer-events: none; 
@@ -313,8 +313,8 @@ body:has(.auth-page-container) {
   position: relative;
   /* Transparent container reveals the fixed gradient canvas underneath */
   background: transparent;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  /* Remove local overflow to return scrolling to the native document 
+     and eliminate iOS local scroll boundary shadows (the grey line) */
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
 }
