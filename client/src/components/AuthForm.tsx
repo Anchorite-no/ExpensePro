@@ -36,12 +36,11 @@ export const AuthForm = () => {
       .catch(() => { /* ignore */ });
 
     // iOS PWA First Render White Gap Hack
-    // 增加滚动距离，模拟一次真实的手指滑动，彻底消除白边
+    // 利用 CSS 中 calc(100dvh + 1px) 预留的极微小滚动空间
+    // 瞬间滚动 1px 强制触发 iOS 底层重新计算视口高度，吞掉底部白边底漆
     const timer = setTimeout(() => {
-      window.scrollTo({ top: 50, behavior: 'smooth' });
-      // 滚动后立即回弹，营造无缝体验
-      setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 300);
-    }, 150);
+      window.scrollTo({ top: 1, behavior: 'instant' });
+    }, 50);
     return () => clearTimeout(timer);
   }, []);
 
