@@ -275,56 +275,24 @@
 }
 
 /* ================= Auth Form New Styles ================= */
-/* PWA Background Fix for iOS 18 */
 
-/* 1. Only apply strict hidden overflow and clear backgrounds so the fixed gradient can show through */
-html:has(.pwa-gradient-canvas),
-body:has(.pwa-gradient-canvas) {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  background-color: transparent !important; 
-  overflow: hidden; 
-}
-
-/* 2. Remove #root padding when gradient canvas is present to prevent double padding */
-#root:has(.pwa-gradient-canvas) {
-  padding: 0 !important;
-}
-
-/* 3. Gradient Canvas: forcefully stretch to 100vh + safe area so it never leaves a gap at the bottom */
-.pwa-gradient-canvas {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: calc(100vh + env(safe-area-inset-bottom, 34px));
+.auth-page-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh; 
   background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 30%, #c7d2fe 60%, #ddd6fe 100%);
-  z-index: -999;
-  pointer-events: none; 
-}
-
-/* 4. Scroll Content: forcefully stretch to match canvas, and push content up with padding */
-.pwa-scroll-content {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: calc(100vh + env(safe-area-inset-bottom, 34px));
-  z-index: 1;
+  position: relative;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding-top: env(safe-area-inset-top); 
-  /* Critical: Push the actual content safely above the home indicator even though the container extends below it */
-  padding-bottom: calc(env(safe-area-inset-bottom, 34px) + 20px);
-  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .auth-page {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  justify-content: center;
   padding: 20px;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
