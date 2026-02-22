@@ -34,6 +34,15 @@ export const AuthForm = () => {
         setEncryptionEnabled(!!data.encryption);
       })
       .catch(() => { /* ignore */ });
+
+    // iOS PWA First Render White Gap Hack
+    // 增加滚动距离，模拟一次真实的手指滑动，彻底消除白边
+    const timer = setTimeout(() => {
+      window.scrollTo({ top: 50, behavior: 'smooth' });
+      // 滚动后立即回弹，营造无缝体验
+      setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 300);
+    }, 150);
+    return () => clearTimeout(timer);
   }, []);
 
   // 切换模式时清空状态（但注册成功后保留凭据）

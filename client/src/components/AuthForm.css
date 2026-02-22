@@ -336,10 +336,11 @@ body:has(.auth-page-container) {
   margin: auto;
   background: var(--bg-card);
   border-radius: 24px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  /* 移除大阴影，防止在 iOS 边缘回弹时产生黑灰色的视觉颗粒感和污染断层 */
+  box-shadow: none;
+  border: 1px solid var(--border);
   padding: 40px;
   gap: 24px;
-  border: 1px solid var(--border);
 }
 
 .auth-brand {
