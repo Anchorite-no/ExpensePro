@@ -310,9 +310,14 @@ body:has(.auth-page-container) {
   display: flex;
   flex-direction: column;
   min-height: 100dvh; 
+  /* iOS PWA 首屏白边终极修复方案A：使用大视口单位（Large Viewport Height） */
+  /* 当 PWA 启动时，强制使用最大物理屏幕高度，无视系统可能残留的虚假工具栏高度，从而吃掉底部白边 */
+  @supports (height: 100lvh) {
+    min-height: 100lvh;
+  }
   /* Safari iOS PWA First Load Hack: force minimal scroll space to allow scrollTo reflow */
   @supports (-webkit-touch-callout: none) {
-    min-height: calc(100dvh + 1px);
+    min-height: calc(100lvh + 1px);
   }
   position: relative;
   /* Transparent container reveals the fixed gradient canvas underneath */
