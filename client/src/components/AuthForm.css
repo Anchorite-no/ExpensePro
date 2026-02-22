@@ -348,20 +348,26 @@ body:has(.auth-page-container) {
   /* 移除大阴影，防止在 iOS 边缘回弹时产生黑灰色的视觉颗粒感和污染断层 */
   box-shadow: none;
   border: 1px solid var(--border);
-  padding: 32px;
+  padding: 24px;
   gap: 16px;
+  transition: margin 0.3s ease;
+}
+
+.auth-card.is-login {
+  /* 在登录状态下，底部增加间距，将卡片整体向上推 */
+  margin-bottom: 15vh;
 }
 
 .auth-brand {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .auth-brand-icon {
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  border-radius: 14px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -385,7 +391,7 @@ body:has(.auth-page-container) {
 }
 
 .auth-header {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   text-align: center;
 }
 
@@ -393,7 +399,7 @@ body:has(.auth-page-container) {
   font-size: 20px;
   font-weight: 600;
   color: var(--text-primary);
-  margin: 0 0 8px;
+  margin: 0 0 4px;
 }
 
 .auth-subtitle {

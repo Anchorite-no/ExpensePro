@@ -140,7 +140,7 @@ export const AuthForm = () => {
       <div className="pwa-gradient-canvas"></div>
       <div className="auth-page-container">
         <div className="auth-page">
-          <div className="auth-card">
+          <div className={`auth-card ${isLogin ? 'is-login' : 'is-register'}`}>
             {/* 品牌区域 */}
             <div className="auth-brand">
           <div className="auth-brand-icon">
