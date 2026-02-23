@@ -354,12 +354,12 @@ body:has(.auth-page-container) {
 }
 
 .auth-card.is-login {
-  /* 基础状态：在 PC 等大屏幕上保持绝对居中，不加额外的底部推力 */
+  /* 基础状态：在 PC 等大屏幕或非触屏设备上保持绝对居中，不加额外的底部推力 */
 }
 
-@media screen and (max-width: 768px) {
+@media (pointer: coarse) {
   .auth-card.is-login {
-    /* 仅在移动端（屏幕较窄）的登录状态下，底部增加间距，将卡片整体向上推，避免被键盘或手指遮挡 */
+    /* 仅在触屏设备（真正的移动端）的登录状态下，底部增加间距，将卡片整体向上推，避免被键盘或手指遮挡 */
     margin-bottom: 15vh;
   }
 }
