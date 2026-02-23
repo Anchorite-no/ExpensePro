@@ -276,7 +276,12 @@
 }
 
 .txn-edit-amount {
-  min-width: 80px; /* 设置金额输入框最小长度，防止过短导致输入困难 */
+  min-width: 60px; /* 缩短金额最小长度 */
+}
+
+.txn-edit-title,
+.txn-edit-note {
+  min-width: 120px; /* 加长内容和备注的最小长度 */
 }
 
 .txn-edit-input:focus {

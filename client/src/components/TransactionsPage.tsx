@@ -461,7 +461,7 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
                         </td>
                         <td>
                           <input
-                            className="txn-edit-input"
+                            className="txn-edit-input txn-edit-title"
                             value={getEditValue(item.id, "title")}
                             onChange={e => setEditValue(item.id, "title", e.target.value)}
                             onKeyDown={e => e.key === "Enter" && (batchEditMode ? saveBatchEdit() : saveSingleEdit())}
