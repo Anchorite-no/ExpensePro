@@ -354,8 +354,14 @@ body:has(.auth-page-container) {
 }
 
 .auth-card.is-login {
-  /* 在登录状态下，底部增加间距，将卡片整体向上推 */
-  margin-bottom: 15vh;
+  /* 基础状态：在 PC 等大屏幕上保持绝对居中，不加额外的底部推力 */
+}
+
+@media screen and (max-width: 768px) {
+  .auth-card.is-login {
+    /* 仅在移动端（屏幕较窄）的登录状态下，底部增加间距，将卡片整体向上推，避免被键盘或手指遮挡 */
+    margin-bottom: 15vh;
+  }
 }
 
 .auth-brand {
