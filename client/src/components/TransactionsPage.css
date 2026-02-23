@@ -275,6 +275,10 @@
   color: var(--text-primary);
 }
 
+.txn-edit-amount {
+  min-width: 80px; /* 设置金额输入框最小长度，防止过短导致输入困难 */
+}
+
 .txn-edit-input:focus {
   border-color: var(--primary);
   outline: none;
