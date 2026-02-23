@@ -70,3 +70,30 @@ textarea,
     scrollbar-width: none !important;
   }
 }
+
+/* ================= iOS 横屏拦截器 ================= */
+/* 苹果 iOS 对 manifest 中的 orientation 支持非常差，这是唯一能强制限制用户在竖屏使用的 CSS 终极方案 */
+@media screen and (orientation: landscape) and (display-mode: standalone) {
+  #root {
+    display: none !important;
+  }
+  
+  body::before {
+    content: "📱 请将手机竖屏使用以获得最佳体验";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #111827;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 600;
+    z-index: 999999;
+    text-align: center;
+    padding: 20px;
+  }
+}
