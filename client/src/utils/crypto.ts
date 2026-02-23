@@ -101,7 +101,16 @@ export async function decryptExpense<T extends { title: string; category: string
         }
         return { ...expense, title, category, note };
     } catch {
-        // If decryption fails (e.g. unencrypted data), return as-is
+        // [Safety Check] 拦截格式明显损坏的 E2EE 密文，防止污染前端视觉
+        if (typeof expense.title === 'string' && expense.title.includes('==')) {
+            return {
+                ...expense,
+                title: '【无效的加密数据】',
+                category: '数据损坏',
+                note: '解密失败，可能是旧的异常僵尸数据，请删除'
+            };
+        }
+        // 如果不是密文特征（可能真的是早期未加密的明文），则保留向后兼容
         return expense;
     }
 }
