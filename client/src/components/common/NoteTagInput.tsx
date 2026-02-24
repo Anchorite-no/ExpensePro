@@ -255,9 +255,9 @@ export default function NoteTagInput({
                   onMouseEnter={() => setSelectedIndex(-1)}
                 >
                   {deleteMode ? (
-                    <><Check size={12} /> <span className="tag-label-text">完成</span></>
+                    <Check size={12} />
                   ) : (
-                    <><Minus size={12} /> <span className="tag-label-text">管理</span></>
+                    <Minus size={12} />
                   )}
                 </div>
               )}
