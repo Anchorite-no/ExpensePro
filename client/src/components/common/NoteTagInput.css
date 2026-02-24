@@ -136,24 +136,32 @@
   flex-shrink: 0;
 }
 
-/* ===== Toggle pill (manage / confirm) ===== */
+/* ===== Toggle pill (- / √) ===== */
 .tag-dropdown-item.tag-mode-toggle {
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px dashed var(--border);
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.35);
   font-size: 11px;
   gap: 3px;
+  padding: 3px 7px;
 }
 
 .tag-dropdown-item.tag-mode-toggle:hover {
-  background: var(--bg-body);
-  color: var(--text-primary);
-  border-color: var(--text-secondary);
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
 }
 
 .tag-dropdown-item.tag-mode-toggle.is-confirm {
+  background: rgba(16, 185, 129, 0.1);
   color: #10b981;
-  border-color: rgba(16, 185, 129, 0.3);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.tag-dropdown-item.tag-mode-toggle.is-confirm:hover {
+  background: #10b981;
+  color: #fff;
+  border-color: #10b981;
 }
 
 .tag-dropdown-item.tag-mode-toggle.is-confirm:hover {
