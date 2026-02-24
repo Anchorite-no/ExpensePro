@@ -27,6 +27,15 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+.tag-dropdown-menu.flip-up {
+  animation: tagDropdownFadeUp 0.15s ease-out;
+}
+
+@keyframes tagDropdownFadeUp {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .tag-dropdown-header {
   padding: 8px 12px 4px;
   font-size: 11px;

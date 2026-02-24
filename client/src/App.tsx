@@ -71,7 +71,7 @@ function AppContent() {
         if (data.tags) {
           try {
             const parsed = typeof data.tags === 'string' ? JSON.parse(data.tags) : data.tags;
-            if (Array.isArray(parsed)) setTags(parsed);
+            if (Array.isArray(parsed) && parsed.length > 0) setTags(parsed);
           } catch { /* use defaults */ }
         }
       })

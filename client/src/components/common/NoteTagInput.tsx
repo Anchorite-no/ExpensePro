@@ -30,7 +30,7 @@ export default function NoteTagInput({
   const [filter, setFilter] = useState('');
   const [cursorPos, setCursorPos] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0, flipUp: false });
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -39,10 +39,15 @@ export default function NoteTagInput({
   const updateCoords = useCallback(() => {
     if (wrapperRef.current) {
       const rect = wrapperRef.current.getBoundingClientRect();
+      const dropdownMaxHeight = 200;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const flipUp = spaceBelow < dropdownMaxHeight && spaceAbove > spaceBelow;
       setCoords({
-        top: rect.bottom + 4,
+        top: flipUp ? rect.top : rect.bottom + 4,
         left: rect.left,
         width: Math.max(rect.width, 260),
+        flipUp,
       });
     }
   }, []);
@@ -194,11 +199,13 @@ export default function NoteTagInput({
       {showDropdown && createPortal(
         <div
           id="note-tag-dropdown-portal"
-          className="tag-dropdown-menu"
+          className={`tag-dropdown-menu ${coords.flipUp ? 'flip-up' : ''}`}
           ref={dropdownRef}
           style={{
             position: 'fixed',
-            top: coords.top,
+            ...(coords.flipUp
+              ? { bottom: window.innerHeight - coords.top + 4 }
+              : { top: coords.top }),
             left: coords.left,
             width: coords.width,
             maxWidth: 320,

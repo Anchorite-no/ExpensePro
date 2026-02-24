@@ -29,7 +29,7 @@ export const Select: React.FC<SelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0, flipUp: false });
 
   const selectedOption = options.find((opt) => opt.value === value);
 
@@ -75,10 +75,16 @@ export const Select: React.FC<SelectProps> = ({
     
     if (!isOpen && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
+      const dropdownMaxHeight = 250; // matches CSS max-height
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const flipUp = spaceBelow < dropdownMaxHeight && spaceAbove > spaceBelow;
+
       setCoords({
-        top: rect.bottom + window.scrollY + 4, // 4px margin
-        left: rect.left + window.scrollX,
+        top: flipUp ? rect.top : rect.bottom + 4,
+        left: rect.left,
         width: rect.width,
+        flipUp,
       });
     }
     setIsOpen(!isOpen);
@@ -122,13 +128,15 @@ export const Select: React.FC<SelectProps> = ({
       {isOpen && createPortal(
         <div 
           id="select-dropdown-portal"
-          className="custom-select-dropdown"
+          className={`custom-select-dropdown ${coords.flipUp ? 'flip-up' : ''}`}
           style={{
             position: 'fixed',
-            top: coords.top - window.scrollY, // Adjust for fixed positioning
-            left: coords.left - window.scrollX,
+            ...(coords.flipUp
+              ? { bottom: window.innerHeight - coords.top + 4 }
+              : { top: coords.top }),
+            left: coords.left,
             width: coords.width,
-            zIndex: 9999, // Ensure it's on top
+            zIndex: 9999,
           }}
         >
           {options.length > 0 ? (
