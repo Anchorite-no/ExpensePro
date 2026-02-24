@@ -4,6 +4,7 @@ import { Camera, Upload, Settings, X, Check, Loader2, Sparkles, Trash2, ImagePlu
 import { format, isValid, parse, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { Select } from "./ui/Select";
+import NoteTagInput from "./common/NoteTagInput";
 import "./AiReceiptParser.css";
 
 // --- Compact Date Input (Local Component) ---
@@ -250,6 +251,9 @@ interface AiReceiptParserProps {
   onAddExpense: (title: string, amount: number, category: string, date?: string) => void;
   currency: string;
   token: string | null;
+  tags: string[];
+  onAddTag: (tag: string) => void;
+  onRemoveTag: (tag: string) => void;
 }
 
 const DEFAULT_MODEL = "gemini-2.0-flash";
@@ -262,7 +266,7 @@ const AVAILABLE_MODELS = [
 
 let imageIdCounter = 0;
 
-export default function AiReceiptParser({ theme, categories, onAddExpense, currency, token }: AiReceiptParserProps) {
+export default function AiReceiptParser({ theme, categories, onAddExpense, currency, token, tags, onAddTag, onRemoveTag }: AiReceiptParserProps) {
   const categoryList = Object.keys(categories);
   // API Key 设置
   const [showSettings, setShowSettings] = useState(false);
@@ -667,11 +671,14 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
                       onChange={(e) => updateItem(i, "title", e.target.value)}
                       placeholder="消费内容"
                     />
-                    <input
+                    <NoteTagInput
                       className="ai-result-note"
                       value={item.note || ""}
-                      onChange={(e) => updateItem(i, "note", e.target.value)}
+                      onChange={(val) => updateItem(i, "note", val)}
                       placeholder="备注（可选）"
+                      tags={tags}
+                      onAddTag={onAddTag}
+                      onRemoveTag={onRemoveTag}
                     />
                   </div>
                   

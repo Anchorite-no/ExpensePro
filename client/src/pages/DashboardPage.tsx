@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import { Wallet, Activity, TrendingUp, Target, Tag, CreditCard, Calendar, FileText, PlusCircle, Trash2 } from "lucide-react";
 import { useExpenses, useSettings } from "../hooks/useData";
 import { useToast } from "../components/ui/Toast";
@@ -6,8 +6,8 @@ import AiReceiptParser from "../components/AiReceiptParser";
 import { DateInput, getChinaToday } from "../components/DateInput";
 import { Select } from "../components/ui/Select";
 import { useAuth } from "../context/AuthContext";
-import NoteWithTags from "../components/common/NoteWithTags";
-import TagSuggestions from "../components/common/TagSuggestions";
+import NoteTagInput, { renderNoteWithTags } from "../components/common/NoteTagInput";
+import { DEFAULT_TAGS } from "../constants/appConfig";
 
 const DEFAULT_CATEGORIES: Record<string, string> = {
   "餐饮": "#10B981", "交通": "#3B82F6", "购物": "#8B5CF6", 
@@ -40,6 +40,22 @@ export default function DashboardPage() {
       budget = { daily: parsed.daily || 0, weekly: parsed.weekly || 0, monthly: parsed.monthly || 0 };
     }
   } catch(e) {}
+
+  let tags: string[] = DEFAULT_TAGS;
+  try {
+    if ((settings as any)?.tags) {
+      const parsed = typeof (settings as any).tags === 'string' ? JSON.parse((settings as any).tags) : (settings as any).tags;
+      if (Array.isArray(parsed) && parsed.length > 0) tags = parsed;
+    }
+  } catch(e) {}
+
+  const handleAddTag = useCallback((tag: string) => {
+    tags = tags.includes(tag) ? tags : [...tags, tag];
+  }, [tags]);
+
+  const handleRemoveTag = useCallback((tag: string) => {
+    tags = tags.filter(t => t !== tag);
+  }, [tags]);
 
   // Computed Stats
   const totalAmount = expenses.reduce((sum, item) => sum + item.amount, 0);
@@ -209,11 +225,14 @@ export default function DashboardPage() {
         <div className="form-card">
           <h3>快速记账</h3>
           <AiReceiptParser 
-            theme="light" // Ideally passed from context, but simplify for now
+            theme="light"
             categories={categories} 
             onAddExpense={handleAdd} 
             currency={currency} 
-            token={token} 
+            token={token}
+            tags={tags}
+            onAddTag={handleAddTag}
+            onRemoveTag={handleRemoveTag}
           />
           <div className="input-group">
             <label><Tag size={14} /> 内容</label>
@@ -238,11 +257,14 @@ export default function DashboardPage() {
           </div>
           <div className="input-group">
             <label><FileText size={14} /> 备注</label>
-            <input value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} placeholder="可选备注信息 (使用 #标签)" onKeyDown={e => e.key === "Enter" && handleAdd()} />
-            <TagSuggestions 
-              expenses={expenses} 
-              currentNote={form.note} 
-              onSelectTag={tag => setForm({ ...form, note: `${form.note} #${tag}`.trim() })} 
+            <NoteTagInput
+              value={form.note}
+              onChange={val => setForm({ ...form, note: val })}
+              onKeyDown={e => e.key === "Enter" && handleAdd()}
+              placeholder="备注（可选）"
+              tags={tags}
+              onAddTag={handleAddTag}
+              onRemoveTag={handleRemoveTag}
             />
           </div>
           <button className="submit-btn" onClick={() => handleAdd()}><PlusCircle size={18} /> 确认入账</button>
@@ -262,7 +284,7 @@ export default function DashboardPage() {
                       <td className="font-medium">
                         <div className="txn-title-cell">
                           <span>{item.title}</span>
-                          {item.note && <NoteWithTags note={item.note} className="txn-note-inline" />}
+                          {item.note && <span className="txn-note-inline">{renderNoteWithTags(item.note)}</span>}
                         </div>
                       </td>
                       <td>

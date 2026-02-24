@@ -44,7 +44,10 @@ export default function QuickAddCard({ categories, onAdd, currency, theme, token
         categories={categories} 
         onAddExpense={(t, a, c, d) => onAdd(t, a, c, d)} 
         currency={currency} 
-        token={token} 
+        token={token}
+        tags={tags}
+        onAddTag={onAddTag}
+        onRemoveTag={onRemoveTag}
       />
       <div className="input-group">
         <label><Tag size={14} /> 内容</label>

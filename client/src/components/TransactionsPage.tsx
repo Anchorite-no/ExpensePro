@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { Select } from "./ui/Select";
 import { DateInput, getChinaToday } from "./DateInput";
-import { renderNoteWithTags } from "./common/NoteTagInput";
+import NoteTagInput, { renderNoteWithTags } from "./common/NoteTagInput";
 import "./TransactionsPage.css";
 
 interface Expense {
@@ -44,9 +44,12 @@ interface Props {
   onEdit: (id: number, title: string, amount: number, category: string, date: string, note?: string) => void;
   onImport: (items: any[]) => void;
   currency: string;
+  tags: string[];
+  onAddTag: (tag: string) => void;
+  onRemoveTag: (tag: string) => void;
 }
 
-export default function TransactionsPage({ expenses, categories, onDelete, onAdd, onEdit, onImport, currency }: Props) {
+export default function TransactionsPage({ expenses, categories, onDelete, onAdd, onEdit, onImport, currency, tags, onAddTag, onRemoveTag }: Props) {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("全部");
   const [sortField, setSortField] = useState<SortField>("date");
@@ -408,22 +411,16 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
                 options={Object.keys(categories).map(c => ({ value: c, label: c, color: categories[c] }))}
               />
             </div>
-            <div className="txn-form-field" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px', minWidth: '200px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%' }}>
-                <FileText size={14} />
-                <input
-                  style={{ flex: 1 }}
-                  placeholder="备注 (使用 #标签)"
-                  value={form.note}
-                  onChange={e => setForm({ ...form, note: e.target.value })}
-                  onKeyDown={e => e.key === "Enter" && handleAdd()}
-                />
-              </div>
-              <TagSuggestions 
-                expenses={expenses} 
-                currentNote={form.note} 
-                onSelectTag={tag => setForm({ ...form, note: `${form.note} #${tag}`.trim() })} 
-                limit={3}
+            <div className="txn-form-field">
+              <FileText size={14} />
+              <NoteTagInput
+                value={form.note}
+                onChange={val => setForm({ ...form, note: val })}
+                onKeyDown={e => e.key === "Enter" && handleAdd()}
+                placeholder="备注（可选）"
+                tags={tags}
+                onAddTag={onAddTag}
+                onRemoveTag={onRemoveTag}
               />
             </div>
             <button className="submit-btn compact" onClick={handleAdd}>
@@ -477,11 +474,14 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
                             onKeyDown={e => e.key === "Enter" && (batchEditMode ? saveBatchEdit() : saveSingleEdit())}
                             placeholder="项目名称"
                           />
-                          <input
+                          <NoteTagInput
                             className="txn-edit-input txn-edit-note"
                             value={getEditValue(item.id, "note")}
-                            onChange={e => setEditValue(item.id, "note", e.target.value)}
+                            onChange={val => setEditValue(item.id, "note", val)}
                             placeholder="备注（可选）"
+                            tags={tags}
+                            onAddTag={onAddTag}
+                            onRemoveTag={onRemoveTag}
                           />
                         </td>
                         <td>

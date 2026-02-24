@@ -374,6 +374,9 @@ function AppContent() {
             onEdit={editExpense}
             onImport={importExpenses}
             currency={currency}
+            tags={tags}
+            onAddTag={handleAddTag}
+            onRemoveTag={handleRemoveTag}
           />
         );
       default:
