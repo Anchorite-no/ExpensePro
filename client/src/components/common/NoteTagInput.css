@@ -1,0 +1,162 @@
+.note-tag-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.note-tag-input-wrapper input {
+  width: 100%;
+  flex: 1;
+}
+
+/* ===== Dropdown Menu (rendered via Portal) ===== */
+.tag-dropdown-menu {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: tagDropdownFade 0.15s ease-out;
+}
+
+@keyframes tagDropdownFade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tag-dropdown-header {
+  padding: 8px 12px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted, var(--text-secondary));
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tag-dropdown-list {
+  padding: 4px 6px 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tag-dropdown-list::-webkit-scrollbar {
+  width: 2px;
+}
+.tag-dropdown-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tag-dropdown-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.tag-dropdown-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  cursor: pointer;
+  background: var(--bg-body);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  transition: all 0.15s ease;
+  user-select: none;
+  line-height: 1.4;
+}
+
+.tag-dropdown-item:hover,
+.tag-dropdown-item.selected {
+  background: var(--primary-bg, rgba(99, 102, 241, 0.1));
+  color: var(--primary, #6366f1);
+  border-color: var(--primary, #6366f1);
+}
+
+.tag-dropdown-item.is-new {
+  width: 100%;
+  border-radius: 6px;
+  border-style: dashed;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.tag-dropdown-item .create-new-text {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+}
+
+.tag-dropdown-item .tag-label-text {
+  font-size: 12px;
+}
+
+/* Delete button inside tag pill in dropdown */
+.tag-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 2px;
+  color: var(--text-secondary);
+  opacity: 0.5;
+  transition: all 0.15s;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.tag-delete-btn:hover {
+  opacity: 1;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.tag-dropdown-empty {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* ===== Tag pills rendered inside notes (display mode) ===== */
+.note-with-tags {
+  display: inline;
+  line-height: 1.6;
+}
+
+.note-tag-pill {
+  display: inline-block;
+  background: var(--primary-bg, rgba(99, 102, 241, 0.1));
+  color: var(--primary, #6366f1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 10px;
+  padding: 0px 6px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.6;
+  margin: 0 1px;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
+/* Dark mode */
+.dark .tag-dropdown-menu {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.dark .note-tag-pill {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.3);
+}

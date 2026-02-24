@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { Select } from "./ui/Select";
 import { DateInput, getChinaToday } from "./DateInput";
+import { renderNoteWithTags } from "./common/NoteTagInput";
 import "./TransactionsPage.css";
 
 interface Expense {
@@ -39,7 +40,7 @@ interface Props {
   theme: "light" | "dark";
   categories: Record<string, string>;
   onDelete: (id: number) => void;
-  onAdd: (title: string, amount: number, category: string, date?: string) => void;
+  onAdd: (title: string, amount: number, category: string, date?: string, note?: string) => void;
   onEdit: (id: number, title: string, amount: number, category: string, date: string, note?: string) => void;
   onImport: (items: any[]) => void;
   currency: string;
@@ -129,7 +130,7 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
 
   const handleAdd = () => {
     if (!form.title || !form.amount) return;
-    onAdd(form.title, Number(form.amount), form.category, form.date || undefined);
+    onAdd(form.title, Number(form.amount), form.category, form.date || undefined, form.note || undefined);
     setForm({ title: "", amount: "", category: defaultCategory, date: todayStr, note: "" });
     setShowForm(false);
   };
@@ -511,7 +512,7 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
                         <td className="font-medium">
                           <div className="txn-title-cell">
                             <span>{item.title}</span>
-                            {item.note && <span className="txn-note-inline">{item.note}</span>}
+                            {item.note && <span className="txn-note-inline">{renderNoteWithTags(item.note)}</span>}
                           </div>
                         </td>
                         <td>

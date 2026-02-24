@@ -37,3 +37,12 @@ export const PAGE_TITLES: Record<string, string> = {
   trends: "趋势分析",
   transactions: "交易记录",
 };
+
+export const DEFAULT_TAGS: string[] = [
+  "早餐", "午餐", "晚餐", "夜宵",
+  "打车", "地铁", "公交",
+  "日用品", "水果", "零食", "饮料",
+  "话费", "水电", "房租",
+  "聚餐", "电影", "游戏",
+  "工资", "奖金", "红包",
+];

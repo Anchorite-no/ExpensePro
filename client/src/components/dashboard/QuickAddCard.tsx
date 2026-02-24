@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Tag, CreditCard, Calendar, Activity, FileText, PlusCircle } from "lucide-react";
 import { Select } from "../ui/Select";
 import { DateInput, getChinaToday } from "../DateInput";
+import NoteTagInput from "../common/NoteTagInput";
 import AiReceiptParser from "../AiReceiptParser";
 import "./QuickAddCard.css";
 
@@ -11,9 +12,12 @@ interface QuickAddCardProps {
   currency: string;
   theme: "light" | "dark";
   token: string | null;
+  tags: string[];
+  onAddTag: (tag: string) => void;
+  onRemoveTag: (tag: string) => void;
 }
 
-export default function QuickAddCard({ categories, onAdd, currency, theme, token }: QuickAddCardProps) {
+export default function QuickAddCard({ categories, onAdd, currency, theme, token, tags, onAddTag, onRemoveTag }: QuickAddCardProps) {
   const todayStr = getChinaToday();
   const categoryList = Object.keys(categories);
   const defaultCategory = categoryList[0] || "餐饮";
@@ -79,11 +83,14 @@ export default function QuickAddCard({ categories, onAdd, currency, theme, token
       </div>
       <div className="input-group">
         <label><FileText size={14} /> 备注</label>
-        <input 
-          value={form.note} 
-          onChange={e => setForm({ ...form, note: e.target.value })} 
-          placeholder="可选备注信息" 
-          onKeyDown={e => e.key === "Enter" && handleSubmit()} 
+        <NoteTagInput
+          value={form.note}
+          onChange={val => setForm({ ...form, note: val })}
+          onKeyDown={e => e.key === "Enter" && handleSubmit()}
+          placeholder="可选备注信息 (输入 # 呼出标签)"
+          tags={tags}
+          onAddTag={onAddTag}
+          onRemoveTag={onRemoveTag}
         />
       </div>
       <button className="submit-btn" onClick={handleSubmit}><PlusCircle size={18} /> 确认入账</button>

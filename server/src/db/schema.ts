@@ -27,5 +27,6 @@ export const userSettings = mysqlTable('user_settings', {
   budgetConfig: text('budget_config'),
   encryptedMasterKey: text('encrypted_master_key'),
   masterKeySalt: varchar('master_key_salt', { length: 100 }),
+  tags: text('tags'),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

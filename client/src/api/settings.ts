@@ -10,6 +10,7 @@ export interface SettingsData {
   currency?: string;
   categories?: string | Record<string, string>;
   budgetConfig?: string | BudgetConfig;
+  tags?: string | string[];
 }
 
 export const fetchSettings = (token: string) => 

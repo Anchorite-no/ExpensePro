@@ -20,7 +20,7 @@ router.get("/", authenticateToken, async (req: AuthRequest, res) => {
 // 更新用户设置
 router.put("/", authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const { aiApiKey, aiModel, currency, categories, budgetConfig } = req.body;
+    const { aiApiKey, aiModel, currency, categories, budgetConfig, tags } = req.body;
     const [existing] = await db.select().from(userSettings).where(eq(userSettings.userId, req.user.id));
 
     if (existing) {
@@ -30,6 +30,7 @@ router.put("/", authenticateToken, async (req: AuthRequest, res) => {
       if (currency !== undefined) updates.currency = currency;
       if (categories !== undefined) updates.categories = typeof categories === 'string' ? categories : JSON.stringify(categories);
       if (budgetConfig !== undefined) updates.budgetConfig = typeof budgetConfig === 'string' ? budgetConfig : JSON.stringify(budgetConfig);
+      if (tags !== undefined) updates.tags = typeof tags === 'string' ? tags : JSON.stringify(tags);
       await db.update(userSettings).set(updates).where(eq(userSettings.userId, req.user.id));
     } else {
       await db.insert(userSettings).values({
@@ -39,6 +40,7 @@ router.put("/", authenticateToken, async (req: AuthRequest, res) => {
         currency: currency || "¥",
         categories: categories ? (typeof categories === 'string' ? categories : JSON.stringify(categories)) : "",
         budgetConfig: budgetConfig ? (typeof budgetConfig === 'string' ? budgetConfig : JSON.stringify(budgetConfig)) : "",
+        tags: tags ? (typeof tags === 'string' ? tags : JSON.stringify(tags)) : "",
       });
     }
 

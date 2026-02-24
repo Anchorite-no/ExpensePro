@@ -3,6 +3,7 @@ import { Trash2 } from "lucide-react";
 import "./RecentTransactions.css";
 import type { Expense } from "../../types";
 import { getCategoryColor } from "../../utils/helpers";
+import { renderNoteWithTags } from "../common/NoteTagInput";
 
 interface RecentTransactionsProps {
   expenses: Expense[];
@@ -27,7 +28,7 @@ const RecentTransactions = React.memo(({ expenses, categories, currency, onDelet
                   <td className="font-medium">
                     <div className="txn-title-cell">
                       <span>{item.title}</span>
-                      {item.note && <span className="txn-note-inline">{item.note}</span>}
+                      {item.note && <span className="txn-note-inline">{renderNoteWithTags(item.note)}</span>}
                     </div>
                   </td>
                   <td>

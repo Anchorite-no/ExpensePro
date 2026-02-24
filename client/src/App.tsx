@@ -19,7 +19,7 @@ import RecentTransactions from "./components/dashboard/RecentTransactions";
 
 // Types & Constants
 import type { Expense, PageType, BudgetConfig } from "./types";
-import { DEFAULT_CATEGORIES, COLOR_PALETTE, PAGE_TITLES } from "./constants/appConfig";
+import { DEFAULT_CATEGORIES, COLOR_PALETTE, PAGE_TITLES, DEFAULT_TAGS } from "./constants/appConfig";
 
 /* ========== Main Component ========== */
 function AppContent() {
@@ -41,6 +41,7 @@ function AppContent() {
   const [categories, setCategories] = useState<Record<string, string>>(DEFAULT_CATEGORIES);
   const [currency, setCurrency] = useState("¥");
   const [budget, setBudget] = useState<BudgetConfig>({ daily: 0, weekly: 0, monthly: 0 });
+  const [tags, setTags] = useState<string[]>(DEFAULT_TAGS);
 
   // Settings modal
   const [showSettings, setShowSettings] = useState(false);
@@ -65,6 +66,12 @@ function AppContent() {
           try {
             const parsed = typeof data.budgetConfig === 'string' ? JSON.parse(data.budgetConfig) : data.budgetConfig;
             if (parsed) setBudget({ daily: parsed.daily || 0, weekly: parsed.weekly || 0, monthly: parsed.monthly || 0 });
+          } catch { /* use defaults */ }
+        }
+        if (data.tags) {
+          try {
+            const parsed = typeof data.tags === 'string' ? JSON.parse(data.tags) : data.tags;
+            if (Array.isArray(parsed)) setTags(parsed);
           } catch { /* use defaults */ }
         }
       })
@@ -96,6 +103,25 @@ function AppContent() {
   const handleUpdateCurrency = useCallback((val: string) => {
     setCurrency(val);
     saveSettingsToBackend({ currency: val });
+  }, [saveSettingsToBackend]);
+
+  // Update tags (add a new tag and persist)
+  const handleAddTag = useCallback((tag: string) => {
+    setTags(prev => {
+      if (prev.includes(tag)) return prev;
+      const updated = [...prev, tag];
+      saveSettingsToBackend({ tags: JSON.stringify(updated) });
+      return updated;
+    });
+  }, [saveSettingsToBackend]);
+
+  // Remove a tag and persist
+  const handleRemoveTag = useCallback((tag: string) => {
+    setTags(prev => {
+      const updated = prev.filter(t => t !== tag);
+      saveSettingsToBackend({ tags: JSON.stringify(updated) });
+      return updated;
+    });
   }, [saveSettingsToBackend]);
 
   const toggleTheme = useCallback(() => {
@@ -319,6 +345,9 @@ function AppContent() {
           currency={currency}
           theme={theme}
           token={token}
+          tags={tags}
+          onAddTag={handleAddTag}
+          onRemoveTag={handleRemoveTag}
         />
         <RecentTransactions
           expenses={expenses}
