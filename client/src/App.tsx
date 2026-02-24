@@ -319,6 +319,7 @@ function AppContent() {
           currency={currency}
           theme={theme}
           token={token}
+          expenses={expenses}
         />
         <RecentTransactions
           expenses={expenses}

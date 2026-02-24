@@ -3,6 +3,7 @@ import { Tag, CreditCard, Calendar, Activity, FileText, PlusCircle } from "lucid
 import { Select } from "../ui/Select";
 import { DateInput, getChinaToday } from "../DateInput";
 import AiReceiptParser from "../AiReceiptParser";
+import TagSuggestions from "../common/TagSuggestions";
 import "./QuickAddCard.css";
 
 interface QuickAddCardProps {
@@ -11,9 +12,10 @@ interface QuickAddCardProps {
   currency: string;
   theme: "light" | "dark";
   token: string | null;
+  expenses: Array<{ note?: string | null }>;
 }
 
-export default function QuickAddCard({ categories, onAdd, currency, theme, token }: QuickAddCardProps) {
+export default function QuickAddCard({ categories, onAdd, currency, theme, token, expenses }: QuickAddCardProps) {
   const todayStr = getChinaToday();
   const categoryList = Object.keys(categories);
   const defaultCategory = categoryList[0] || "餐饮";
@@ -82,8 +84,13 @@ export default function QuickAddCard({ categories, onAdd, currency, theme, token
         <input 
           value={form.note} 
           onChange={e => setForm({ ...form, note: e.target.value })} 
-          placeholder="可选备注信息" 
+          placeholder="可选备注信息 (使用 #标签)" 
           onKeyDown={e => e.key === "Enter" && handleSubmit()} 
+        />
+        <TagSuggestions 
+          expenses={expenses} 
+          currentNote={form.note} 
+          onSelectTag={tag => setForm({ ...form, note: `${form.note} #${tag}`.trim() })} 
         />
       </div>
       <button className="submit-btn" onClick={handleSubmit}><PlusCircle size={18} /> 确认入账</button>
