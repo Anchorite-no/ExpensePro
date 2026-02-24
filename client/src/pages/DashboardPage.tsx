@@ -6,6 +6,8 @@ import AiReceiptParser from "../components/AiReceiptParser";
 import { DateInput, getChinaToday } from "../components/DateInput";
 import { Select } from "../components/ui/Select";
 import { useAuth } from "../context/AuthContext";
+import NoteWithTags from "../components/common/NoteWithTags";
+import TagSuggestions from "../components/common/TagSuggestions";
 
 const DEFAULT_CATEGORIES: Record<string, string> = {
   "餐饮": "#10B981", "交通": "#3B82F6", "购物": "#8B5CF6", 
@@ -236,7 +238,12 @@ export default function DashboardPage() {
           </div>
           <div className="input-group">
             <label><FileText size={14} /> 备注</label>
-            <input value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} placeholder="可选备注信息" onKeyDown={e => e.key === "Enter" && handleAdd()} />
+            <input value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} placeholder="可选备注信息 (使用 #标签)" onKeyDown={e => e.key === "Enter" && handleAdd()} />
+            <TagSuggestions 
+              expenses={expenses} 
+              currentNote={form.note} 
+              onSelectTag={tag => setForm({ ...form, note: `${form.note} #${tag}`.trim() })} 
+            />
           </div>
           <button className="submit-btn" onClick={() => handleAdd()}><PlusCircle size={18} /> 确认入账</button>
         </div>
@@ -255,7 +262,7 @@ export default function DashboardPage() {
                       <td className="font-medium">
                         <div className="txn-title-cell">
                           <span>{item.title}</span>
-                          {item.note && <span className="txn-note-inline">{item.note}</span>}
+                          {item.note && <NoteWithTags note={item.note} className="txn-note-inline" />}
                         </div>
                       </td>
                       <td>

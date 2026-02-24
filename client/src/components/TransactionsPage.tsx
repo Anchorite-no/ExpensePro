@@ -408,13 +408,22 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
                 options={Object.keys(categories).map(c => ({ value: c, label: c, color: categories[c] }))}
               />
             </div>
-            <div className="txn-form-field">
-              <FileText size={14} />
-              <input
-                placeholder="备注（可选）"
-                value={form.note}
-                onChange={e => setForm({ ...form, note: e.target.value })}
-                onKeyDown={e => e.key === "Enter" && handleAdd()}
+            <div className="txn-form-field" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px', minWidth: '200px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%' }}>
+                <FileText size={14} />
+                <input
+                  style={{ flex: 1 }}
+                  placeholder="备注 (使用 #标签)"
+                  value={form.note}
+                  onChange={e => setForm({ ...form, note: e.target.value })}
+                  onKeyDown={e => e.key === "Enter" && handleAdd()}
+                />
+              </div>
+              <TagSuggestions 
+                expenses={expenses} 
+                currentNote={form.note} 
+                onSelectTag={tag => setForm({ ...form, note: `${form.note} #${tag}`.trim() })} 
+                limit={3}
               />
             </div>
             <button className="submit-btn compact" onClick={handleAdd}>

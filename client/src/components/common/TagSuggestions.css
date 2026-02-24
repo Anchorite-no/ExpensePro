@@ -1,0 +1,30 @@
+.tag-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 0 4px;
+}
+
+.tag-suggestion-btn {
+  background: var(--bg-input, #f3f4f6);
+  color: var(--text-secondary, #6b7280);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.tag-suggestion-btn:hover {
+  background: var(--primary-bg, rgba(99, 102, 241, 0.1));
+  color: var(--primary, #6366f1);
+  border-color: var(--primary, #6366f1);
+  transform: translateY(-1px);
+}
+
+.tag-suggestion-btn:active {
+  transform: translateY(0);
+}
