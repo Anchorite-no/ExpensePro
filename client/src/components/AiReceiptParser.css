@@ -393,7 +393,9 @@
 }
 
 /* Note Styling - Ghost/Subtitle */
-.ai-result-note {
+/* .ai-result-note is now on the NoteTagInput wrapper div; target inner input */
+.ai-result-note,
+.ai-result-note input {
   width: 100%;
   color: var(--text-secondary);
   font-size: 12px;
@@ -404,13 +406,14 @@
   transition: all 0.2s;
 }
 
-.ai-result-note:hover {
+.ai-result-note:hover input,
+.ai-result-note input:hover {
   color: var(--text-primary);
   background: var(--bg-input);
   border-radius: 4px;
 }
 
-.ai-result-note:focus {
+.ai-result-note input:focus {
   color: var(--text-primary);
   background: var(--bg-card);
   border-color: var(--primary);
