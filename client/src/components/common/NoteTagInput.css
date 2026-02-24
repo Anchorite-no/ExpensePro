@@ -65,6 +65,7 @@
   border-radius: 2px;
 }
 
+/* ===== Tag pill items ===== */
 .tag-dropdown-item {
   display: inline-flex;
   align-items: center;
@@ -73,9 +74,9 @@
   border-radius: 12px;
   font-size: 12px;
   cursor: pointer;
-  background: var(--bg-body);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
+  background: var(--primary-bg, rgba(99, 102, 241, 0.08));
+  color: var(--primary, #6366f1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
   transition: all 0.15s ease;
   user-select: none;
   line-height: 1.4;
@@ -83,17 +84,27 @@
 
 .tag-dropdown-item:hover,
 .tag-dropdown-item.selected {
-  background: var(--primary-bg, rgba(99, 102, 241, 0.1));
-  color: var(--primary, #6366f1);
+  background: var(--primary, #6366f1);
+  color: #fff;
   border-color: var(--primary, #6366f1);
 }
 
+/* "Create new" option */
 .tag-dropdown-item.is-new {
   width: 100%;
   border-radius: 6px;
   border-style: dashed;
   padding: 5px 10px;
   font-size: 12px;
+  background: transparent;
+  color: var(--primary, #6366f1);
+  border-color: var(--primary, #6366f1);
+}
+
+.tag-dropdown-item.is-new:hover,
+.tag-dropdown-item.is-new.selected {
+  background: var(--primary-bg, rgba(99, 102, 241, 0.1));
+  color: var(--primary, #6366f1);
 }
 
 .tag-dropdown-item .create-new-text {
@@ -107,29 +118,48 @@
   font-size: 12px;
 }
 
-/* Delete button inside tag pill in dropdown */
-.tag-delete-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  margin-left: 2px;
-  color: var(--text-secondary);
-  opacity: 0.5;
-  transition: all 0.15s;
-  border-radius: 50%;
-  width: 14px;
-  height: 14px;
+/* ===== Delete mode ===== */
+.tag-dropdown-item.delete-mode {
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.tag-dropdown-item.delete-mode:hover,
+.tag-dropdown-item.delete-mode.selected {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+}
+
+.tag-delete-icon {
   flex-shrink: 0;
 }
 
-.tag-delete-btn:hover {
-  opacity: 1;
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.1);
+/* ===== Toggle pill (manage / confirm) ===== */
+.tag-dropdown-item.tag-mode-toggle {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px dashed var(--border);
+  font-size: 11px;
+  gap: 3px;
+}
+
+.tag-dropdown-item.tag-mode-toggle:hover {
+  background: var(--bg-body);
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.tag-dropdown-item.tag-mode-toggle.is-confirm {
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.tag-dropdown-item.tag-mode-toggle.is-confirm:hover {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: #10b981;
 }
 
 .tag-dropdown-empty {
@@ -163,6 +193,28 @@
 /* Dark mode */
 .dark .tag-dropdown-menu {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.dark .tag-dropdown-item {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.dark .tag-dropdown-item:hover,
+.dark .tag-dropdown-item.selected {
+  background: var(--primary, #6366f1);
+  color: #fff;
+}
+
+.dark .tag-dropdown-item.delete-mode {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.dark .tag-dropdown-item.delete-mode:hover,
+.dark .tag-dropdown-item.delete-mode.selected {
+  background: #ef4444;
+  color: #fff;
 }
 
 .dark .note-tag-pill {

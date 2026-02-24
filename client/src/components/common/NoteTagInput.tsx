@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, X } from 'lucide-react';
+import { Plus, Minus, Check, X } from 'lucide-react';
 import './NoteTagInput.css';
 
 interface NoteTagInputProps {
@@ -29,7 +29,8 @@ export default function NoteTagInput({
   const [showDropdown, setShowDropdown] = useState(false);
   const [filter, setFilter] = useState('');
   const [cursorPos, setCursorPos] = useState(0);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [deleteMode, setDeleteMode] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 0, flipUp: false });
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -65,7 +66,8 @@ export default function NoteTagInput({
       setShowDropdown(true);
       setFilter(match[1]);
       setCursorPos(pos);
-      setSelectedIndex(0);
+      setSelectedIndex(-1);
+      setDeleteMode(false);
       updateCoords();
     } else {
       setShowDropdown(false);
@@ -155,13 +157,16 @@ export default function NoteTagInput({
       }
       if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelectedIndex(prev => (prev - 1 + options.length) % options.length);
+        setSelectedIndex(prev => prev <= 0 ? options.length - 1 : prev - 1);
         return;
       }
       if (e.key === 'Enter') {
         e.preventDefault();
-        const selectedOption = options[selectedIndex];
-        insertTag(selectedOption.label, selectedOption.isNew);
+        const idx = selectedIndex >= 0 ? selectedIndex : 0;
+        const selectedOption = options[idx];
+        if (selectedOption) {
+          insertTag(selectedOption.label, selectedOption.isNew);
+        }
         return;
       }
       if (e.key === 'Escape') {
@@ -218,26 +223,44 @@ export default function NoteTagInput({
               {options.map((option, idx) => (
                 <div
                   key={`${option.label}-${option.isNew}`}
-                  className={`tag-dropdown-item ${idx === selectedIndex ? 'selected' : ''} ${option.isNew ? 'is-new' : ''}`}
-                  onClick={() => insertTag(option.label, option.isNew)}
+                  className={`tag-dropdown-item ${idx === selectedIndex ? 'selected' : ''} ${option.isNew ? 'is-new' : ''} ${deleteMode && !option.isNew ? 'delete-mode' : ''}`}
+                  onClick={() => {
+                    if (deleteMode && !option.isNew) {
+                      if (onRemoveTag) onRemoveTag(option.label);
+                    } else {
+                      insertTag(option.label, option.isNew);
+                    }
+                  }}
                   onMouseEnter={() => setSelectedIndex(idx)}
+                  onMouseLeave={() => setSelectedIndex(-1)}
                 >
                   {option.isNew ? (
                     <span className="create-new-text"><Plus size={12} /> 创建 "#{option.label}"</span>
                   ) : (
-                    <span className="tag-label-text">#{option.label}</span>
-                  )}
-                  {!option.isNew && onRemoveTag && (
-                    <button
-                      className="tag-delete-btn"
-                      onClick={(e) => handleRemoveTag(e, option.label)}
-                      title="删除标签"
-                    >
-                      <X size={10} />
-                    </button>
+                    <>
+                      {deleteMode && <X size={10} className="tag-delete-icon" />}
+                      <span className="tag-label-text">#{option.label}</span>
+                    </>
                   )}
                 </div>
               ))}
+              {/* Toggle delete mode pill */}
+              {onRemoveTag && filteredTags.length > 0 && (
+                <div
+                  className={`tag-dropdown-item tag-mode-toggle ${deleteMode ? 'is-confirm' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteMode(prev => !prev);
+                  }}
+                  onMouseEnter={() => setSelectedIndex(-1)}
+                >
+                  {deleteMode ? (
+                    <><Check size={12} /> <span className="tag-label-text">完成</span></>
+                  ) : (
+                    <><Minus size={12} /> <span className="tag-label-text">管理</span></>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="tag-dropdown-empty">
