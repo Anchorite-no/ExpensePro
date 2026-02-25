@@ -382,66 +382,57 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
     <div className="space-y-6 animate-fade-in tag-analysis-root">
       
       {/* 顶部标题栏 */}
-      <div className="card-container flex items-center justify-between">
+      <div className="chart-card flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="icon-wrapper bg-purple-600 shadow-purple-200/50">
-            <Tags size={24} color="white" />
+          <div className="stat-icon purple">
+            <Tags size={24} />
           </div>
-          <div>
-            <h1 className="title-text">全景标签洞察中心</h1>
-            <p className="subtitle-text">多维交叉数据分析，挖掘深层消费联系</p>
+          <div className="stat-info">
+            <span className="value" style={{fontSize: '20px', marginBottom: '2px'}}>全景标签洞察中心</span>
+            <span className="label">多维交叉数据分析，挖掘深层消费联系</span>
           </div>
         </div>
-        <div className="text-right hidden sm:block">
-          <p className="subtitle-text">活跃标签总数</p>
-          <p className="title-text">{scatterData.length} <span className="subtitle-text font-normal">个</span></p>
+        <div className="stat-info hidden sm:block text-right">
+          <span className="label">活跃标签总数</span>
+          <span className="value">{scatterData.length} <span className="label">个</span></span>
         </div>
       </div>
 
       {/* ROW 1: 宏观把控 */}
-      <div className="card-container">
-        <div className="flex items-center gap-2 mb-4">
-          <Network className="text-blue-500" size={20} />
-          <h2 className="title-text text-lg">资金流向逻辑树 (Hierarchy Tree)</h2>
-        </div>
-        <p className="subtitle-text mb-6">利用平滑有机的主干曲线相连，剥离错综复杂的末端分支。具体标签化为纯净的卡片，在对应的分类右侧横向舒展平铺。</p>
+      <div className="chart-card">
+        <h3>资金流向逻辑树</h3>
+        <p className="subtitle-text mb-6 text-gray-400">利用平滑有机的主干曲线相连，剥离错综复杂的末端分支。具体标签化为纯净的卡片，在对应的分类右侧横向舒展平铺。</p>
         <div className="chart-bg-wrapper">
           <CustomTreeDiagram expenses={expenses} categories={categories} currency={currency} theme={theme} />
         </div>
       </div>
 
       {/* ROW 2: 潜意识挖掘 */}
-      <div className="card-container flex flex-col items-center">
-        <div className="w-full flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <GitGraph className="text-indigo-500" size={20} />
-            <h2 className="title-text text-lg">神经元共现网络 (Neural Network)</h2>
-          </div>
+      <div className="chart-card flex flex-col items-center">
+        <div className="w-full flex items-center justify-between">
+          <h3 className="w-full text-left">神经元共现网络</h3>
         </div>
-        <p className="w-full subtitle-text mb-4 text-left">节点带有随机悬浮动画与高斯模糊光晕，揭示潜意识中经常组合使用的隐秘习惯。</p>
+        <p className="w-full subtitle-text mb-4 text-left text-gray-400">节点带有随机悬浮动画与高斯模糊光晕，揭示潜意识中经常组合使用的隐秘习惯。</p>
         <div className="w-full chart-bg-wrapper flex justify-center py-6 relative">
             <CustomOrganicNetwork expenses={expenses} theme={theme} />
-            <div className="absolute bottom-3 right-3 text-[10px] text-slate-400">基于 D3 物理引力</div>
+            <div className="absolute bottom-3 right-3 text-[10px] text-gray-400">基于 D3 物理引力</div>
         </div>
       </div>
 
       {/* ROW 3: 理性绝对值 */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="charts-grid">
         
-        <div className="card-container lg:col-span-7 flex flex-col relative">
-          <div className="flex items-center gap-2 mb-2">
-            <Target className="text-emerald-500" size={20} />
-            <h2 className="title-text text-lg">习惯矩阵四象限 (Quadrant)</h2>
-          </div>
-          <p className="subtitle-text mb-4">通过纵横均线自动划分标签阵营，有效捕捉右下角的拿铁因子区。</p>
+        <div className="chart-card flex flex-col relative">
+          <h3>习惯矩阵四象限</h3>
+          <p className="subtitle-text mb-4 text-gray-400">通过纵横均线自动划分标签阵营，有效捕捉右下角的拿铁因子区。</p>
           <div className="flex-grow min-h-[300px] relative">
             <div className="absolute top-[8%] right-[8%] text-right opacity-40 pointer-events-none z-10">
               <div className="text-xl font-bold text-red-500">高频高额</div>
-              <div className="text-xs text-[var(--text-secondary)]">需重点干预</div>
+              <div className="text-xs text-gray-400">需重点干预</div>
             </div>
             <div className="absolute bottom-[15%] right-[8%] text-right opacity-40 pointer-events-none z-10">
               <div className="text-xl font-bold text-blue-500">高频低额</div>
-              <div className="text-xs text-[var(--text-secondary)]">拿铁因子区</div>
+              <div className="text-xs text-gray-400">拿铁因子区</div>
             </div>
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
@@ -455,7 +446,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                 <RechartsTooltip 
                   cursor={{strokeDasharray: '3 3'}} 
                   formatter={(value: any, name: any) => [name === '消费次数' ? `${value} 次` : `${currency}${value}`, name]} 
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow)', background: 'var(--bg-card)', color: 'var(--text-primary)' }} 
+                  contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', boxShadow: 'var(--shadow)', background: 'var(--bg-card)', color: 'var(--text-primary)' }} 
                 />
                 <Scatter data={scatterData} fillOpacity={0.85}>
                     {scatterData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
@@ -465,12 +456,9 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
           </div>
         </div>
 
-        <div className="card-container lg:col-span-5 flex flex-col">
-          <div className="flex items-center gap-2 mb-2">
-            <BarChart3 className="text-pink-500" size={20} />
-            <h2 className="title-text text-lg">核心消费榜 (Top 8)</h2>
-          </div>
-          <p className="subtitle-text mb-4">直观对比最烧钱的核心标签绝对值。</p>
+        <div className="chart-card flex flex-col">
+          <h3>核心消费榜 (Top 8)</h3>
+          <p className="subtitle-text mb-4 text-gray-400">直观对比最烧钱的核心标签绝对值。</p>
           <div className="flex-grow min-h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={rankingData} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
@@ -480,7 +468,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                 <RechartsTooltip 
                   cursor={{fill: 'var(--bg-hover)'}} 
                   formatter={(value: any) => [`${currency}${value}`, '总支出']} 
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow)', background: 'var(--bg-card)', color: 'var(--text-primary)' }} 
+                  contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', boxShadow: 'var(--shadow)', background: 'var(--bg-card)', color: 'var(--text-primary)' }} 
                 />
                 <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={20}>
                   {rankingData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
@@ -493,25 +481,24 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
       </div>
 
       {/* ROW 4: 时间与视觉调剂 */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="charts-grid">
         
-        <div className="card-container lg:col-span-7 flex flex-col">
-          <div className="flex items-center gap-2 mb-2">
-            <Flame className="text-orange-500" size={20} />
-            <h2 className="title-text text-lg">单一习惯追踪 (Heatmap)</h2>
-          </div>
-          <p className="subtitle-text mb-6">类 GitHub 提交记录图表，关注最在意的隐性习惯发生频率。</p>
+        <div className="chart-card flex flex-col">
+          <h3>单一习惯追踪 (Heatmap)</h3>
+          <p className="subtitle-text mb-6 text-gray-400">类 GitHub 提交记录图表，关注最在意的隐性习惯发生频率。</p>
           <div className="flex flex-col sm:flex-row items-center gap-6">
             <div className="w-full sm:w-36">
-              <select 
-                value={heatmapTag} 
-                onChange={(e) => setHeatmapTag(e.target.value)} 
-                className="w-full bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 font-bold text-sm"
-              >
-                {allTags.map(tag => (
-                  <option key={tag} value={tag}>#{tag}</option>
-                ))}
-              </select>
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <select 
+                  value={heatmapTag} 
+                  onChange={(e) => setHeatmapTag(e.target.value)} 
+                  style={{ fontWeight: 600, color: 'var(--primary)', borderColor: 'var(--border)' }}
+                >
+                  {allTags.map(tag => (
+                    <option key={tag} value={tag}>#{tag}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="flex-1 overflow-x-auto w-full custom-scrollbar">
               <div className="flex gap-1.5 min-w-max pb-2">
@@ -533,13 +520,10 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
           </div>
         </div>
 
-        <div className="card-container lg:col-span-5 flex flex-col">
-          <div className="flex items-center gap-2 mb-2">
-            <Tags className="text-gray-400" size={20} />
-            <h2 className="title-text text-lg">标签频率云 (Word Cloud)</h2>
-          </div>
-          <p className="subtitle-text mb-4">字体大小纯由【使用频率】决定，捕捉低额高频支出。</p>
-          <div className="flex-grow flex flex-wrap content-center justify-center gap-4 px-4 py-6 chart-bg-wrapper rounded-xl border border-dashed border-[var(--border)] min-h-[200px]">
+        <div className="chart-card flex flex-col">
+          <h3>标签频率云</h3>
+          <p className="subtitle-text mb-4 text-gray-400">字体大小纯由【使用频率】决定，捕捉低额高频支出。</p>
+          <div className="flex-grow flex flex-wrap content-center justify-center gap-4 px-4 py-6 chart-bg-wrapper rounded-xl min-h-[200px]" style={{borderStyle: 'dashed'}}>
             {wordCloudData.map((tag, i) => (
               <span 
                 key={i} 
