@@ -8,6 +8,7 @@ import { Network, Target, GitGraph, BarChart3, Flame, Tags } from "lucide-react"
 import { extractTags } from "../../utils/tags";
 import "./TagTrendsDashboard.css";
 import { COLOR_PALETTE } from "../../constants/appConfig";
+import { Select } from "../ui/Select";
 
 interface Expense {
   id: number;
@@ -487,18 +488,13 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
           <h3>单一习惯追踪 (Heatmap)</h3>
           <p className="subtitle-text mb-6 text-gray-400">类 GitHub 提交记录图表，关注最在意的隐性习惯发生频率。</p>
           <div className="flex flex-col sm:flex-row items-center gap-6">
-            <div className="w-full sm:w-36">
-              <div className="input-group" style={{ marginBottom: 0 }}>
-                <select 
-                  value={heatmapTag} 
-                  onChange={(e) => setHeatmapTag(e.target.value)} 
-                  style={{ fontWeight: 600, color: 'var(--primary)', borderColor: 'var(--border)' }}
-                >
-                  {allTags.map(tag => (
-                    <option key={tag} value={tag}>#{tag}</option>
-                  ))}
-                </select>
-              </div>
+            <div className="w-full sm:w-48 z-20">
+              <Select 
+                value={heatmapTag} 
+                onChange={setHeatmapTag} 
+                options={allTags.map(tag => ({ value: tag, label: `#${tag}` }))}
+                placeholder="选择标签..."
+              />
             </div>
             <div className="flex-1 overflow-x-auto w-full custom-scrollbar">
               <div className="flex gap-1.5 min-w-max pb-2">

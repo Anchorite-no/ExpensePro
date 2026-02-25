@@ -3,6 +3,21 @@
   font-family: inherit;
 }
 
+/* Fix margin issues since we removed card-container and rely on inherited charts-grid gap */
+.tag-analysis-root > .chart-card {
+  margin-bottom: 20px;
+}
+
+.tag-analysis-root .charts-grid {
+  margin-bottom: 20px;
+}
+
+/* Ensure no double gaps */
+.tag-analysis-root > .chart-card:last-child,
+.tag-analysis-root .charts-grid:last-child {
+  margin-bottom: 0;
+}
+
 .chart-bg-wrapper {
   background-color: var(--bg-body);
   border-radius: 12px;
@@ -137,3 +152,4 @@
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+.space-y-6 > * + * { margin-top: 24px; }
