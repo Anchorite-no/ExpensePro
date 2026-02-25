@@ -1,0 +1,293 @@
+.tag-trends-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.card-subtitle {
+  margin: 4px 0 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.empty-tag-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+/* ================== Row 1: Tree ================== */
+.tree-card {
+  position: relative;
+  overflow: hidden;
+  padding: 24px;
+}
+
+.tree-layout {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+  margin-top: 16px;
+}
+
+.tree-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  z-index: 2;
+}
+
+.total-col {
+  width: 150px;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.cat-col {
+  flex: 1;
+  max-width: calc(100% - 200px);
+}
+
+.tree-node {
+  background: var(--bg-body);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s;
+}
+
+.total-node {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: white;
+  min-height: 80px;
+}
+
+.total-node .node-label,
+.total-node .node-value {
+  color: white;
+}
+
+.cat-node {
+  border-left-width: 4px;
+  align-items: flex-start;
+  min-width: 120px;
+  background: var(--bg-card);
+}
+
+.node-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.node-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cat-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  background: var(--bg-card);
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.tags-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+}
+
+.tag-pill {
+  background: var(--bg-body);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.tree-svg-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tree-link {
+  stroke: var(--border);
+  stroke-width: 2px;
+  opacity: 0.5;
+}
+
+/* ================== Row 2: Force Graph ================== */
+.force-graph-card {
+  padding: 24px;
+}
+
+.force-container {
+  width: 100%;
+  background: var(--bg-body);
+  border-radius: 12px;
+  margin-top: 16px;
+  overflow: hidden;
+  position: relative;
+}
+
+.force-node {
+  cursor: grab;
+  animation: pulseNode 3s infinite alternate;
+}
+
+.force-node:active {
+  cursor: grabbing;
+}
+
+@keyframes pulseNode {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.05); }
+}
+
+/* ================== Grid Layout ================== */
+.charts-grid-7-5 {
+  display: grid;
+  grid-template-columns: 7fr 5fr;
+  gap: 20px;
+}
+
+@media (max-width: 1024px) {
+  .charts-grid-7-5 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ================== Row 3: Quadrant & Top Bar ================== */
+.quadrant-card, .top-bar-card {
+  padding: 24px;
+}
+
+/* ================== Row 4: Heatmap ================== */
+.heatmap-card {
+  padding: 24px;
+}
+
+.heatmap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.heatmap-select {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-body);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+}
+
+.heatmap-grid-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.heatmap-grid {
+  display: flex;
+  gap: 4px;
+}
+
+.heatmap-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.heatmap-cell {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  transition: transform 0.1s;
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.2);
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.heatmap-labels {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  align-self: flex-end;
+}
+
+.heatmap-legend {
+  display: flex;
+  gap: 4px;
+}
+
+.heatmap-legend div {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+/* ================== Row 4: Word Cloud ================== */
+.word-cloud-card {
+  padding: 24px;
+}
+
+.word-cloud-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: var(--bg-body);
+  border-radius: 12px;
+  min-height: 250px;
+}
+
+.cloud-word {
+  font-weight: 700;
+  transition: transform 0.2s;
+  cursor: default;
+}
+
+.cloud-word:hover {
+  transform: scale(1.1);
+  text-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}

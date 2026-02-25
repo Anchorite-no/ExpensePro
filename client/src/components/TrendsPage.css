@@ -79,3 +79,40 @@
     padding-bottom: 4px;
   }
 }
+.analysis-type-toggle {
+  display: flex;
+  background: var(--bg-body);
+  border-radius: 8px;
+  padding: 4px;
+  margin-left: auto;
+}
+
+.analysis-type-toggle .toggle-btn {
+  background: transparent;
+  border: none;
+  padding: 6px 12px;
+  font-size: 14px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.analysis-type-toggle .toggle-btn.active {
+  background: var(--bg-card);
+  color: var(--primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  font-weight: 500;
+}
+
+@media (max-width: 600px) {
+  .analysis-type-toggle {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 12px;
+  }
+  .analysis-type-toggle .toggle-btn {
+    flex: 1;
+  }
+}

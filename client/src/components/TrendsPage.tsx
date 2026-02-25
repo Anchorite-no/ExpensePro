@@ -4,8 +4,9 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   LineChart, Line, AreaChart, Area
 } from "recharts";
-import { Wallet, Activity, TrendingUp, Calendar } from "lucide-react";
+import { Wallet, Activity, TrendingUp, Calendar, Tag as TagIcon, LayoutGrid } from "lucide-react";
 import "./TrendsPage.css";
+import TagTrendsDashboard from "./trends/TagTrendsDashboard";
 
 interface Expense {
   id: number;
@@ -97,6 +98,7 @@ function formatGroupKey(key: string, granularity: "day" | "week" | "month"): str
 
 export default function TrendsPage({ expenses, theme, categories, currency }: Props) {
   const [timeRange, setTimeRange] = useState<TimeRange>("current-week");
+  const [analysisType, setAnalysisType] = useState<"category" | "tag">("category");
 
   const chartColors = {
     grid: theme === "dark" ? "#374151" : "#E5E7EB",
@@ -162,6 +164,17 @@ export default function TrendsPage({ expenses, theme, categories, currency }: Pr
     const cats = new Set<string>();
     filteredExpenses.forEach((e) => cats.add(e.category));
     return Array.from(cats);
+  }, [filteredExpenses]);
+
+  // 获取活跃标签数量
+  const activeTagsCount = useMemo(() => {
+    const tags = new Set<string>();
+    filteredExpenses.forEach(e => {
+      // 提取 #tag 格式的标签
+      const matches = e.note?.match(/#([^\s#]+)/g) || [];
+      matches.forEach(m => tags.add(m.substring(1)));
+    });
+    return tags.size;
   }, [filteredExpenses]);
 
   // 分类饼图数据
@@ -250,18 +263,37 @@ export default function TrendsPage({ expenses, theme, categories, currency }: Pr
     <div className="trends-page">
       {/* 时间筛选器 */}
       <div className="time-filter">
-        <Calendar size={16} />
-        <span className="filter-label">时间范围</span>
-        <div className="filter-btns">
-          {timeRanges.map((r) => (
-            <button
-              key={r.key}
-              className={`filter-btn ${timeRange === r.key ? "active" : ""}`}
-              onClick={() => setTimeRange(r.key)}
-            >
-              {r.label}
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Calendar size={16} />
+          <span className="filter-label">时间范围</span>
+          <div className="filter-btns">
+            {timeRanges.map((r) => (
+              <button
+                key={r.key}
+                className={`filter-btn ${timeRange === r.key ? "active" : ""}`}
+                onClick={() => setTimeRange(r.key)}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        <div style={{ flex: 1 }} />
+        
+        <div className="analysis-type-toggle">
+          <button 
+            className={`toggle-btn ${analysisType === 'category' ? 'active' : ''}`}
+            onClick={() => setAnalysisType('category')}
+          >
+            <LayoutGrid size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'text-bottom' }}/> 分类分析
+          </button>
+          <button 
+            className={`toggle-btn ${analysisType === 'tag' ? 'active' : ''}`}
+            onClick={() => setAnalysisType('tag')}
+          >
+            <TagIcon size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'text-bottom' }}/> 标签大屏
+          </button>
         </div>
       </div>
 
@@ -275,10 +307,12 @@ export default function TrendsPage({ expenses, theme, categories, currency }: Pr
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon purple"><Activity size={24} /></div>
+          <div className="stat-icon purple">
+            {analysisType === 'category' ? <Activity size={24} /> : <TagIcon size={24} />}
+          </div>
           <div className="stat-info">
-            <span className="label">交易笔数</span>
-            <span className="value">{stats.count}</span>
+            <span className="label">{analysisType === 'category' ? '交易笔数' : '活跃标签'}</span>
+            <span className="value">{analysisType === 'category' ? stats.count : activeTagsCount}</span>
           </div>
         </div>
         <div className="stat-card">
@@ -290,107 +324,118 @@ export default function TrendsPage({ expenses, theme, categories, currency }: Pr
         </div>
       </div>
 
-      {/* 分类堆积面积图 */}
-      <div className="chart-card chart-full">
-        <h3>分类支出趋势</h3>
-        {categoryAreaData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={categoryAreaData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-              <XAxis dataKey="label" stroke={chartColors.axis} fontSize={12} />
-              <YAxis stroke={chartColors.axis} fontSize={12} />
-              <Tooltip content={<ChartTooltip theme={theme} currency={currency} />} cursor={cursorLine} />
-              {activeCategories.map((cat) => (
-                <Area
-                  key={cat}
-                  type="monotone"
-                  dataKey={cat}
-                  stackId="1"
-                  stroke={getCategoryColor(cat, categories)}
-                  fill={getCategoryColor(cat, categories)}
-                  fillOpacity={0.6}
-                />
-              ))}
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-            </AreaChart>
-          </ResponsiveContainer>
-        ) : <p className="empty-hint">暂无数据</p>}
-      </div>
-
-      {/* 每日支出明细堆叠柱状图 + 支出对比柱状图 */}
-      <div className="charts-grid">
-        <div className="chart-card">
-          <h3>每日支出明细</h3>
-          {dailyStackedData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={dailyStackedData}>
-                <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-                <XAxis dataKey="label" stroke={chartColors.axis} fontSize={12} />
-                <YAxis stroke={chartColors.axis} fontSize={12} />
-                <Tooltip content={<ChartTooltip theme={theme} currency={currency} />} cursor={cursorBar} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                {activeCategories.map((cat, i) => (
-                  <Bar
-                    key={cat}
-                    dataKey={cat}
-                    stackId="stack"
-                    fill={getCategoryColor(cat, categories)}
-                    radius={i === activeCategories.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                  />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <p className="empty-hint">暂无数据</p>}
-        </div>
-        <div className="chart-card">
-          <h3>支出对比</h3>
-          {aggregatedData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={aggregatedData}>
-                <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-                <XAxis dataKey="label" stroke={chartColors.axis} fontSize={12} />
-                <YAxis stroke={chartColors.axis} fontSize={12} />
-                <Tooltip content={<ChartTooltip theme={theme} currency={currency} />} cursor={cursorBar} />
-                <Bar dataKey="支出" fill="#6366F1" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <p className="empty-hint">暂无数据</p>}
-        </div>
-      </div>
-
-      {/* 支出趋势折线图 + 支出分类占比饼图 */}
-      <div className="charts-grid">
-        <div className="chart-card">
-          <h3>支出趋势</h3>
-          {aggregatedData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={aggregatedData}>
-                <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-                <XAxis dataKey="label" stroke={chartColors.axis} fontSize={12} />
-                <YAxis stroke={chartColors.axis} fontSize={12} />
-                <Tooltip content={<ChartTooltip theme={theme} currency={currency} />} cursor={cursorLine} />
-                <Line type="monotone" dataKey="支出" stroke="#10B981" strokeWidth={2.5} dot={{ fill: "#10B981", r: 4 }} activeDot={{ r: 6 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : <p className="empty-hint">暂无数据</p>}
-        </div>
-        <div className="chart-card">
-          <h3>支出分类占比</h3>
-          {categoryData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie data={categoryData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value">
-                  {categoryData.map((entry, i) => (
-                    <Cell key={i} fill={getCategoryColor(entry.name, categories)} />
+      {analysisType === 'tag' ? (
+        <TagTrendsDashboard 
+          expenses={filteredExpenses} 
+          theme={theme} 
+          categories={categories} 
+          currency={currency} 
+        />
+      ) : (
+        <>
+          {/* 分类堆积面积图 */}
+          <div className="chart-card chart-full">
+            <h3>分类支出趋势</h3>
+            {categoryAreaData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={categoryAreaData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                  <XAxis dataKey="label" stroke={chartColors.axis} fontSize={12} />
+                  <YAxis stroke={chartColors.axis} fontSize={12} />
+                  <Tooltip content={<ChartTooltip theme={theme} currency={currency} />} cursor={cursorLine} />
+                  {activeCategories.map((cat) => (
+                    <Area
+                      key={cat}
+                      type="monotone"
+                      dataKey={cat}
+                      stackId="1"
+                      stroke={getCategoryColor(cat, categories)}
+                      fill={getCategoryColor(cat, categories)}
+                      fillOpacity={0.6}
+                    />
                   ))}
-                </Pie>
-                <Tooltip content={<PieTooltip theme={theme} currency={currency} />} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : <p className="empty-hint">暂无数据</p>}
-        </div>
-      </div>
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : <p className="empty-hint">暂无数据</p>}
+          </div>
+
+          {/* 每日支出明细堆叠柱状图 + 支出对比柱状图 */}
+          <div className="charts-grid">
+            <div className="chart-card">
+              <h3>每日支出明细</h3>
+              {dailyStackedData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={dailyStackedData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                    <XAxis dataKey="label" stroke={chartColors.axis} fontSize={12} />
+                    <YAxis stroke={chartColors.axis} fontSize={12} />
+                    <Tooltip content={<ChartTooltip theme={theme} currency={currency} />} cursor={cursorBar} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    {activeCategories.map((cat, i) => (
+                      <Bar
+                        key={cat}
+                        dataKey={cat}
+                        stackId="stack"
+                        fill={getCategoryColor(cat, categories)}
+                        radius={i === activeCategories.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : <p className="empty-hint">暂无数据</p>}
+            </div>
+            <div className="chart-card">
+              <h3>支出对比</h3>
+              {aggregatedData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={aggregatedData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                    <XAxis dataKey="label" stroke={chartColors.axis} fontSize={12} />
+                    <YAxis stroke={chartColors.axis} fontSize={12} />
+                    <Tooltip content={<ChartTooltip theme={theme} currency={currency} />} cursor={cursorBar} />
+                    <Bar dataKey="支出" fill="#6366F1" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : <p className="empty-hint">暂无数据</p>}
+            </div>
+          </div>
+
+          {/* 支出趋势折线图 + 支出分类占比饼图 */}
+          <div className="charts-grid">
+            <div className="chart-card">
+              <h3>支出趋势</h3>
+              {aggregatedData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={aggregatedData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                    <XAxis dataKey="label" stroke={chartColors.axis} fontSize={12} />
+                    <YAxis stroke={chartColors.axis} fontSize={12} />
+                    <Tooltip content={<ChartTooltip theme={theme} currency={currency} />} cursor={cursorLine} />
+                    <Line type="monotone" dataKey="支出" stroke="#10B981" strokeWidth={2.5} dot={{ fill: "#10B981", r: 4 }} activeDot={{ r: 6 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : <p className="empty-hint">暂无数据</p>}
+            </div>
+            <div className="chart-card">
+              <h3>支出分类占比</h3>
+              {categoryData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie data={categoryData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value">
+                      {categoryData.map((entry, i) => (
+                        <Cell key={i} fill={getCategoryColor(entry.name, categories)} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<PieTooltip theme={theme} currency={currency} />} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : <p className="empty-hint">暂无数据</p>}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
