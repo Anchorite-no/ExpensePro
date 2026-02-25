@@ -1,0 +1,450 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import { 
+  ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, 
+  ReferenceLine, ReferenceArea, BarChart, Bar, Cell, Tooltip as RechartsTooltip
+} from 'recharts';
+import { 
+  Network, Target, GitGraph, BarChart3, Flame, Tags
+} from 'lucide-react';
+
+// --- 1. 模拟账单数据 ---
+const mockTransactions = [
+  { id: 1, amount: 120, category: '餐饮', tags: ['工作餐', '外卖'] },
+  { id: 2, amount: 450, category: '餐饮', tags: ['聚餐', '周末', '社交'] },
+  { id: 3, amount: 35, category: '交通', tags: ['打车', '迟到'] },
+  { id: 4, amount: 899, category: '购物', tags: ['冲动消费', '衣服', '悦己'] },
+  { id: 5, amount: 25, category: '餐饮', tags: ['奶茶', '解压'] },
+  { id: 6, amount: 60, category: '交通', tags: ['打车', '加班'] },
+  { id: 7, amount: 300, category: '服务订阅', tags: ['游戏', '娱乐'] },
+  { id: 8, amount: 150, category: '购物', tags: ['生活用品', '刚需'] },
+  { id: 9, amount: 80, category: '餐饮', tags: ['工作餐', '外卖'] },
+  { id: 10, amount: 199, category: '购物', tags: ['数码', '冲动消费'] },
+  { id: 11, amount: 200, category: '餐饮', tags: ['聚餐', '社交'] },
+  { id: 12, amount: 45, category: '交通', tags: ['打车', '下雨'] },
+  { id: 13, amount: 30, category: '餐饮', tags: ['奶茶'] },
+  { id: 14, amount: 500, category: '购物', tags: ['衣服', '换季'] },
+  { id: 15, amount: 18, category: '交通', tags: ['公交', '通勤'] },
+  { id: 16, amount: 300, category: '其他', tags: ['送礼', '社交'] },
+  { id: 17, amount: 55, category: '餐饮', tags: ['咖啡', '工作日'] },
+  { id: 18, amount: 20, category: '交通', tags: ['共享单车', '通勤'] },
+  { id: 19, amount: 120, category: '购物', tags: ['零食', '超市'] },
+  { id: 20, amount: 88, category: '服务订阅', tags: ['会员', '冲动消费'] },
+];
+
+const COLORS = ['#8b5cf6', '#34d399', '#60a5fa', '#f472b6', '#fbbf24', '#38bdf8', '#a78bfa', '#f87171', '#10b981', '#f59e0b'];
+const CATEGORY_COLORS = { '餐饮': '#34d399', '购物': '#8b5cf6', '交通': '#60a5fa', '服务订阅': '#f472b6', '其他': '#94a3b8' };
+
+// ==========================================
+// 组件 1: 极简脑图树状图 (平滑曲线主干 + 横向标签叶子)
+// ==========================================
+const CustomTreeDiagram = ({ transactions }) => {
+  const treeData = useMemo(() => {
+    let total = 0;
+    const catMap = {};
+    
+    transactions.forEach(t => {
+      total += t.amount;
+      if (!catMap[t.category]) catMap[t.category] = { amount: 0, tags: {} };
+      catMap[t.category].amount += t.amount;
+      t.tags.forEach(tag => { catMap[t.category].tags[tag] = (catMap[t.category].tags[tag] || 0) + t.amount; });
+    });
+
+    const categories = Object.keys(catMap).map(cat => {
+      const sortedTags = Object.keys(catMap[cat].tags).map(tag => ({ name: tag, amount: catMap[cat].tags[tag] })).sort((a, b) => b.amount - a.amount);
+      const topTags = sortedTags.slice(0, 5); 
+      const topAmount = topTags.reduce((sum, t) => sum + t.amount, 0);
+      if (catMap[cat].amount > topAmount) topTags.push({ name: '其他', amount: catMap[cat].amount - topAmount });
+      return { name: cat, amount: catMap[cat].amount, color: CATEGORY_COLORS[cat] || '#ccc', tags: topTags };
+    }).sort((a, b) => b.amount - a.amount);
+
+    const xRoot = 120, xCat = 340, startXTag = 410; 
+    let currentY = 40;
+    
+    const catNodes = [], tagNodes = [], links = [];
+
+    categories.forEach(cat => {
+      // 记录分类节点
+      catNodes.push({ id: cat.name, name: cat.name, amount: cat.amount, x: xCat, y: currentY, color: cat.color });
+      
+      // 记录从根节点到分类的平滑贝塞尔曲线 (回归第一版美感)
+      links.push({ source: { x: xRoot, y: 0 }, target: { x: xCat, y: currentY }, color: cat.color });
+
+      // 标签直接在分类右侧横向平铺排列，没有任何分支连线
+      let currentXTag = startXTag;
+      cat.tags.forEach(tag => {
+        // 动态计算文字宽度，生成包裹恰到好处的小卡片
+        const nameWidth = tag.name.length * 13;
+        const amtWidth = String(tag.amount).length * 8;
+        const boxWidth = 24 + nameWidth + 8 + amtWidth + 12; 
+        
+        tagNodes.push({ 
+          id: `${cat.name}-${tag.name}`, 
+          name: tag.name, 
+          amount: tag.amount, 
+          x: currentXTag, 
+          y: currentY, 
+          width: boxWidth, 
+          color: cat.color 
+        });
+        currentXTag += boxWidth + 10; // 卡片间的横向间距
+      });
+
+      currentY += 65; // 每个分类所在行的垂直间距
+    });
+
+    const rootY = catNodes.length > 0 ? (catNodes[0].y + catNodes[catNodes.length - 1].y) / 2 : 100;
+    links.forEach(l => { l.source.y = rootY; });
+
+    return { total, rootY, catNodes, tagNodes, links, height: Math.max(currentY + 10, 200) };
+  }, [transactions]);
+
+  return (
+    <div className="w-full overflow-x-auto custom-scrollbar flex justify-start lg:justify-center">
+      <svg width="1000" height={treeData.height} viewBox={`0 0 1000 ${treeData.height}`} className="font-sans min-w-[800px]">
+        
+        {/* 恢复第一版那充满张力的贝塞尔曲线 */}
+        {treeData.links.map(link => (
+          <path 
+            key={link.id}
+            d={`M ${link.source.x} ${link.source.y} C ${link.source.x + 80} ${link.source.y}, ${link.target.x - 80} ${link.target.y}, ${link.target.x} ${link.target.y}`}
+            fill="none" stroke={link.color} strokeWidth="3" strokeOpacity={0.4}
+            className="transition-all duration-300 hover:stroke-opacity-100 cursor-pointer"
+          />
+        ))}
+
+        {/* 根节点：总支出 */}
+        <g transform={`translate(120, ${treeData.rootY})`}>
+          <rect x="-60" y="-22" width="120" height="44" rx="8" fill="#1e293b" />
+          <text x="0" y="-4" textAnchor="middle" fill="#fff" fontSize="14" fontWeight="bold">总支出</text>
+          <text x="0" y="14" textAnchor="middle" fill="#94a3b8" fontSize="11">¥{treeData.total}</text>
+        </g>
+
+        {/* 分类节点：主干 */}
+        {treeData.catNodes.map(node => (
+          <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
+            <rect x="-50" y="-18" width="100" height="36" rx="6" fill="#fff" stroke={node.color} strokeWidth="2" />
+            <text x="0" y="-2" textAnchor="middle" fill={node.color} fontSize="13" fontWeight="bold">{node.name}</text>
+            <text x="0" y="12" textAnchor="middle" fill="#64748b" fontSize="10">¥{node.amount}</text>
+          </g>
+        ))}
+
+        {/* 标签节点：无连线，白底灰框横向平铺 */}
+        {treeData.tagNodes.map(node => (
+          <g key={node.id} transform={`translate(${node.x}, ${node.y})`} className="cursor-pointer">
+            <rect x="0" y="-15" width={node.width} height="30" rx="6" fill="#ffffff" stroke="#e2e8f0" strokeWidth="1.5" className="hover:border-gray-300 transition-colors" />
+            <circle cx="12" cy="0" r="4" fill={node.color} />
+            <text x="24" y="1" textAnchor="start" fill="#475569" fontSize="12" fontWeight="600" dominantBaseline="central">{node.name}</text>
+            <text x={node.width - 10} y="1" textAnchor="end" fill="#94a3b8" fontSize="10" dominantBaseline="central">¥{node.amount}</text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+};
+
+// ==========================================
+// 组件 2: 神经元共现网络图 (统一浅色主题适配)
+// ==========================================
+const CustomOrganicNetwork = ({ transactions }) => {
+  const [nodes, setNodes] = useState([]);
+  const [links, setLinks] = useState([]);
+
+  useEffect(() => {
+    const nodesMap = {}; const linksMap = {};
+    transactions.forEach(t => {
+      t.tags.forEach(tag => { if (!nodesMap[tag]) nodesMap[tag] = { id: tag, count: 0 }; nodesMap[tag].count += 1; });
+      for (let i = 0; i < t.tags.length; i++) {
+        for (let j = i + 1; j < t.tags.length; j++) {
+          const pair = [t.tags[i], t.tags[j]].sort().join('||');
+          linksMap[pair] = (linksMap[pair] || 0) + 1;
+        }
+      }
+    });
+
+    const initNodes = Object.values(nodesMap).sort((a, b) => b.count - a.count).slice(0, 20); 
+    const validNodeIds = new Set(initNodes.map(n => n.id));
+    const initLinks = Object.entries(linksMap).map(([pair, weight]) => {
+      const [source, target] = pair.split('||'); return { source, target, weight };
+    }).filter(l => validNodeIds.has(l.source) && validNodeIds.has(l.target));
+
+    const centerX = 400, centerY = 160;
+    initNodes.forEach((node, i) => {
+      node.x = centerX + (Math.random() - 0.5) * 400; 
+      node.y = centerY + (Math.random() - 0.5) * 150;
+      node.vx = 0; node.vy = 0;
+      node.color = COLORS[i % COLORS.length];
+      node.r = Math.max(14, Math.min(34, 10 + node.count * 3));
+      node.animDelay = Math.random() * 2;
+      node.animDuration = 3 + Math.random() * 2;
+    });
+
+    for (let iter = 0; iter < 120; iter++) {
+      for (let i = 0; i < initNodes.length; i++) {
+        for (let j = i + 1; j < initNodes.length; j++) {
+          let dx = initNodes[i].x - initNodes[j].x, dy = initNodes[i].y - initNodes[j].y;
+          let dist = Math.sqrt(dx*dx + dy*dy) || 1;
+          let force = 6000 / dist; 
+          initNodes[i].vx += (dx/dist)*force; initNodes[i].vy += (dy/dist)*force;
+          initNodes[j].vx -= (dx/dist)*force; initNodes[j].vy -= (dy/dist)*force;
+        }
+      }
+      initLinks.forEach(link => {
+        let source = initNodes.find(n => n.id === link.source), target = initNodes.find(n => n.id === link.target);
+        if(source && target) {
+          let dx = source.x - target.x, dy = source.y - target.y;
+          let dist = Math.sqrt(dx*dx + dy*dy) || 1;
+          let force = (dist*dist) / 120 * (link.weight * 0.3); 
+          source.vx -= (dx/dist)*force; source.vy -= (dy/dist)*force;
+          target.vx += (dx/dist)*force; target.vy += (dy/dist)*force;
+        }
+      });
+      initNodes.forEach(n => {
+        n.vx += (centerX - n.x) * (0.01 + n.count * 0.004); 
+        n.vy += (centerY - n.y) * (0.02 + n.count * 0.008);
+        n.x += n.vx * 0.05; n.y += n.vy * 0.05;
+        n.vx = 0; n.vy = 0;
+      });
+    }
+    setNodes([...initNodes]); setLinks(initLinks);
+  }, [transactions]);
+
+  return (
+    <div className="w-full overflow-x-auto flex justify-center custom-scrollbar">
+      {/* 适配浅色主题的星系网络 */}
+      <svg width="100%" height="320" viewBox="0 0 800 320" className="font-sans min-w-[800px]">
+        <defs>
+          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        {/* 浅色辅助轨道 */}
+        <ellipse cx="400" cy="160" rx="140" ry="70" fill="none" stroke="#e2e8f0" strokeDasharray="4 4" strokeOpacity="0.8" />
+        <ellipse cx="400" cy="160" rx="260" ry="120" fill="none" stroke="#e2e8f0" strokeDasharray="4 4" strokeOpacity="0.6" />
+        <ellipse cx="400" cy="160" rx="380" ry="160" fill="none" stroke="#e2e8f0" strokeDasharray="4 4" strokeOpacity="0.3" />
+
+        {links.map((link, i) => {
+          const source = nodes.find(n => n.id === link.source), target = nodes.find(n => n.id === link.target);
+          if (!source || !target) return null;
+          const dx = target.x - source.x, dy = target.y - source.y;
+          const cx = source.x + dx / 2 - dy * 0.2; 
+          const cy = source.y + dy / 2 + dx * 0.2;
+          return (
+            <path key={i} d={`M ${source.x} ${source.y} Q ${cx} ${cy} ${target.x} ${target.y}`} fill="none" stroke="#94a3b8" strokeWidth={link.weight * 1.5} strokeOpacity={0.4} />
+          )
+        })}
+
+        {nodes.map((node) => (
+          <g key={node.id} className="cursor-pointer">
+            <animateTransform attributeName="transform" type="translate" values={`${node.x},${node.y}; ${node.x},${node.y - 6}; ${node.x},${node.y}`} dur={`${node.animDuration}s`} begin={`${node.animDelay}s`} repeatCount="indefinite" />
+            <circle r={node.r} fill={node.color} fillOpacity="0.95" stroke="#fff" strokeWidth="2.5" filter="url(#glow)" />
+            {/* 浅色主题下文字保持白色以便在亮色气泡上可读，或加轻微阴影 */}
+            <text x="0" y="3" textAnchor="middle" fill="#fff" fontSize={node.r > 18 ? 12 : 10} fontWeight="bold" className="select-none" style={{textShadow: '0px 1px 2px rgba(0,0,0,0.2)'}}>{node.id}</text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+};
+
+// ==========================================
+// 主大盘入口
+// ==========================================
+export default function TagAnalysisDashboard() {
+  const [heatmapTag, setHeatmapTag] = useState('外卖');
+
+  const { rankingData, scatterData, quadrantLines, wordCloudData } = useMemo(() => {
+    const stats = {}; let maxAmount = 0;
+    mockTransactions.forEach(t => { t.tags.forEach(tag => { if (!stats[tag]) stats[tag] = { name: tag, amount: 0, count: 0 }; stats[tag].amount += t.amount; stats[tag].count += 1; }); });
+    const sortedTags = Object.values(stats).sort((a, b) => b.amount - a.amount);
+    maxAmount = sortedTags[0]?.amount || 1;
+
+    let totalCount = 0, totalAmount = 0;
+    const scatterData = sortedTags.map(t => { totalCount += t.count; totalAmount += t.amount; return { ...t, avgAmount: Math.round(t.amount / t.count) }; });
+    
+    return { 
+      rankingData: sortedTags.slice(0, 8),
+      scatterData,
+      quadrantLines: { x: totalCount / sortedTags.length || 1, y: totalAmount / sortedTags.length || 1 },
+      wordCloudData: sortedTags.map(t => ({ 
+        ...t, 
+        fontSize: Math.max(14, Math.min(32, 12 + (t.count / (totalCount / sortedTags.length)) * 8)), 
+        color: COLORS[Math.floor(Math.random() * COLORS.length)] 
+      })).sort(() => Math.random() - 0.5)
+    };
+  }, []);
+
+  const heatmapData = useMemo(() => {
+    const data = [];
+    for (let week = 0; week < 6; week++) {
+      const weekData = [];
+      for (let day = 0; day < 7; day++) {
+        let prob = heatmapTag === '外卖' ? 0.4 : (heatmapTag === '打车' ? 0.3 : 0.15);
+        weekData.push({ id: `${week}-${day}`, count: Math.random() < prob ? Math.floor(Math.random() * 3) + 1 : 0 });
+      }
+      data.push(weekData);
+    }
+    return data;
+  }, [heatmapTag]);
+
+  const getHeatmapColor = (count) => {
+    if (count === 0) return '#f1f5f9';
+    if (count === 1) return '#c4b5fd'; if (count === 2) return '#8b5cf6'; return '#5b21b6'; 
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f4f7f9] p-4 md:p-6 font-sans text-gray-800 space-y-6">
+      
+      {/* 顶部标题栏 */}
+      <div className="max-w-[1400px] mx-auto bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="bg-purple-600 text-white p-2.5 rounded-xl shadow-md shadow-purple-200">
+            <Tags size={24} />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">全景标签洞察中心</h1>
+            <p className="text-xs text-gray-500 mt-0.5">多维交叉数据分析，挖掘深层消费联系</p>
+          </div>
+        </div>
+        <div className="text-right hidden sm:block">
+          <p className="text-xs text-gray-400">活跃标签总数</p>
+          <p className="text-xl font-bold text-gray-800">{scatterData.length} <span className="text-sm font-normal text-gray-400">个</span></p>
+        </div>
+      </div>
+
+      <div className="max-w-[1400px] mx-auto space-y-6 pb-12">
+        
+        {/* ROW 1: 宏观把控 (平滑曲线与横向排布完美融合) */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center gap-2 mb-4">
+            <Network className="text-blue-500" size={20} />
+            <h2 className="text-lg font-bold text-gray-900">资金流向逻辑树 (Hierarchy Tree)</h2>
+          </div>
+          <p className="text-xs text-gray-400 mb-6">利用平滑有机的主干曲线相连，剥离错综复杂的末端分支。具体标签化为纯净的白底小卡片，在对应的分类右侧横向舒展平铺。</p>
+          <div className="w-full bg-slate-50/50 rounded-xl border border-slate-100 p-2 py-4">
+            <CustomTreeDiagram transactions={mockTransactions} />
+          </div>
+        </div>
+
+        {/* ROW 2: 潜意识挖掘 (已全面切换为浅色主题) */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col items-center">
+          <div className="w-full flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <GitGraph className="text-indigo-500" size={20} />
+              <h2 className="text-lg font-bold text-gray-900">神经元共现网络 (Neural Network)</h2>
+            </div>
+          </div>
+          <p className="w-full text-xs text-gray-400 mb-4 text-left">浅色通透质感。节点带有随机悬浮动画与高斯模糊光晕，揭示你潜意识中经常组合使用的隐秘习惯。</p>
+          <div className="w-full bg-slate-50/50 border border-slate-100 rounded-xl overflow-hidden flex justify-center py-6 relative">
+             <CustomOrganicNetwork transactions={mockTransactions} />
+             <div className="absolute bottom-3 right-3 text-[10px] text-slate-400">基于物理引力与 SVG 渲染</div>
+          </div>
+        </div>
+
+        {/* ROW 3: 理性绝对值 (7:5 布局，四象限 + 金额榜单) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 lg:col-span-7 flex flex-col relative">
+            <div className="flex items-center gap-2 mb-2">
+              <Target className="text-emerald-500" size={20} />
+              <h2 className="text-lg font-bold text-gray-900">习惯矩阵四象限 (Quadrant)</h2>
+            </div>
+            <p className="text-xs text-gray-400 mb-4">通过纵横均线自动划分标签阵营，有效捕捉右下角的拿铁因子区。</p>
+            <div className="flex-grow min-h-[300px] relative">
+              <div className="absolute top-[8%] right-[8%] text-right opacity-30 pointer-events-none"><div className="text-xl font-bold text-red-500">高频高额</div><div className="text-xs">需重点干预</div></div>
+              <div className="absolute bottom-[8%] right-[8%] text-right opacity-30 pointer-events-none"><div className="text-xl font-bold text-blue-500">高频低额</div><div className="text-xs">拿铁因子区</div></div>
+              <ResponsiveContainer width="100%" height="100%">
+                <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" opacity={0.5} />
+                  <XAxis type="number" dataKey="count" name="消费次数" tick={{fill: '#94a3b8', fontSize: 12}} />
+                  <YAxis type="number" dataKey="amount" name="总金额" tick={{fill: '#94a3b8', fontSize: 12}} />
+                  <ZAxis type="number" dataKey="avgAmount" range={[50, 400]} />
+                  <ReferenceLine x={quadrantLines.x} stroke="#cbd5e1" strokeDasharray="5 5" label={{ position: 'top', value: '平均频次', fill: '#94a3b8', fontSize: 10 }} />
+                  <ReferenceLine y={quadrantLines.y} stroke="#cbd5e1" strokeDasharray="5 5" label={{ position: 'right', value: '平均金额', fill: '#94a3b8', fontSize: 10 }} />
+                  <ReferenceArea x1={quadrantLines.x} y1={quadrantLines.y} fill="#fee2e2" fillOpacity={0.2} />
+                  <RechartsTooltip cursor={{strokeDasharray: '3 3'}} formatter={(value, name) => [name === '消费次数' ? `${value} 次` : `¥${value}`, name]} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                  <Scatter data={scatterData} fill="#10b981" fillOpacity={0.85}>
+                     {scatterData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                  </Scatter>
+                </ScatterChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 lg:col-span-5 flex flex-col">
+            <div className="flex items-center gap-2 mb-2">
+              <BarChart3 className="text-pink-500" size={20} />
+              <h2 className="text-lg font-bold text-gray-900">核心消费榜 (Top 8)</h2>
+            </div>
+            <p className="text-xs text-gray-400 mb-4">直观对比最烧钱的核心标签绝对值。</p>
+            <div className="flex-grow min-h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={rankingData} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 13}} width={70} />
+                  <RechartsTooltip cursor={{fill: '#f8fafc'}} formatter={(value) => [`¥${value}`, '总支出']} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                  <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={20}>
+                    {rankingData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+        </div>
+
+        {/* ROW 4: 时间与视觉调剂 (7:5 布局，热力图 + 频次词云) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 lg:col-span-7 flex flex-col">
+            <div className="flex items-center gap-2 mb-2">
+              <Flame className="text-orange-500" size={20} />
+              <h2 className="text-lg font-bold text-gray-900">单一习惯追踪 (Heatmap)</h2>
+            </div>
+            <p className="text-xs text-gray-400 mb-6">类 GitHub 提交记录图表，关注你最在意的隐性习惯发生频率。</p>
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div className="w-full sm:w-36">
+                <select value={heatmapTag} onChange={(e) => setHeatmapTag(e.target.value)} className="w-full bg-orange-50/50 border border-orange-100 text-orange-900 py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 font-bold text-sm">
+                  <option value="外卖">🍔 #外卖</option>
+                  <option value="打车">🚕 #打车</option>
+                  <option value="咖啡">☕ #咖啡</option>
+                </select>
+              </div>
+              <div className="flex-1 overflow-x-auto w-full">
+                <div className="flex gap-1.5 min-w-max pb-2">
+                  <div className="flex flex-col gap-1.5 mr-2 text-[10px] text-gray-400 justify-around"><span>一</span><span>三</span><span>五</span><span>日</span></div>
+                  {heatmapData.map((week, wIndex) => (
+                    <div key={wIndex} className="flex flex-col gap-1.5">
+                      {week.map((day) => (
+                        <div key={day.id} className="w-4 h-4 sm:w-5 sm:h-5 rounded-[4px] hover:scale-125 cursor-pointer ring-1 ring-black/5" style={{ backgroundColor: getHeatmapColor(day.count) }} title={`${day.count} 次打卡`} />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 lg:col-span-5 flex flex-col">
+            <div className="flex items-center gap-2 mb-2">
+              <Tags className="text-gray-400" size={20} />
+              <h2 className="text-lg font-bold text-gray-900">标签频率云 (Word Cloud)</h2>
+            </div>
+            <p className="text-xs text-gray-400 mb-4">字体大小纯由【使用频率】决定，捕捉低额高频支出。</p>
+            <div className="flex-grow flex flex-wrap content-center justify-center gap-4 px-4 py-6 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+              {wordCloudData.map((tag, i) => (
+                <span key={i} className="hover:scale-110 cursor-pointer drop-shadow-sm select-none transition-transform" style={{ fontSize: `${tag.fontSize}px`, color: tag.color, fontWeight: tag.fontSize > 22 ? 800 : (tag.fontSize > 16 ? 600 : 400) }} title={`${tag.name} (出现 ${tag.count} 次)`}>
+                  {tag.name}
+                </span>
+              ))}
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  );
+}

@@ -1,19 +1,13 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import * as d3 from "d3-force";
 import {
-  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  ReferenceLine, BarChart, Bar, Cell, LabelList
+  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, ZAxis,
+  ReferenceLine, ReferenceArea, BarChart, Bar, Cell, Tooltip as RechartsTooltip, ResponsiveContainer
 } from "recharts";
+import { Network, Target, GitGraph, BarChart3, Flame, Tags } from "lucide-react";
 import { extractTags } from "../../utils/tags";
 import "./TagTrendsDashboard.css";
-import { PRESET_COLORS } from "../../constants/appConfig";
-
-interface TagStat {
-  tag: string;
-  count: number;
-  amount: number;
-  mainCat: string;
-}
+import { COLOR_PALETTE } from "../../constants/appConfig";
 
 interface Expense {
   id: number;
@@ -31,494 +25,541 @@ interface Props {
   currency: string;
 }
 
-// 辅助：获取主色系或随机色
-const getTagColor = (tag: string, index: number) => {
-  return PRESET_COLORS[index % PRESET_COLORS.length];
-};
+const getCategoryColor = (category: string, categories: Record<string, string>) =>
+  categories[category] || "#94a3b8";
 
-export default function TagTrendsDashboard({ expenses, theme, categories, currency }: Props) {
-  // 1. 数据聚合核心逻辑
-  const { tagsSummary, coOccurrence, totalAmount, activeTagsCount, dailyTagData } = useMemo(() => {
-    let totalAmount = 0;
-    const tagMap = new Map<string, { count: number; amount: number; cats: Record<string, number> }>();
-    const coOccur = new Map<string, number>();
-    const dailyMap = new Map<string, Record<string, number>>();
-
-    expenses.forEach(e => {
-      totalAmount += e.amount;
-      const tags = extractTags(e.note);
-      
-      const day = e.date.substring(0, 10);
-      if (!dailyMap.has(day)) dailyMap.set(day, {});
-      const dayData = dailyMap.get(day)!;
-
-      tags.forEach(t => {
-        // Tag Stats
-        if (!tagMap.has(t)) tagMap.set(t, { count: 0, amount: 0, cats: {} });
-        const s = tagMap.get(t)!;
-        s.count += 1;
-        s.amount += e.amount;
-        s.cats[e.category] = (s.cats[e.category] || 0) + 1;
-
-        // Daily Data
-        dayData[t] = (dayData[t] || 0) + e.amount;
-      });
-
-      // Co-occurrence
-      for (let i = 0; i < tags.length; i++) {
-        for (let j = i + 1; j < tags.length; j++) {
-          const t1 = tags[i] < tags[j] ? tags[i] : tags[j];
-          const t2 = tags[i] < tags[j] ? tags[j] : tags[i];
-          const key = `${t1}|${t2}`;
-          coOccur.set(key, (coOccur.get(key) || 0) + 1);
-        }
-      }
-    });
-
-    const summary: TagStat[] = Array.from(tagMap.entries()).map(([tag, data]) => {
-      let mainCat = "其他";
-      let maxCatCount = 0;
-      Object.entries(data.cats).forEach(([c, cnt]) => {
-        if (cnt > maxCatCount) { maxCatCount = cnt; mainCat = c; }
-      });
-      return { tag, count: data.count, amount: data.amount, mainCat };
-    });
-    
-    // Sort by amount desc
-    summary.sort((a, b) => b.amount - a.amount);
-
-    return { 
-      tagsSummary: summary, 
-      coOccurrence: coOccur, 
-      totalAmount, 
-      activeTagsCount: summary.length,
-      dailyTagData: dailyMap
-    };
-  }, [expenses]);
-
-  return (
-    <div className="tag-trends-dashboard">
-      <Row1Tree expenses={expenses} totalAmount={totalAmount} currency={currency} theme={theme} categories={categories} />
-      <Row2ForceGraph tagsSummary={tagsSummary} coOccurrence={coOccurrence} theme={theme} />
-      <div className="charts-grid-7-5">
-        <Row3Quadrant tagsSummary={tagsSummary} currency={currency} theme={theme} />
-        <Row3TopBar tagsSummary={tagsSummary} currency={currency} />
-      </div>
-      <div className="charts-grid-7-5">
-        <Row4Heatmap dailyTagData={dailyTagData} tagsSummary={tagsSummary} theme={theme} currency={currency} />
-        <Row4WordCloud tagsSummary={tagsSummary} />
-      </div>
-    </div>
-  );
-}
-
-// ============== 第一排：资金解构逻辑树 ==============
-function Row1Tree({ expenses, totalAmount, currency, theme, categories }: any) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const totalRef = useRef<HTMLDivElement>(null);
-  const [paths, setPaths] = useState<string[]>([]);
-  const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
+// ==========================================
+// 组件 1: 极简脑图树状图
+// ==========================================
+const CustomTreeDiagram = ({ expenses, categories, currency, theme }: any) => {
   const treeData = useMemo(() => {
-    const map: Record<string, { amount: number; tags: string[] }> = {};
-    expenses.forEach((e: Expense) => {
-      if (!map[e.category]) map[e.category] = { amount: 0, tags: [] };
-      map[e.category].amount += e.amount;
-      const tgs = extractTags(e.note);
-      tgs.forEach(t => {
-        if (!map[e.category].tags.includes(t)) map[e.category].tags.push(t);
+    let total = 0;
+    const catMap: Record<string, { amount: number, tags: Record<string, number> }> = {};
+    
+    expenses.forEach((t: Expense) => {
+      total += t.amount;
+      if (!catMap[t.category]) catMap[t.category] = { amount: 0, tags: {} };
+      catMap[t.category].amount += t.amount;
+      
+      const tags = extractTags(t.note);
+      tags.forEach(tag => { 
+        catMap[t.category].tags[tag] = (catMap[t.category].tags[tag] || 0) + t.amount; 
       });
     });
-    return Object.entries(map).sort((a, b) => b[1].amount - a[1].amount);
-  }, [expenses]);
 
-  useEffect(() => {
-    if (!containerRef.current || !totalRef.current) return;
-    const updatePaths = () => {
-      const containerRect = containerRef.current!.getBoundingClientRect();
-      const totalRect = totalRef.current!.getBoundingClientRect();
-      const startX = totalRect.right - containerRect.left;
-      const startY = totalRect.top - containerRect.top + totalRect.height / 2;
+    const categoryList = Object.keys(catMap).map(cat => {
+      const sortedTags = Object.keys(catMap[cat].tags)
+        .map(tag => ({ name: tag, amount: catMap[cat].tags[tag] }))
+        .sort((a, b) => b.amount - a.amount);
+      
+      const topTags = sortedTags.slice(0, 5); 
+      const topAmount = topTags.reduce((sum, t) => sum + t.amount, 0);
+      if (catMap[cat].amount > topAmount) topTags.push({ name: '其他', amount: catMap[cat].amount - topAmount });
+      
+      return { 
+        name: cat, 
+        amount: catMap[cat].amount, 
+        color: getCategoryColor(cat, categories), 
+        tags: topTags 
+      };
+    }).sort((a, b) => b.amount - a.amount);
 
-      const newPaths: string[] = [];
-      treeData.forEach(([catName]) => {
-        const catNode = catRefs.current[catName];
-        if (catNode) {
-          const catRect = catNode.getBoundingClientRect();
-          const endX = catRect.left - containerRect.left;
-          const endY = catRect.top - containerRect.top + catRect.height / 2;
-          // 三次贝塞尔曲线
-          const cpX1 = startX + (endX - startX) * 0.4;
-          const cpX2 = endX - (endX - startX) * 0.4;
-          newPaths.push(`M ${startX} ${startY} C ${cpX1} ${startY}, ${cpX2} ${endY}, ${endX} ${endY}`);
-        }
+    const xRoot = 120, xCat = 340, startXTag = 410; 
+    let currentY = 40;
+    
+    const catNodes: any[] = [], tagNodes: any[] = [], links: any[] = [];
+
+    categoryList.forEach(cat => {
+      catNodes.push({ id: cat.name, name: cat.name, amount: cat.amount, x: xCat, y: currentY, color: cat.color });
+      links.push({ source: { x: xRoot, y: 0 }, target: { x: xCat, y: currentY }, color: cat.color });
+
+      let currentXTag = startXTag;
+      cat.tags.forEach(tag => {
+        // Dynamic width calculation
+        const nameWidth = tag.name.length * 13;
+        const amtWidth = String(Math.round(tag.amount)).length * 8 + currency.length * 8;
+        const boxWidth = 24 + nameWidth + 8 + amtWidth + 12; 
+        
+        tagNodes.push({ 
+          id: `${cat.name}-${tag.name}`, 
+          name: tag.name, 
+          amount: tag.amount, 
+          x: currentXTag, 
+          y: currentY, 
+          width: boxWidth, 
+          color: cat.color 
+        });
+        currentXTag += boxWidth + 10;
       });
-      setPaths(newPaths);
-    };
 
-    updatePaths();
-    window.addEventListener('resize', updatePaths);
-    return () => window.removeEventListener('resize', updatePaths);
-  }, [treeData]);
+      currentY += 65; 
+    });
 
-  if (treeData.length === 0) return null;
+    const rootY = catNodes.length > 0 ? (catNodes[0].y + catNodes[catNodes.length - 1].y) / 2 : 100;
+    links.forEach(l => { l.source.y = rootY; });
+
+    return { total, rootY, catNodes, tagNodes, links, height: Math.max(currentY + 10, 200) };
+  }, [expenses, categories, currency]);
+
+  const isDark = theme === 'dark';
+  const textColor = isDark ? '#f1f5f9' : '#475569';
+  const rootBg = isDark ? '#334155' : '#1e293b';
+  const rootText = '#fff';
+  const catBg = isDark ? '#1e293b' : '#fff';
+  const tagBg = isDark ? '#1e293b' : '#fff';
+  const tagBorder = isDark ? '#475569' : '#e2e8f0';
+  const mutedText = isDark ? '#94a3b8' : '#64748b';
 
   return (
-    <div className="chart-card tree-card" ref={containerRef}>
-      <h3 className="card-title">资金解构逻辑树</h3>
-      <svg className="tree-svg-overlay">
-        {paths.map((d, i) => (
-          <path key={i} d={d} className="tree-link" fill="none" />
+    <div className="w-full overflow-x-auto custom-scrollbar flex justify-start lg:justify-center">
+      <svg width="1000" height={treeData.height} viewBox={`0 0 1000 ${treeData.height}`} className="font-sans min-w-[800px]">
+        
+        {treeData.links.map((link: any) => (
+          <path 
+            key={link.id || link.target.y}
+            d={`M ${link.source.x} ${link.source.y} C ${link.source.x + 80} ${link.source.y}, ${link.target.x - 80} ${link.target.y}, ${link.target.x} ${link.target.y}`}
+            fill="none" stroke={link.color} strokeWidth="3" strokeOpacity={0.4}
+            className="transition-all duration-300 hover:stroke-opacity-100 cursor-pointer"
+          />
+        ))}
+
+        {/* 根节点：总支出 */}
+        <g transform={`translate(120, ${treeData.rootY})`}>
+          <rect x="-60" y="-22" width="120" height="44" rx="8" fill={rootBg} />
+          <text x="0" y="-4" textAnchor="middle" fill={rootText} fontSize="14" fontWeight="bold">总支出</text>
+          <text x="0" y="14" textAnchor="middle" fill={mutedText} fontSize="11">{currency}{treeData.total.toFixed(2)}</text>
+        </g>
+
+        {/* 分类节点 */}
+        {treeData.catNodes.map((node: any) => (
+          <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
+            <rect x="-50" y="-18" width="100" height="36" rx="6" fill={catBg} stroke={node.color} strokeWidth="2" />
+            <text x="0" y="-2" textAnchor="middle" fill={node.color} fontSize="13" fontWeight="bold">{node.name}</text>
+            <text x="0" y="12" textAnchor="middle" fill={mutedText} fontSize="10">{currency}{node.amount.toFixed(2)}</text>
+          </g>
+        ))}
+
+        {/* 标签节点 */}
+        {treeData.tagNodes.map((node: any) => (
+          <g key={node.id} transform={`translate(${node.x}, ${node.y})`} className="cursor-pointer">
+            <rect x="0" y="-15" width={node.width} height="30" rx="6" fill={tagBg} stroke={tagBorder} strokeWidth="1.5" className="hover:stroke-gray-400 transition-colors" />
+            <circle cx="12" cy="0" r="4" fill={node.color} />
+            <text x="24" y="1" textAnchor="start" fill={textColor} fontSize="12" fontWeight="600" dominantBaseline="central">{node.name}</text>
+            <text x={node.width - 10} y="1" textAnchor="end" fill={mutedText} fontSize="10" dominantBaseline="central">{currency}{Math.round(node.amount)}</text>
+          </g>
         ))}
       </svg>
-      <div className="tree-layout">
-        <div className="tree-col total-col">
-          <div className="tree-node total-node" ref={totalRef}>
-            <span className="node-label">总支出</span>
-            <span className="node-value">{currency}{totalAmount.toFixed(2)}</span>
-          </div>
-        </div>
-        <div className="tree-col cat-col">
-          {treeData.map(([catName, data]) => (
-            <div className="cat-row" key={catName}>
-              <div 
-                className="tree-node cat-node" 
-                ref={el => catRefs.current[catName] = el}
-                style={{ borderLeftColor: categories[catName] || '#999' }}
-              >
-                <span className="node-label">{catName}</span>
-                <span className="node-value">{currency}{data.amount.toFixed(2)}</span>
-              </div>
-              <div className="tags-wrap">
-                {data.tags.map(t => (
-                  <span className="tag-pill" key={t}>#{t}</span>
-                ))}
-                {data.tags.length === 0 && <span className="empty-tag-hint">无标签记录</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
-}
+};
 
-// ============== 第二排：神经元共现星云 ==============
-function Row2ForceGraph({ tagsSummary, coOccurrence, theme }: any) {
+// ==========================================
+// 组件 2: 神经元共现网络图
+// ==========================================
+const CustomOrganicNetwork = ({ expenses, theme }: any) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [nodes, setNodes] = useState<any[]>([]);
   const [links, setLinks] = useState<any[]>([]);
-  const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
+  const [dimensions, setDimensions] = useState({ width: 800, height: 320 });
 
   useEffect(() => {
-    if (tagsSummary.length === 0) return;
-    if (!containerRef.current) return;
+    if (!containerRef.current || expenses.length === 0) return;
     
-    const width = containerRef.current.clientWidth;
-    const height = 400;
-    setDimensions({ width, height });
+    // Allow React to render first, then get width
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        setDimensions({ width: containerRef.current.clientWidth || 800, height: 320 });
+      }
+    };
+    
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
 
-    // 取 Top 30 避免过于拥挤
-    const topTags = tagsSummary.slice(0, 30).map((t: any, i: number) => ({
-      id: t.tag,
-      radius: Math.max(16, Math.min(40, t.amount / 50 + 10)), // 映射大小
-      color: getTagColor(t.tag, i),
-      ...t
-    }));
+    const nodesMap: Record<string, { id: string, count: number }> = {}; 
+    const linksMap: Record<string, number> = {};
     
-    const tagIds = new Set(topTags.map((t: any) => t.id));
-    
-    const graphLinks: any[] = [];
-    coOccurrence.forEach((count: number, key: string) => {
-      const [source, target] = key.split("|");
-      if (tagIds.has(source) && tagIds.has(target)) {
-        graphLinks.push({ source, target, value: count });
+    expenses.forEach((t: Expense) => {
+      const tags = extractTags(t.note);
+      tags.forEach(tag => { 
+        if (!nodesMap[tag]) nodesMap[tag] = { id: tag, count: 0 }; 
+        nodesMap[tag].count += 1; 
+      });
+      
+      for (let i = 0; i < tags.length; i++) {
+        for (let j = i + 1; j < tags.length; j++) {
+          const pair = [tags[i], tags[j]].sort().join('||');
+          linksMap[pair] = (linksMap[pair] || 0) + 1;
+        }
       }
     });
 
-    const simulation = d3.forceSimulation(topTags)
-      .force("link", d3.forceLink(graphLinks).id((d: any) => d.id).distance(100).strength(0.5))
-      .force("charge", d3.forceManyBody().strength(-150))
-      .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collide", d3.forceCollide().radius((d: any) => d.radius + 5).iterations(2));
+    const initNodes = Object.values(nodesMap).sort((a, b) => b.count - a.count).slice(0, 20); 
+    const validNodeIds = new Set(initNodes.map(n => n.id));
+    const initLinks = Object.entries(linksMap).map(([pair, weight]) => {
+      const [source, target] = pair.split('||'); return { source, target, weight };
+    }).filter(l => validNodeIds.has(l.source as string) && validNodeIds.has(l.target as string));
+
+    const centerX = dimensions.width / 2, centerY = dimensions.height / 2;
+    
+    initNodes.forEach((node: any, i) => {
+      node.x = centerX + (Math.random() - 0.5) * dimensions.width * 0.5; 
+      node.y = centerY + (Math.random() - 0.5) * dimensions.height * 0.5;
+      node.color = COLOR_PALETTE[i % COLOR_PALETTE.length];
+      node.r = Math.max(14, Math.min(34, 10 + node.count * 3));
+      node.animDelay = Math.random() * 2;
+      node.animDuration = 3 + Math.random() * 2;
+    });
+
+    const simulation = d3.forceSimulation(initNodes as any)
+      .force("link", d3.forceLink(initLinks).id((d: any) => d.id).distance(100).strength(0.5))
+      .force("charge", d3.forceManyBody().strength(-200))
+      .force("center", d3.forceCenter(centerX, centerY))
+      .force("collide", d3.forceCollide().radius((d: any) => d.r + 5).iterations(2));
 
     simulation.on("tick", () => {
       setNodes([...simulation.nodes()]);
-      setLinks([...graphLinks]);
+      setLinks([...initLinks]);
     });
 
-    return () => simulation.stop();
-  }, [tagsSummary, coOccurrence]);
+    return () => {
+      simulation.stop();
+      window.removeEventListener('resize', updateDimensions);
+    };
+  }, [expenses, dimensions.width]); // dependency on width to center properly
 
-  if (tagsSummary.length === 0) return null;
-
-  return (
-    <div className="chart-card force-graph-card" ref={containerRef}>
-      <h3 className="card-title">神经元共现星云 (标签关联)</h3>
-      <div className="force-container" style={{ height: dimensions.height }}>
-        <svg width={dimensions.width} height={dimensions.height} className="force-svg">
-          {links.map((link, i) => (
-            <line
-              key={i}
-              x1={link.source.x} y1={link.source.y}
-              x2={link.target.x} y2={link.target.y}
-              stroke={theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}
-              strokeWidth={Math.min(3, Math.max(1, link.value * 0.5))}
-            />
-          ))}
-          {nodes.map(node => (
-            <g key={node.id} className="force-node" transform={`translate(${node.x},${node.y})`}>
-              <circle r={node.radius} fill={`${node.color}20`} stroke={node.color} strokeWidth="1.5" className="node-circle" />
-              <text textAnchor="middle" dy=".3em" fontSize="12px" fill={theme === 'dark' ? '#E5E7EB' : '#374151'}>
-                {node.id}
-              </text>
-            </g>
-          ))}
-        </svg>
-      </div>
-    </div>
-  );
-}
-
-// ============== 第三排左：习惯矩阵四象限图 ==============
-function Row3Quadrant({ tagsSummary, currency, theme }: any) {
-  if (tagsSummary.length === 0) return null;
-
-  const data = tagsSummary.map((t: any) => ({
-    name: t.tag,
-    count: t.count,
-    amount: t.amount,
-  }));
-
-  const avgCount = data.reduce((s: number, t: any) => s + t.count, 0) / data.length;
-  const avgAmount = data.reduce((s: number, t: any) => s + t.amount, 0) / data.length;
-
-  const chartColors = {
-    grid: theme === "dark" ? "#374151" : "#E5E7EB",
-    axis: theme === "dark" ? "#9CA3AF" : "#6B7280",
-    refLine: theme === "dark" ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)"
-  };
-
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className={`custom-tooltip ${theme}`}>
-          <p className="tooltip-label">#{data.name}</p>
-          <p className="tooltip-value">频次: {data.count} 次</p>
-          <p className="tooltip-value">金额: {currency}{data.amount.toFixed(2)}</p>
-        </div>
-      );
-    }
-    return null;
-  };
+  const isDark = theme === 'dark';
+  const trackStroke = isDark ? '#475569' : '#e2e8f0';
+  const linkStroke = isDark ? '#64748b' : '#94a3b8';
 
   return (
-    <div className="chart-card quadrant-card">
-      <h3 className="card-title">习惯矩阵四象限图</h3>
-      <p className="card-subtitle">右上角代表高频高额习惯</p>
-      <ResponsiveContainer width="100%" height={300}>
-        <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-          <XAxis type="number" dataKey="count" name="频次" stroke={chartColors.axis} fontSize={12} label={{ value: '使用频次', position: 'insideBottom', offset: -10, fill: chartColors.axis }} />
-          <YAxis type="number" dataKey="amount" name="金额" stroke={chartColors.axis} fontSize={12} label={{ value: '总金额', angle: -90, position: 'insideLeft', fill: chartColors.axis }} />
-          <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
-          <ReferenceLine x={avgCount} stroke={chartColors.refLine} strokeDasharray="3 3" />
-          <ReferenceLine y={avgAmount} stroke={chartColors.refLine} strokeDasharray="3 3" />
-          <Scatter name="Tags" data={data} fill="#8B5CF6">
-            {data.map((entry: any, index: number) => (
-              <Cell key={`cell-${index}`} fill={entry.count > avgCount && entry.amount > avgAmount ? '#EF4444' : '#8B5CF6'} />
-            ))}
-          </Scatter>
-        </ScatterChart>
-      </ResponsiveContainer>
+    <div className="w-full overflow-x-auto flex justify-center custom-scrollbar" ref={containerRef}>
+      <svg width={dimensions.width} height={dimensions.height} viewBox={`0 0 ${dimensions.width} ${dimensions.height}`} className="font-sans min-w-[800px]">
+        <defs>
+          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        {/* 辅助轨道 */}
+        <ellipse cx={dimensions.width/2} cy={dimensions.height/2} rx="140" ry="70" fill="none" stroke={trackStroke} strokeDasharray="4 4" strokeOpacity="0.8" />
+        <ellipse cx={dimensions.width/2} cy={dimensions.height/2} rx="260" ry="120" fill="none" stroke={trackStroke} strokeDasharray="4 4" strokeOpacity="0.6" />
+        <ellipse cx={dimensions.width/2} cy={dimensions.height/2} rx="380" ry="160" fill="none" stroke={trackStroke} strokeDasharray="4 4" strokeOpacity="0.3" />
+
+        {links.map((link, i) => {
+          // d3-force replaces string IDs with node object references
+          const source = link.source.x !== undefined ? link.source : nodes.find(n => n.id === link.source);
+          const target = link.target.x !== undefined ? link.target : nodes.find(n => n.id === link.target);
+          if (!source || !target) return null;
+          
+          const dx = target.x - source.x, dy = target.y - source.y;
+          const cx = source.x + dx / 2 - dy * 0.2; 
+          const cy = source.y + dy / 2 + dx * 0.2;
+          return (
+            <path key={i} d={`M ${source.x} ${source.y} Q ${cx} ${cy} ${target.x} ${target.y}`} fill="none" stroke={linkStroke} strokeWidth={link.weight * 1.5} strokeOpacity={0.4} />
+          )
+        })}
+
+        {nodes.map((node) => (
+          <g key={node.id} className="cursor-pointer">
+            <animateTransform attributeName="transform" type="translate" values={`${node.x},${node.y}; ${node.x},${node.y - 6}; ${node.x},${node.y}`} dur={`${node.animDuration}s`} begin={`${node.animDelay}s`} repeatCount="indefinite" />
+            <circle r={node.r} fill={node.color} fillOpacity="0.95" stroke={isDark ? '#1e293b' : '#fff'} strokeWidth="2.5" filter="url(#glow)" />
+            <text x="0" y="3" textAnchor="middle" fill="#fff" fontSize={node.r > 18 ? 12 : 10} fontWeight="bold" className="select-none" style={{textShadow: '0px 1px 2px rgba(0,0,0,0.5)'}}>{node.id}</text>
+          </g>
+        ))}
+      </svg>
     </div>
   );
-}
+};
 
-// ============== 第三排右：核心标签金额榜 ==============
-function Row3TopBar({ tagsSummary, currency }: any) {
-  if (tagsSummary.length === 0) return null;
-  const top8 = tagsSummary.slice(0, 8);
 
-  return (
-    <div className="chart-card top-bar-card">
-      <h3 className="card-title">核心标签金额榜 Top 8</h3>
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={top8} layout="vertical" margin={{ top: 0, right: 20, left: 40, bottom: 0 }}>
-          <XAxis type="number" hide />
-          <YAxis dataKey="tag" type="category" axisLine={false} tickLine={false} fontSize={12} tick={{ fill: 'var(--text-secondary)' }} />
-          <Tooltip cursor={{ fill: 'var(--bg-hover)' }} content={({ active, payload }) => {
-            if (active && payload && payload.length) {
-              return (
-                <div className="custom-tooltip">
-                  <p className="tooltip-label">#{payload[0].payload.tag}</p>
-                  <p className="tooltip-value">{currency}{payload[0].value.toFixed(2)}</p>
-                </div>
-              );
-            }
-            return null;
-          }} />
-          <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={20}>
-            {top8.map((entry: any, index: number) => (
-              <Cell key={`cell-${index}`} fill={getTagColor(entry.tag, index)} />
-            ))}
-            <LabelList dataKey="amount" position="right" formatter={(val: number) => val.toFixed(0)} fill="var(--text-secondary)" fontSize={12} />
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
+// ==========================================
+// 主大盘入口
+// ==========================================
+export default function TagTrendsDashboard({ expenses, theme, categories, currency }: Props) {
+  const [heatmapTag, setHeatmapTag] = useState('');
 
-// ============== 第四排左：单一习惯热力追踪图 ==============
-function Row4Heatmap({ dailyTagData, tagsSummary, currency }: any) {
-  const [selectedTag, setSelectedTag] = useState<string>("");
-  
-  useEffect(() => {
-    if (tagsSummary.length > 0 && !selectedTag) {
-      setSelectedTag(tagsSummary[0].tag);
-    }
-  }, [tagsSummary, selectedTag]);
-
-  // 生成近 90 天的日历网格
-  const heatmapGrid = useMemo(() => {
-    if (!selectedTag) return [];
+  const { rankingData, scatterData, quadrantLines, wordCloudData, dailyData, allTags } = useMemo(() => {
+    const stats: Record<string, { name: string, amount: number, count: number }> = {}; 
+    const daily: Record<string, Record<string, number>> = {};
     
-    const days = [];
+    expenses.forEach(t => { 
+      const tags = extractTags(t.note);
+      const day = t.date.substring(0, 10);
+      if (!daily[day]) daily[day] = {};
+
+      tags.forEach(tag => { 
+        if (!stats[tag]) stats[tag] = { name: tag, amount: 0, count: 0 }; 
+        stats[tag].amount += t.amount; 
+        stats[tag].count += 1; 
+        
+        daily[day][tag] = (daily[day][tag] || 0) + 1; // Frequency per day
+      }); 
+    });
+    
+    const sortedTags = Object.values(stats).sort((a, b) => b.amount - a.amount);
+    const allTagsList = sortedTags.map(t => t.name);
+
+    let totalCount = 0, totalAmount = 0;
+    const scatterData = sortedTags.map((t, i) => { 
+      totalCount += t.count; 
+      totalAmount += t.amount; 
+      return { 
+        ...t, 
+        avgAmount: Math.round(t.amount / t.count),
+        color: COLOR_PALETTE[i % COLOR_PALETTE.length]
+      }; 
+    });
+    
+    return { 
+      rankingData: sortedTags.slice(0, 8).map((t, i) => ({...t, color: COLOR_PALETTE[i % COLOR_PALETTE.length]})),
+      scatterData,
+      quadrantLines: { 
+        x: sortedTags.length > 0 ? totalCount / sortedTags.length : 0, 
+        y: sortedTags.length > 0 ? totalAmount / sortedTags.length : 0 
+      },
+      wordCloudData: sortedTags.map((t, i) => ({ 
+        ...t, 
+        fontSize: Math.max(14, Math.min(32, 12 + (t.count / (totalCount / sortedTags.length || 1)) * 8)), 
+        color: COLOR_PALETTE[i % COLOR_PALETTE.length] 
+      })).sort(() => Math.random() - 0.5),
+      dailyData: daily,
+      allTags: allTagsList
+    };
+  }, [expenses]);
+
+  useEffect(() => {
+    if (allTags.length > 0 && !heatmapTag) {
+      setHeatmapTag(allTags[0]);
+    }
+  }, [allTags, heatmapTag]);
+
+  // 生成热力图网格
+  const heatmapGridData = useMemo(() => {
+    const data = [];
     const now = new Date();
-    // 取消时分秒，保留整日
     now.setHours(0, 0, 0, 0);
     
-    // 生成过去 12 周 * 7 天 = 84 天的网格，按周分组
-    for (let w = 11; w >= 0; w--) {
-      const weekCol = [];
-      for (let d = 0; d < 7; d++) {
+    // 过去 12 周
+    for (let week = 11; week >= 0; week--) {
+      const weekData = [];
+      for (let day = 0; day < 7; day++) {
         const date = new Date(now);
-        // 从今天往前推，先算出今天是星期几 (0=日, 1=一)
-        const todayDay = now.getDay();
-        // 算出整个网格最后一天所在周的周日
-        const diff = (11 - w) * 7 + (todayDay - d);
+        const todayDay = now.getDay() || 7; // make Sunday 7
+        // Monday is 1, Sunday is 7 in our grid (0-6 mapping to 1-7)
+        const targetDay = day + 1; 
+        
+        const diff = (week * 7) + (todayDay - targetDay);
         date.setDate(date.getDate() - diff);
         
-        const dateStr = date.toISOString().substring(0, 10);
-        // ISO string for local timezone
+        // Use local timezone string
         const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().substring(0, 10);
-
-        const amount = dailyTagData.get(localDate)?.[selectedTag] || 0;
-        weekCol.push({ date: localDate, amount });
+        
+        const count = heatmapTag ? (dailyData[localDate]?.[heatmapTag] || 0) : 0;
+        weekData.push({ id: localDate, count, date: localDate });
       }
-      days.push(weekCol);
+      data.push(weekData);
     }
-    return days;
-  }, [selectedTag, dailyTagData]);
+    return data;
+  }, [heatmapTag, dailyData]);
 
-  // 计算颜色的最大阈值
-  const maxAmount = useMemo(() => {
-    let max = 0;
-    heatmapGrid.forEach(week => week.forEach(day => {
-      if (day.amount > max) max = day.amount;
-    }));
-    return max || 1;
-  }, [heatmapGrid]);
+  const getHeatmapColor = (count: number) => {
+    if (count === 0) return 'var(--bg-hover)';
+    if (count === 1) return 'rgba(249, 115, 22, 0.3)'; // orange
+    if (count === 2) return 'rgba(249, 115, 22, 0.6)'; 
+    return 'rgba(249, 115, 22, 1)'; 
+  };
+
+  const isDark = theme === 'dark';
+  const gridColor = isDark ? '#374151' : '#f1f5f9';
+  const axisColor = isDark ? '#9ca3b8' : '#94a3b8';
+
+  if (expenses.length === 0) {
+    return <div className="text-center py-10 text-gray-500">暂无标签数据</div>;
+  }
 
   return (
-    <div className="chart-card heatmap-card">
-      <div className="heatmap-header">
-        <div>
-          <h3 className="card-title">习惯热力追踪图</h3>
-          <p className="card-subtitle">展示过去 12 周的消费分布</p>
-        </div>
-        <select 
-          className="heatmap-select"
-          value={selectedTag}
-          onChange={e => setSelectedTag(e.target.value)}
-        >
-          {tagsSummary.slice(0, 15).map((t: any) => (
-            <option key={t.tag} value={t.tag}>#{t.tag}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="heatmap-grid-container">
-        <div className="heatmap-grid">
-          {heatmapGrid.map((week, wIdx) => (
-            <div className="heatmap-col" key={wIdx}>
-              {week.map((day, dIdx) => {
-                const intensity = day.amount / maxAmount;
-                const bgColor = day.amount > 0 ? `rgba(16, 185, 129, ${Math.max(0.2, intensity)})` : 'var(--bg-hover)';
-                
-                return (
-                  <div 
-                    key={dIdx} 
-                    className="heatmap-cell"
-                    style={{ backgroundColor: bgColor }}
-                    title={`${day.date}: ${currency}${day.amount.toFixed(2)}`}
-                  />
-                );
-              })}
-            </div>
-          ))}
-        </div>
-        <div className="heatmap-labels">
-          <span>少</span>
-          <div className="heatmap-legend">
-            <div style={{ background: 'var(--bg-hover)' }} />
-            <div style={{ background: 'rgba(16, 185, 129, 0.3)' }} />
-            <div style={{ background: 'rgba(16, 185, 129, 0.6)' }} />
-            <div style={{ background: 'rgba(16, 185, 129, 1)' }} />
+    <div className="space-y-6 animate-fade-in tag-analysis-root">
+      
+      {/* 顶部标题栏 */}
+      <div className="card-container flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="icon-wrapper bg-purple-600 shadow-purple-200/50">
+            <Tags size={24} color="white" />
           </div>
-          <span>多</span>
+          <div>
+            <h1 className="title-text">全景标签洞察中心</h1>
+            <p className="subtitle-text">多维交叉数据分析，挖掘深层消费联系</p>
+          </div>
+        </div>
+        <div className="text-right hidden sm:block">
+          <p className="subtitle-text">活跃标签总数</p>
+          <p className="title-text">{scatterData.length} <span className="subtitle-text font-normal">个</span></p>
         </div>
       </div>
-    </div>
-  );
-}
 
-// ============== 第四排右：标签频次词云 ==============
-function Row4WordCloud({ tagsSummary }: any) {
-  if (tagsSummary.length === 0) return null;
-
-  // 词云数据：按 count 决定大小，乱序排列增加随机感
-  const cloudData = useMemo(() => {
-    const maxCount = Math.max(...tagsSummary.map((t: any) => t.count));
-    const minCount = Math.min(...tagsSummary.map((t: any) => t.count));
-    
-    // Fisher-Yates shuffle
-    const shuffled = [...tagsSummary].sort(() => 0.5 - Math.random());
-    
-    return shuffled.slice(0, 40).map((t: any, i) => {
-      // 字体大小 12px ~ 36px
-      const size = minCount === maxCount ? 16 : 12 + ((t.count - minCount) / (maxCount - minCount)) * 24;
-      return {
-        ...t,
-        size,
-        color: getTagColor(t.tag, i)
-      };
-    });
-  }, [tagsSummary]);
-
-  return (
-    <div className="chart-card word-cloud-card">
-      <h3 className="card-title">标签频次词云</h3>
-      <p className="card-subtitle">字体大小代表使用频次</p>
-      <div className="word-cloud-container">
-        {cloudData.map((t, i) => (
-          <span 
-            key={i} 
-            className="cloud-word" 
-            style={{ 
-              fontSize: `${t.size}px`, 
-              color: t.color,
-              opacity: 0.7 + (t.size / 36) * 0.3,
-              margin: `${Math.random() * 8 + 4}px`
-            }}
-            title={`频次: ${t.count}次`}
-          >
-            #{t.tag}
-          </span>
-        ))}
+      {/* ROW 1: 宏观把控 */}
+      <div className="card-container">
+        <div className="flex items-center gap-2 mb-4">
+          <Network className="text-blue-500" size={20} />
+          <h2 className="title-text text-lg">资金流向逻辑树 (Hierarchy Tree)</h2>
+        </div>
+        <p className="subtitle-text mb-6">利用平滑有机的主干曲线相连，剥离错综复杂的末端分支。具体标签化为纯净的卡片，在对应的分类右侧横向舒展平铺。</p>
+        <div className="chart-bg-wrapper">
+          <CustomTreeDiagram expenses={expenses} categories={categories} currency={currency} theme={theme} />
+        </div>
       </div>
+
+      {/* ROW 2: 潜意识挖掘 */}
+      <div className="card-container flex flex-col items-center">
+        <div className="w-full flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <GitGraph className="text-indigo-500" size={20} />
+            <h2 className="title-text text-lg">神经元共现网络 (Neural Network)</h2>
+          </div>
+        </div>
+        <p className="w-full subtitle-text mb-4 text-left">节点带有随机悬浮动画与高斯模糊光晕，揭示潜意识中经常组合使用的隐秘习惯。</p>
+        <div className="w-full chart-bg-wrapper flex justify-center py-6 relative">
+            <CustomOrganicNetwork expenses={expenses} theme={theme} />
+            <div className="absolute bottom-3 right-3 text-[10px] text-slate-400">基于 D3 物理引力</div>
+        </div>
+      </div>
+
+      {/* ROW 3: 理性绝对值 */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <div className="card-container lg:col-span-7 flex flex-col relative">
+          <div className="flex items-center gap-2 mb-2">
+            <Target className="text-emerald-500" size={20} />
+            <h2 className="title-text text-lg">习惯矩阵四象限 (Quadrant)</h2>
+          </div>
+          <p className="subtitle-text mb-4">通过纵横均线自动划分标签阵营，有效捕捉右下角的拿铁因子区。</p>
+          <div className="flex-grow min-h-[300px] relative">
+            <div className="absolute top-[8%] right-[8%] text-right opacity-40 pointer-events-none z-10">
+              <div className="text-xl font-bold text-red-500">高频高额</div>
+              <div className="text-xs text-[var(--text-secondary)]">需重点干预</div>
+            </div>
+            <div className="absolute bottom-[15%] right-[8%] text-right opacity-40 pointer-events-none z-10">
+              <div className="text-xl font-bold text-blue-500">高频低额</div>
+              <div className="text-xs text-[var(--text-secondary)]">拿铁因子区</div>
+            </div>
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.5} />
+                <XAxis type="number" dataKey="count" name="消费次数" tick={{fill: axisColor, fontSize: 12}} />
+                <YAxis type="number" dataKey="amount" name="总金额" tick={{fill: axisColor, fontSize: 12}} />
+                <ZAxis type="number" dataKey="avgAmount" range={[50, 400]} />
+                <ReferenceLine x={quadrantLines.x} stroke={axisColor} strokeDasharray="5 5" label={{ position: 'top', value: '平均频次', fill: axisColor, fontSize: 10 }} />
+                <ReferenceLine y={quadrantLines.y} stroke={axisColor} strokeDasharray="5 5" label={{ position: 'right', value: '平均金额', fill: axisColor, fontSize: 10 }} />
+                <ReferenceArea x1={quadrantLines.x} y1={quadrantLines.y} fill="#fee2e2" fillOpacity={isDark ? 0.1 : 0.2} />
+                <RechartsTooltip 
+                  cursor={{strokeDasharray: '3 3'}} 
+                  formatter={(value: any, name: any) => [name === '消费次数' ? `${value} 次` : `${currency}${value}`, name]} 
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow)', background: 'var(--bg-card)', color: 'var(--text-primary)' }} 
+                />
+                <Scatter data={scatterData} fillOpacity={0.85}>
+                    {scatterData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                </Scatter>
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="card-container lg:col-span-5 flex flex-col">
+          <div className="flex items-center gap-2 mb-2">
+            <BarChart3 className="text-pink-500" size={20} />
+            <h2 className="title-text text-lg">核心消费榜 (Top 8)</h2>
+          </div>
+          <p className="subtitle-text mb-4">直观对比最烧钱的核心标签绝对值。</p>
+          <div className="flex-grow min-h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={rankingData} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={gridColor} />
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: 'var(--text-secondary)', fontSize: 13}} width={70} />
+                <RechartsTooltip 
+                  cursor={{fill: 'var(--bg-hover)'}} 
+                  formatter={(value: any) => [`${currency}${value}`, '总支出']} 
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow)', background: 'var(--bg-card)', color: 'var(--text-primary)' }} 
+                />
+                <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={20}>
+                  {rankingData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ROW 4: 时间与视觉调剂 */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <div className="card-container lg:col-span-7 flex flex-col">
+          <div className="flex items-center gap-2 mb-2">
+            <Flame className="text-orange-500" size={20} />
+            <h2 className="title-text text-lg">单一习惯追踪 (Heatmap)</h2>
+          </div>
+          <p className="subtitle-text mb-6">类 GitHub 提交记录图表，关注最在意的隐性习惯发生频率。</p>
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <div className="w-full sm:w-36">
+              <select 
+                value={heatmapTag} 
+                onChange={(e) => setHeatmapTag(e.target.value)} 
+                className="w-full bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 font-bold text-sm"
+              >
+                {allTags.map(tag => (
+                  <option key={tag} value={tag}>#{tag}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1 overflow-x-auto w-full custom-scrollbar">
+              <div className="flex gap-1.5 min-w-max pb-2">
+                <div className="flex flex-col gap-1.5 mr-2 text-[10px] text-[var(--text-secondary)] justify-around"><span>一</span><span>三</span><span>五</span><span>日</span></div>
+                {heatmapGridData.map((week, wIndex) => (
+                  <div key={wIndex} className="flex flex-col gap-1.5">
+                    {week.map((day) => (
+                      <div 
+                        key={day.id} 
+                        className="w-4 h-4 sm:w-5 sm:h-5 rounded-[4px] hover:scale-125 cursor-pointer ring-1 ring-black/5 transition-transform" 
+                        style={{ backgroundColor: getHeatmapColor(day.count) }} 
+                        title={`${day.date}: ${day.count} 次`} 
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card-container lg:col-span-5 flex flex-col">
+          <div className="flex items-center gap-2 mb-2">
+            <Tags className="text-gray-400" size={20} />
+            <h2 className="title-text text-lg">标签频率云 (Word Cloud)</h2>
+          </div>
+          <p className="subtitle-text mb-4">字体大小纯由【使用频率】决定，捕捉低额高频支出。</p>
+          <div className="flex-grow flex flex-wrap content-center justify-center gap-4 px-4 py-6 chart-bg-wrapper rounded-xl border border-dashed border-[var(--border)] min-h-[200px]">
+            {wordCloudData.map((tag, i) => (
+              <span 
+                key={i} 
+                className="hover:scale-110 cursor-pointer drop-shadow-sm select-none transition-transform" 
+                style={{ 
+                  fontSize: `${tag.fontSize}px`, 
+                  color: tag.color, 
+                  fontWeight: tag.fontSize > 22 ? 800 : (tag.fontSize > 16 ? 600 : 400),
+                  opacity: 0.8 + (tag.fontSize / 32) * 0.2
+                }} 
+                title={`${tag.name} (出现 ${tag.count} 次)`}
+              >
+                #{tag.name}
+              </span>
+            ))}
+          </div>
+        </div>
+
+      </div>
+
     </div>
   );
 }
