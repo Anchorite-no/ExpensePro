@@ -62,33 +62,35 @@ router.post("/register", async (req: any, res: any) => {
     const isFirstUser = existingUsers.length === 0;
 
     try {
-      const [result] = await db.insert(users).values({
-        username,
-        password: hashedPassword,
-      });
-
-      const newUserId = result.insertId;
-
-      // 如果启用加密，为新用户生成 Master Key
-      if (ENCRYPTION_ENABLED) {
-        const masterKey = generateMasterKey();
-        const salt = generateSalt();
-        const passwordKey = deriveKeyFromPassword(password, salt);
-        const encMasterKey = encryptMasterKey(masterKey, passwordKey);
-
-        await db.insert(userSettings).values({
-          userId: newUserId,
-          encryptedMasterKey: encMasterKey,
-          masterKeySalt: salt,
+      await db.transaction(async (tx) => {
+        const [result] = await tx.insert(users).values({
+          username,
+          password: hashedPassword,
         });
-      }
 
-      if (isFirstUser) {
-        console.log(`First user registered (ID: ${newUserId}). Migrating legacy expenses...`);
-        await db.update(expenses)
-          .set({ userId: newUserId })
-          .where(isNull(expenses.userId));
-      }
+        const newUserId = result.insertId;
+
+        // 如果启用加密，为新用户生成 Master Key
+        if (ENCRYPTION_ENABLED) {
+          const masterKey = generateMasterKey();
+          const salt = generateSalt();
+          const passwordKey = deriveKeyFromPassword(password, salt);
+          const encMasterKey = encryptMasterKey(masterKey, passwordKey);
+
+          await tx.insert(userSettings).values({
+            userId: newUserId,
+            encryptedMasterKey: encMasterKey,
+            masterKeySalt: salt,
+          });
+        }
+
+        if (isFirstUser) {
+          console.log(`First user registered (ID: ${newUserId}). Migrating legacy expenses...`);
+          await tx.update(expenses)
+            .set({ userId: newUserId })
+            .where(isNull(expenses.userId));
+        }
+      });
 
       res.status(201).json({ message: "注册成功" });
     } catch (dbError: any) {

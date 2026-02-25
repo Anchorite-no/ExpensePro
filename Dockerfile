@@ -25,9 +25,10 @@ COPY --from=server-build /app/server/node_modules ./node_modules
 COPY --from=server-build /app/server/package*.json ./
 # [新增] 复制 Drizzle 配置文件和源码(用于建表)
 COPY --from=server-build /app/server/drizzle.config.ts ./
+COPY --from=server-build /app/server/tsconfig.json ./
 COPY --from=server-build /app/server/src ./src
 
 # 复制前端静态文件
 COPY --from=client-build /app/client/dist ./public
 EXPOSE 3001
-CMD ["node", "dist/index.js"]
+CMD ["npm", "start"]
