@@ -382,27 +382,9 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
   return (
     <div className="space-y-6 animate-fade-in tag-analysis-root">
       
-      {/* 顶部标题栏 */}
-      <div className="chart-card flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="stat-icon purple">
-            <Tags size={24} />
-          </div>
-          <div className="stat-info">
-            <span className="value" style={{fontSize: '20px', marginBottom: '2px'}}>全景标签洞察中心</span>
-            <span className="label">多维交叉数据分析，挖掘深层消费联系</span>
-          </div>
-        </div>
-        <div className="stat-info hidden sm:block text-right">
-          <span className="label">活跃标签总数</span>
-          <span className="value">{scatterData.length} <span className="label">个</span></span>
-        </div>
-      </div>
-
       {/* ROW 1: 宏观把控 */}
       <div className="chart-card">
-        <h3>资金流向逻辑树</h3>
-        <p className="subtitle-text mb-6 text-gray-400">利用平滑有机的主干曲线相连，剥离错综复杂的末端分支。具体标签化为纯净的卡片，在对应的分类右侧横向舒展平铺。</p>
+        <h3>资金流向</h3>
         <div className="chart-bg-wrapper">
           <CustomTreeDiagram expenses={expenses} categories={categories} currency={currency} theme={theme} />
         </div>
@@ -411,9 +393,8 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
       {/* ROW 2: 潜意识挖掘 */}
       <div className="chart-card flex flex-col items-center">
         <div className="w-full flex items-center justify-between">
-          <h3 className="w-full text-left">神经元共现网络</h3>
+          <h3 className="w-full text-left">共现网络</h3>
         </div>
-        <p className="w-full subtitle-text mb-4 text-left text-gray-400">节点带有随机悬浮动画与高斯模糊光晕，揭示潜意识中经常组合使用的隐秘习惯。</p>
         <div className="w-full chart-bg-wrapper flex justify-center py-6 relative">
             <CustomOrganicNetwork expenses={expenses} theme={theme} />
             <div className="absolute bottom-3 right-3 text-[10px] text-gray-400">基于 D3 物理引力</div>
@@ -424,8 +405,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
       <div className="charts-grid">
         
         <div className="chart-card flex flex-col relative">
-          <h3>习惯矩阵四象限</h3>
-          <p className="subtitle-text mb-4 text-gray-400">通过纵横均线自动划分标签阵营，有效捕捉右下角的拿铁因子区。</p>
+          <h3>习惯矩阵</h3>
           <div className="flex-grow min-h-[300px] relative">
             <div className="absolute top-[8%] right-[8%] text-right opacity-40 pointer-events-none z-10">
               <div className="text-xl font-bold text-red-500">高频高额</div>
@@ -458,8 +438,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
         </div>
 
         <div className="chart-card flex flex-col">
-          <h3>核心消费榜 (Top 8)</h3>
-          <p className="subtitle-text mb-4 text-gray-400">直观对比最烧钱的核心标签绝对值。</p>
+          <h3>消费榜单</h3>
           <div className="flex-grow min-h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={rankingData} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
@@ -485,8 +464,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
       <div className="charts-grid">
         
         <div className="chart-card flex flex-col">
-          <h3>单一习惯追踪 (Heatmap)</h3>
-          <p className="subtitle-text mb-6 text-gray-400">类 GitHub 提交记录图表，关注最在意的隐性习惯发生频率。</p>
+          <h3>习惯追踪</h3>
           <div className="flex flex-col sm:flex-row items-center gap-6">
             <div className="w-full sm:w-48 z-20">
               <Select 
@@ -517,8 +495,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
         </div>
 
         <div className="chart-card flex flex-col">
-          <h3>标签频率云</h3>
-          <p className="subtitle-text mb-4 text-gray-400">字体大小纯由【使用频率】决定，捕捉低额高频支出。</p>
+          <h3>频率词云</h3>
           <div className="flex-grow flex flex-wrap content-center justify-center gap-4 px-4 py-6 chart-bg-wrapper rounded-xl min-h-[200px]" style={{borderStyle: 'dashed'}}>
             {wordCloudData.map((tag, i) => (
               <span 
