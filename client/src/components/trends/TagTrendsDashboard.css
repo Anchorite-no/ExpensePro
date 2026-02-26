@@ -3,6 +3,26 @@
   font-family: inherit;
 }
 
+/* Fix black outline/focus ring on all chart elements when clicked */
+.tag-analysis-root svg,
+.tag-analysis-root svg *,
+.tag-analysis-root .recharts-wrapper,
+.tag-analysis-root .recharts-surface,
+.tag-analysis-root .recharts-scatter,
+.tag-analysis-root .recharts-bar,
+.tag-analysis-root .recharts-area,
+.tag-analysis-root .recharts-cartesian-grid,
+.tag-analysis-root .recharts-reference-line,
+.tag-analysis-root .recharts-reference-area,
+.tag-analysis-root .recharts-tooltip-wrapper,
+.tag-analysis-root canvas,
+.tag-analysis-root button,
+.tag-analysis-root select,
+.tag-analysis-root input {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Fix margin issues since we removed card-container and rely on inherited charts-grid gap */
 .tag-analysis-root > .chart-card {
   margin-bottom: 20px;
@@ -19,11 +39,18 @@
 }
 
 .chart-bg-wrapper {
-  background-color: var(--bg-body);
+  background-color: rgba(248, 250, 252, 0.5);
   border-radius: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(241, 245, 249, 1);
   padding: 8px;
   width: 100%;
+}
+
+:root.dark .chart-bg-wrapper,
+html.dark .chart-bg-wrapper,
+.dashboard.dark .chart-bg-wrapper {
+  background-color: rgba(30, 41, 59, 0.5);
+  border-color: var(--border);
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -153,3 +180,144 @@
   to { opacity: 1; transform: translateY(0); }
 }
 .space-y-6 > * + * { margin-top: 24px; }
+
+/* ==========================================
+   Heatmap Styles
+   ========================================== */
+.heatmap-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .heatmap-layout {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 24px;
+  }
+}
+
+.heatmap-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 180px;
+}
+
+.heatmap-select-wrapper {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* Legend: 少 -> 多 color scale */
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.heatmap-legend-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.heatmap-legend-cell {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.heatmap-grid {
+  display: flex;
+  gap: 6px;
+  min-width: max-content;
+  padding-bottom: 8px;
+}
+
+.heatmap-day-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-right: 4px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  justify-content: space-around;
+  flex-shrink: 0;
+}
+
+.heatmap-week-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.heatmap-cell {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.25);
+}
+
+.heatmap-cell-empty {
+  cursor: default;
+  box-shadow: none;
+}
+
+.heatmap-cell-empty:hover {
+  transform: none;
+}
+
+@media (min-width: 640px) {
+  .heatmap-cell {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Calendar (month) view */
+.heatmap-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.heatmap-calendar-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.heatmap-calendar-header span {
+  width: 18px;
+  text-align: center;
+  justify-self: center;
+}
+
+.heatmap-calendar-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  justify-items: center;
+}
+
+@media (min-width: 640px) {
+  .heatmap-calendar-header span {
+    width: 20px;
+  }
+}

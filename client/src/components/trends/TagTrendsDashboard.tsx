@@ -10,6 +10,8 @@ import "./TagTrendsDashboard.css";
 import { COLOR_PALETTE } from "../../constants/appConfig";
 import { Select } from "../ui/Select";
 
+type TimeRange = "current-week" | "current-month" | "last-3-months" | "all";
+
 interface Expense {
   id: number;
   title: string;
@@ -24,10 +26,24 @@ interface Props {
   theme: "light" | "dark";
   categories: Record<string, string>;
   currency: string;
+  timeRange?: TimeRange;
 }
 
 const getCategoryColor = (category: string, categories: Record<string, string>) =>
   categories[category] || "#94a3b8";
+
+// Custom Tooltip matching the category analysis page style
+const TagBarTooltip = ({ active, payload, currency }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="custom-tooltip">
+      <p className="tooltip-label">{payload[0].payload.name}</p>
+      <p className="tooltip-value" style={{ color: payload[0].payload.color }}>
+        {currency}{Number(payload[0].value).toFixed(2)}
+      </p>
+    </div>
+  );
+};
 
 // ==========================================
 // 组件 1: 极简脑图树状图
@@ -277,7 +293,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
 // ==========================================
 // 主大盘入口
 // ==========================================
-export default function TagTrendsDashboard({ expenses, theme, categories, currency }: Props) {
+export default function TagTrendsDashboard({ expenses, theme, categories, currency, timeRange = 'all' }: Props) {
   const [heatmapTag, setHeatmapTag] = useState('');
 
   const { rankingData, scatterData, quadrantLines, wordCloudData, dailyData, allTags } = useMemo(() => {
@@ -335,40 +351,76 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
     }
   }, [allTags, heatmapTag]);
 
-  // 生成热力图网格
+  // 生成热力图网格 - 根据 timeRange 调整显示
   const heatmapGridData = useMemo(() => {
-    const data = [];
+    const data: { id: string, count: number, date: string, dayOfWeek: number }[][] = [];
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     
-    // 过去 12 周
-    for (let week = 11; week >= 0; week--) {
-      const weekData = [];
-      for (let day = 0; day < 7; day++) {
-        const date = new Date(now);
-        const todayDay = now.getDay() || 7; // make Sunday 7
-        // Monday is 1, Sunday is 7 in our grid (0-6 mapping to 1-7)
-        const targetDay = day + 1; 
-        
-        const diff = (week * 7) + (todayDay - targetDay);
-        date.setDate(date.getDate() - diff);
-        
-        // Use local timezone string
-        const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().substring(0, 10);
-        
-        const count = heatmapTag ? (dailyData[localDate]?.[heatmapTag] || 0) : 0;
-        weekData.push({ id: localDate, count, date: localDate });
+    if (timeRange === 'current-month') {
+      // 月视图：按日历排列，每行是一周（周一到周日），按月内周分组
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      
+      // 计算第一天是周几 (1=Mon, 7=Sun)
+      const firstDayOfWeek = firstDay.getDay() || 7;
+      
+      let currentWeek: { id: string, count: number, date: string, dayOfWeek: number }[] = [];
+      
+      // 填充月初之前的空位
+      for (let i = 1; i < firstDayOfWeek; i++) {
+        currentWeek.push({ id: `empty-${i}`, count: -1, date: '', dayOfWeek: i });
       }
-      data.push(weekData);
+      
+      for (let d = 1; d <= lastDay.getDate(); d++) {
+        const date = new Date(year, month, d);
+        const localDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const dow = date.getDay() || 7;
+        const count = heatmapTag ? (dailyData[localDate]?.[heatmapTag] || 0) : 0;
+        currentWeek.push({ id: localDate, count, date: localDate, dayOfWeek: dow });
+        
+        if (dow === 7 || d === lastDay.getDate()) {
+          // 填充月末之后的空位
+          if (d === lastDay.getDate() && dow < 7) {
+            for (let i = dow + 1; i <= 7; i++) {
+              currentWeek.push({ id: `empty-end-${i}`, count: -1, date: '', dayOfWeek: i });
+            }
+          }
+          data.push(currentWeek);
+          currentWeek = [];
+        }
+      }
+    } else {
+      // 周视图（默认）：过去 12 周，每列是一周
+      const numWeeks = timeRange === 'current-week' ? 1 : 12;
+      for (let week = numWeeks - 1; week >= 0; week--) {
+        const weekData = [];
+        for (let day = 0; day < 7; day++) {
+          const date = new Date(now);
+          const todayDay = now.getDay() || 7;
+          const targetDay = day + 1; 
+          const diff = (week * 7) + (todayDay - targetDay);
+          date.setDate(date.getDate() - diff);
+          const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().substring(0, 10);
+          const count = heatmapTag ? (dailyData[localDate]?.[heatmapTag] || 0) : 0;
+          weekData.push({ id: localDate, count, date: localDate, dayOfWeek: day + 1 });
+        }
+        data.push(weekData);
+      }
     }
     return data;
-  }, [heatmapTag, dailyData]);
+  }, [heatmapTag, dailyData, timeRange]);
+
+  const isMonthView = timeRange === 'current-month';
 
   const getHeatmapColor = (count: number) => {
-    if (count === 0) return 'var(--bg-hover)';
-    if (count === 1) return 'rgba(249, 115, 22, 0.3)'; // orange
-    if (count === 2) return 'rgba(249, 115, 22, 0.6)'; 
-    return 'rgba(249, 115, 22, 1)'; 
+    if (count < 0) return 'transparent'; // empty placeholder
+    if (count === 0) return isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(241, 245, 249, 1)';
+    if (count === 1) return 'rgba(99, 102, 241, 0.3)';
+    if (count === 2) return 'rgba(99, 102, 241, 0.6)'; 
+    return 'rgba(99, 102, 241, 1)'; 
   };
 
   const isDark = theme === 'dark';
@@ -427,7 +479,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                 <RechartsTooltip 
                   cursor={{strokeDasharray: '3 3'}} 
                   formatter={(value: any, name: any) => [name === '消费次数' ? `${value} 次` : `${currency}${value}`, name]} 
-                  contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', boxShadow: 'var(--shadow)', background: 'var(--bg-card)', color: 'var(--text-primary)' }} 
+                  contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', background: 'var(--tooltip-bg)', color: 'var(--tooltip-text)', backdropFilter: 'blur(8px)' }} 
                 />
                 <Scatter data={scatterData} fillOpacity={0.85}>
                     {scatterData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
@@ -446,9 +498,8 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                 <XAxis type="number" hide />
                 <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: 'var(--text-secondary)', fontSize: 13}} width={70} />
                 <RechartsTooltip 
-                  cursor={{fill: 'var(--bg-hover)'}} 
-                  formatter={(value: any) => [`${currency}${value}`, '总支出']} 
-                  contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', boxShadow: 'var(--shadow)', background: 'var(--bg-card)', color: 'var(--text-primary)' }} 
+                  cursor={{fill: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'}} 
+                  content={<TagBarTooltip currency={currency} />}
                 />
                 <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={20}>
                   {rankingData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
@@ -465,31 +516,61 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
         
         <div className="chart-card flex flex-col">
           <h3>习惯追踪</h3>
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            <div className="w-full sm:w-48 z-20">
-              <Select 
-                value={heatmapTag} 
-                onChange={setHeatmapTag} 
-                options={allTags.map(tag => ({ value: tag, label: `#${tag}` }))}
-                placeholder="选择标签..."
-              />
+          <div className="heatmap-layout">
+            <div className="heatmap-sidebar">
+              <div className="heatmap-select-wrapper">
+                <Select 
+                  value={heatmapTag} 
+                  onChange={setHeatmapTag} 
+                  options={allTags.map(tag => ({ value: tag, label: `#${tag}` }))}
+                  placeholder="选择标签..."
+                />
+              </div>
+              <div className="heatmap-legend">
+                <span className="heatmap-legend-label">少</span>
+                <div className="heatmap-legend-cell" style={{ backgroundColor: isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(241, 245, 249, 1)' }} />
+                <div className="heatmap-legend-cell" style={{ backgroundColor: 'rgba(99, 102, 241, 0.3)' }} />
+                <div className="heatmap-legend-cell" style={{ backgroundColor: 'rgba(99, 102, 241, 0.6)' }} />
+                <div className="heatmap-legend-cell" style={{ backgroundColor: 'rgba(99, 102, 241, 1)' }} />
+                <span className="heatmap-legend-label">多</span>
+              </div>
             </div>
             <div className="flex-1 overflow-x-auto w-full custom-scrollbar">
-              <div className="flex gap-1.5 min-w-max pb-2">
-                <div className="flex flex-col gap-1.5 mr-2 text-[10px] text-[var(--text-secondary)] justify-around"><span>一</span><span>三</span><span>五</span><span>日</span></div>
-                {heatmapGridData.map((week, wIndex) => (
-                  <div key={wIndex} className="flex flex-col gap-1.5">
-                    {week.map((day) => (
-                      <div 
-                        key={day.id} 
-                        className="w-4 h-4 sm:w-5 sm:h-5 rounded-[4px] hover:scale-125 cursor-pointer ring-1 ring-black/5 transition-transform" 
-                        style={{ backgroundColor: getHeatmapColor(day.count) }} 
-                        title={`${day.date}: ${day.count} 次`} 
-                      />
-                    ))}
+              {isMonthView ? (
+                <div className="heatmap-calendar">
+                  <div className="heatmap-calendar-header">
+                    <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
                   </div>
-                ))}
-              </div>
+                  {heatmapGridData.map((week, wIndex) => (
+                    <div key={wIndex} className="heatmap-calendar-row">
+                      {week.map((day) => (
+                        <div 
+                          key={day.id} 
+                          className={`heatmap-cell ${day.count < 0 ? 'heatmap-cell-empty' : ''}`}
+                          style={{ backgroundColor: getHeatmapColor(day.count) }} 
+                          title={day.date ? `${day.date}: ${day.count} 次` : ''} 
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="heatmap-grid">
+                  <div className="heatmap-day-labels"><span>一</span><span>三</span><span>五</span><span>日</span></div>
+                  {heatmapGridData.map((week, wIndex) => (
+                    <div key={wIndex} className="heatmap-week-col">
+                      {week.map((day) => (
+                        <div 
+                          key={day.id} 
+                          className="heatmap-cell" 
+                          style={{ backgroundColor: getHeatmapColor(day.count) }} 
+                          title={`${day.date}: ${day.count} 次`} 
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -509,7 +590,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                 }} 
                 title={`${tag.name} (出现 ${tag.count} 次)`}
               >
-                #{tag.name}
+                {tag.name}
               </span>
             ))}
           </div>

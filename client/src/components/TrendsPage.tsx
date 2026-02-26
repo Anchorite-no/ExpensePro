@@ -329,7 +329,8 @@ export default function TrendsPage({ expenses, theme, categories, currency }: Pr
           expenses={filteredExpenses} 
           theme={theme} 
           categories={categories} 
-          currency={currency} 
+          currency={currency}
+          timeRange={timeRange}
         />
       ) : (
         <>
