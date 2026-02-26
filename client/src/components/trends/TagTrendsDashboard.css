@@ -233,11 +233,18 @@ html.dark .chart-bg-wrapper,
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
+/* Heatmap container: allow cells to overflow on hover */
+.heatmap-container {
+  overflow: visible !important;
+  padding-top: 6px;
+}
+
 .heatmap-grid {
   display: flex;
   gap: 6px;
   min-width: max-content;
   padding-bottom: 8px;
+  overflow: visible;
 }
 
 .heatmap-day-labels {
@@ -255,6 +262,7 @@ html.dark .chart-bg-wrapper,
   display: flex;
   flex-direction: column;
   gap: 6px;
+  overflow: visible;
 }
 
 .heatmap-cell {
@@ -264,10 +272,13 @@ html.dark .chart-bg-wrapper,
   cursor: pointer;
   transition: transform 0.15s ease;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+  position: relative;
+  z-index: 1;
 }
 
 .heatmap-cell:hover {
   transform: scale(1.25);
+  z-index: 10;
 }
 
 .heatmap-cell-empty {
@@ -291,6 +302,7 @@ html.dark .chart-bg-wrapper,
   display: flex;
   flex-direction: column;
   gap: 6px;
+  overflow: visible;
 }
 
 .heatmap-calendar-header {
@@ -314,10 +326,75 @@ html.dark .chart-bg-wrapper,
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
   justify-items: center;
+  overflow: visible;
 }
 
 @media (min-width: 640px) {
   .heatmap-calendar-header span {
     width: 20px;
   }
+}
+
+/* Single week horizontal layout */
+.heatmap-single-week {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: visible;
+}
+
+.heatmap-single-week-header {
+  display: flex;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.heatmap-single-week-header span {
+  width: 18px;
+  text-align: center;
+}
+
+.heatmap-single-week-row {
+  display: flex;
+  gap: 6px;
+  overflow: visible;
+}
+
+@media (min-width: 640px) {
+  .heatmap-single-week-header span {
+    width: 20px;
+  }
+}
+
+/* Heatmap cell styled tooltip (replaces native title) */
+.heatmap-cell[data-tooltip] {
+  position: relative;
+}
+
+.heatmap-cell[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 100;
+  background: var(--tooltip-bg);
+  color: var(--tooltip-text);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(8px);
+}
+
+.heatmap-cell[data-tooltip]:hover::after {
+  opacity: 1;
 }

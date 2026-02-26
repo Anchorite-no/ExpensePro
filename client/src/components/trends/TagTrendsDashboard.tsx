@@ -38,7 +38,7 @@ const TagBarTooltip = ({ active, payload, currency }: any) => {
   return (
     <div className="custom-tooltip">
       <p className="tooltip-label">{payload[0].payload.name}</p>
-      <p className="tooltip-value" style={{ color: payload[0].payload.color }}>
+      <p className="tooltip-value" style={{ color: '#6366f1' }}>
         {currency}{Number(payload[0].value).toFixed(2)}
       </p>
     </div>
@@ -290,6 +290,26 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
 };
 
 
+// Custom Tooltip for scatter chart (习惯矩阵)
+const ScatterTooltip = ({ active, payload, currency }: any) => {
+  if (!active || !payload?.length) return null;
+  const data = payload[0].payload;
+  return (
+    <div className="custom-tooltip">
+      <p className="tooltip-label">{data.name}</p>
+      <p className="tooltip-value" style={{ color: '#6366f1' }}>
+        总金额: {currency}{Number(data.amount).toFixed(2)}
+      </p>
+      <p className="tooltip-value" style={{ color: '#6366f1' }}>
+        消费次数: {data.count} 次
+      </p>
+      <p className="tooltip-value" style={{ color: '#6366f1' }}>
+        平均单笔: {currency}{Number(data.avgAmount).toFixed(2)}
+      </p>
+    </div>
+  );
+};
+
 // ==========================================
 // 主大盘入口
 // ==========================================
@@ -478,8 +498,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                 <ReferenceArea x1={quadrantLines.x} y1={quadrantLines.y} fill="#fee2e2" fillOpacity={isDark ? 0.1 : 0.2} />
                 <RechartsTooltip 
                   cursor={{strokeDasharray: '3 3'}} 
-                  formatter={(value: any, name: any) => [name === '消费次数' ? `${value} 次` : `${currency}${value}`, name]} 
-                  contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', background: 'var(--tooltip-bg)', color: 'var(--tooltip-text)', backdropFilter: 'blur(8px)' }} 
+                  content={<ScatterTooltip currency={currency} />}
                 />
                 <Scatter data={scatterData} fillOpacity={0.85}>
                     {scatterData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
@@ -535,7 +554,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                 <span className="heatmap-legend-label">多</span>
               </div>
             </div>
-            <div className="flex-1 overflow-x-auto w-full custom-scrollbar">
+            <div className="flex-1 overflow-x-auto w-full custom-scrollbar heatmap-container">
               {isMonthView ? (
                 <div className="heatmap-calendar">
                   <div className="heatmap-calendar-header">
@@ -548,11 +567,27 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                           key={day.id} 
                           className={`heatmap-cell ${day.count < 0 ? 'heatmap-cell-empty' : ''}`}
                           style={{ backgroundColor: getHeatmapColor(day.count) }} 
-                          title={day.date ? `${day.date}: ${day.count} 次` : ''} 
+                          data-tooltip={day.date ? `${day.date}: ${day.count} 次` : undefined}
                         />
                       ))}
                     </div>
                   ))}
+                </div>
+              ) : timeRange === 'current-week' ? (
+                <div className="heatmap-single-week">
+                  <div className="heatmap-single-week-header">
+                    <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+                  </div>
+                  <div className="heatmap-single-week-row">
+                    {heatmapGridData[0]?.map((day) => (
+                      <div 
+                        key={day.id} 
+                        className="heatmap-cell" 
+                        style={{ backgroundColor: getHeatmapColor(day.count) }} 
+                        data-tooltip={`${day.date}: ${day.count} 次`}
+                      />
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="heatmap-grid">
@@ -564,7 +599,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                           key={day.id} 
                           className="heatmap-cell" 
                           style={{ backgroundColor: getHeatmapColor(day.count) }} 
-                          title={`${day.date}: ${day.count} 次`} 
+                          data-tooltip={`${day.date}: ${day.count} 次`}
                         />
                       ))}
                     </div>
