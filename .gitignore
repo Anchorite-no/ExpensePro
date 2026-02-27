@@ -34,5 +34,12 @@ coverage/
 
 .claude
 
+#.md
+GEMINI.md
+CLAUDE.md
+AGENTS.md
+
+opencode.json.lnk
+
 # Docker (if sensitive data or temporary)
 # docker-compose.override.yml
