@@ -103,7 +103,7 @@ const CustomTreeDiagram = ({ expenses, categories, currency, theme }: any) => {
 };
 
 // ==========================================
-// 组件 2: 神经元共现网络图 (升级版: 物理拖拽 + HTML 节点 + 自动全景镜头)
+// 组件 2: 神经元共现网络图 (完美版: 物理拖拽 + HTML 呼吸节点 + 手动缩放)
 // ==========================================
 const CustomOrganicNetwork = ({ expenses, theme }: any) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -112,16 +112,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
   const [links, setLinks] = useState<any[]>([]);
   const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
   const [isDragging, setIsDragging] = useState(false);
-  
-  // 缩放与镜头状态
   const [zoom, setZoom] = useState(1);
-  const zoomRef = useRef(1);
-  const [camera, setCamera] = useState({ x: 0, y: 0, k: 1 });
-  const cameraRef = useRef({ x: 0, y: 0, k: 1 });
-
-  useEffect(() => {
-    zoomRef.current = zoom;
-  }, [zoom]);
 
   useEffect(() => {
     if (!containerRef.current || expenses.length === 0) return;
@@ -164,10 +155,13 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
     
     initNodes.forEach((node: any, i) => {
       // 初始随机分布在中心附近
-      node.x = centerX + (Math.random() - 0.5) * dimensions.width * 0.3; 
-      node.y = centerY + (Math.random() - 0.5) * dimensions.height * 0.3;
+      node.x = centerX + (Math.random() - 0.5) * 100; 
+      node.y = centerY + (Math.random() - 0.5) * 100;
       node.color = COLOR_PALETTE[i % COLOR_PALETTE.length];
-      node.r = Math.max(16, Math.min(36, 12 + node.count * 3)); // 稍微调大基础半径
+      node.r = Math.max(16, Math.min(36, 12 + node.count * 3));
+      // 为每个节点生成随机的呼吸动画参数
+      node.animDelay = Math.random() * 2;
+      node.animDuration = 3 + Math.random() * 2;
     });
 
     // 计算最大连线权重，用于规范化连线粗细
@@ -175,68 +169,37 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
 
     const simulation = d3.forceSimulation(initNodes as any)
       // 连线距离：经常共现的拉得更近
-      .force("link", d3.forceLink(initLinks).id((d: any) => d.id).distance((d: any) => 120 - (d.weight / maxWeight) * 40).strength(0.6))
-      // 斥力：不要靠得太紧
-      .force("charge", d3.forceManyBody().strength(-180))
+      .force("link", d3.forceLink(initLinks).id((d: any) => d.id).distance((d: any) => 150 - (d.weight / maxWeight) * 60).strength(0.6))
+      // 斥力：加强斥力，让节点更充分利用 400px 的空间
+      .force("charge", d3.forceManyBody().strength(-250))
       // 整体居中吸引力
       .force("center", d3.forceCenter(centerX, centerY))
-      .force("x", d3.forceX(centerX).strength(0.05)) // 弱 X 轴向心力
-      .force("y", d3.forceY(centerY).strength(0.05)) // 弱 Y 轴向心力
+      .force("x", d3.forceX(centerX).strength(0.02))
+      .force("y", d3.forceY(centerY).strength(0.02))
       // 碰撞体积
-      .force("collide", d3.forceCollide().radius((d: any) => d.r + 8).iterations(3));
+      .force("collide", d3.forceCollide().radius((d: any) => d.r + 10).iterations(3));
 
     simulationRef.current = simulation;
-
-    // 初始镜头重置
-    cameraRef.current = { x: 0, y: 0, k: 1 };
 
     simulation.on("tick", () => {
       const currentNodes = simulation.nodes();
       
-      // 自动全景镜头算法 (Auto-fit Camera)
-      // 动态计算所有节点的边界，并自动缩放/平移以确保所有节点都在视野内
-      if (currentNodes.length > 0) {
-        const padding = 60; // 留白边距
-        const minX = Math.min(...currentNodes.map((d: any) => d.x - d.r));
-        const maxX = Math.max(...currentNodes.map((d: any) => d.x + d.r));
-        const minY = Math.min(...currentNodes.map((d: any) => d.y - d.r));
-        const maxY = Math.max(...currentNodes.map((d: any) => d.y + d.r));
-
-        const w = maxX - minX + padding * 2;
-        const h = maxY - minY + padding * 2;
-        const cx = (minX + maxX) / 2;
-        const cy = (minY + maxY) / 2;
-
-        let autoScale = 1;
-        if (w > 0 && h > 0) {
-            autoScale = Math.min(dimensions.width / w, dimensions.height / h, 2); 
-        }
-
-        // 最终缩放 = 自动缩放比例 * 用户手动缩放比例
-        const finalScale = autoScale * zoomRef.current;
-        
-        // 目标平移坐标：使集群中心对齐到容器中心
-        const tx = dimensions.width / 2 - cx * finalScale;
-        const ty = dimensions.height / 2 - cy * finalScale;
-
-        // 镜头平滑过渡插值
-        cameraRef.current = {
-            x: cameraRef.current.x + (tx - cameraRef.current.x) * 0.15,
-            y: cameraRef.current.y + (ty - cameraRef.current.y) * 0.15,
-            k: cameraRef.current.k + (finalScale - cameraRef.current.k) * 0.15
-        };
-      }
+      // 刚性边界约束：确保节点永远不会飞出画框
+      const padding = 10;
+      currentNodes.forEach((d: any) => {
+        d.x = Math.max(d.r + padding, Math.min(dimensions.width - d.r - padding, d.x));
+        d.y = Math.max(d.r + padding, Math.min(dimensions.height - d.r - padding, d.y));
+      });
 
       setNodes([...currentNodes]);
       setLinks([...initLinks]);
-      setCamera({...cameraRef.current});
     });
 
     return () => {
       simulation.stop();
       window.removeEventListener('resize', updateDimensions);
     };
-  }, [expenses, dimensions.width]); // dependency on width to center properly
+  }, [expenses, dimensions.width]);
 
   const isDark = theme === 'dark';
   const linkStroke = isDark ? '#64748b' : '#94a3b8';
@@ -245,35 +208,37 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent, node: any) => {
     if (!simulationRef.current) return;
     setIsDragging(true);
-    // 重新加热物理引擎
     simulationRef.current.alphaTarget(0.3).restart();
     
-    node.fx = node.x;
-    node.fy = node.y;
+    // 记录拖拽起始点（屏幕绝对坐标）
+    const startX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const startY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
     
-    // 绑定全局移动和抬起事件
+    // 记录节点起始坐标
+    const initialFx = node.x;
+    const initialFy = node.y;
+    
+    node.fx = initialFx;
+    node.fy = initialFy;
+    
+    // 使用 Delta (差值) 算法进行拖拽，完美兼容任何 Zoom 比例
     const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
       const mx = 'touches' in moveEvent ? (moveEvent as TouchEvent).touches[0].clientX : (moveEvent as MouseEvent).clientX;
       const my = 'touches' in moveEvent ? (moveEvent as TouchEvent).touches[0].clientY : (moveEvent as MouseEvent).clientY;
       
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        
-        // 使用当前最新的镜头参数将屏幕物理坐标逆向转换为逻辑物理坐标
-        const { x: tx, y: ty, k } = cameraRef.current;
-        const logicalX = (mx - rect.left - tx) / k;
-        const logicalY = (my - rect.top - ty) / k;
-        
-        // 移除硬性边界限制，允许拖拽到屏幕外，镜头会自动追随
-        node.fx = logicalX;
-        node.fy = logicalY;
-      }
+      // 鼠标移动的物理距离除以缩放比例 = 逻辑距离
+      const dx = (mx - startX) / zoom;
+      const dy = (my - startY) / zoom;
+      
+      // 直接应用差值并限制在容器内
+      node.fx = Math.max(node.r, Math.min(dimensions.width - node.r, initialFx + dx));
+      node.fy = Math.max(node.r, Math.min(dimensions.height - node.r, initialFy + dy));
     };
 
     const handleUp = () => {
       if (!simulationRef.current) return;
-      simulationRef.current.alphaTarget(0); // 冷却引擎
-      node.fx = null; // 解除坐标锁定
+      simulationRef.current.alphaTarget(0);
+      node.fx = null;
       node.fy = null;
       setIsDragging(false);
       window.removeEventListener('mousemove', handleMove);
@@ -285,33 +250,41 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
     window.addEventListener('mousemove', handleMove, { passive: false });
     window.addEventListener('mouseup', handleUp);
     window.addEventListener('touchmove', handleMove, { passive: false });
-    window.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false }); // Prevent scrolling while dragging
+    window.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false }); 
     window.addEventListener('touchend', handleUp);
   };
 
   return (
     <div className="w-full relative flex justify-center custom-scrollbar overflow-hidden rounded-xl border border-gray-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30" ref={containerRef} style={{ height: dimensions.height, touchAction: 'none' }}>
       
+      {/* 动态注入 CSS 呼吸动画 */}
+      <style>{`
+        @keyframes floatNode {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-8px); }
+          100% { transform: translateY(0px); }
+        }
+      `}</style>
+
       {/* 缩放控件 (右上角) */}
       <div className="absolute top-3 right-3 flex flex-col bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden z-20">
-        <button onClick={() => setZoom(z => Math.min(z + 0.25, 3))} className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 font-bold transition-colors">+</button>
-        <button onClick={() => setZoom(1)} className="w-8 h-6 flex items-center justify-center text-[10px] hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 font-medium border-y border-gray-100 dark:border-gray-700 transition-colors">1X</button>
-        <button onClick={() => setZoom(z => Math.max(z - 0.25, 0.5))} className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 font-bold transition-colors">-</button>
+        <button onClick={() => setZoom(z => Math.min(z + 0.25, 2))} className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 font-bold transition-colors cursor-pointer">+</button>
+        <button onClick={() => setZoom(1)} className="w-8 h-6 flex items-center justify-center text-[10px] hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 font-medium border-y border-gray-100 dark:border-gray-700 transition-colors cursor-pointer">1X</button>
+        <button onClick={() => setZoom(z => Math.max(z - 0.25, 0.5))} className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 font-bold transition-colors cursor-pointer">-</button>
       </div>
 
-      {/* 内容层：通过 CSS 硬件加速应用平移和缩放 */}
+      {/* 缩放画幅容器 */}
       <div 
-        className="absolute top-0 left-0 w-full h-full transform-gpu origin-top-left will-change-transform" 
-        style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.k})` }}
+        className="absolute top-0 left-0 w-full h-full origin-center transition-transform duration-300 ease-out" 
+        style={{ transform: `scale(${zoom})` }}
       >
-        {/* 底层 SVG：只绘制弹性连线 */}
-        <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none', zIndex: 0 }}>
+        {/* 底层 SVG：绘制弹性连线 */}
+        <svg width={dimensions.width} height={dimensions.height} className="absolute top-0 left-0 pointer-events-none z-0">
           {links.map((link, i) => {
             const source = link.source.x !== undefined ? link.source : nodes.find(n => n.id === link.source);
             const target = link.target.x !== undefined ? link.target : nodes.find(n => n.id === link.target);
             if (!source || !target) return null;
             
-            // 连线粗细和透明度根据权重计算，突出强关联
             const strokeWidth = 1 + link.weight * 0.8;
             const opacity = Math.min(0.8, 0.2 + link.weight * 0.15);
 
@@ -328,33 +301,39 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
           })}
         </svg>
 
-        {/* 顶层 HTML：渲染可交互的节点 */}
+        {/* 顶层 HTML：渲染可交互的呼吸节点 */}
         <div className="absolute top-0 left-0 w-full h-full z-10 pointer-events-none">
           {nodes.map((node) => (
             <div
               key={node.id}
-              onMouseDown={(e) => handleDragStart(e, node)}
-              onTouchStart={(e) => handleDragStart(e, node)}
-              className="absolute flex items-center justify-center select-none shadow-md transition-shadow hover:shadow-lg overflow-hidden pointer-events-auto"
+              className="absolute pointer-events-auto"
               style={{
+                left: node.x - node.r,
+                top: node.y - node.r,
                 width: node.r * 2,
                 height: node.r * 2,
-                borderRadius: '50%', // 强制正圆形
-                backgroundColor: node.color,
-                // 使用 transform 而不是直接修改 left/top，性能更好
-                transform: `translate(${node.x - node.r}px, ${node.y - node.r}px)`,
-                // 拖拽时稍微放大并增加阴影层级，增加手感
-                cursor: isDragging ? 'grabbing' : 'grab',
-                color: '#fff',
-                border: `2px solid ${isDark ? '#1e293b' : '#ffffff'}`,
-                textShadow: '0px 1px 2px rgba(0,0,0,0.5)',
-                boxShadow: node.fx !== null && node.fy !== null ? '0 0 15px rgba(0,0,0,0.3)' : '0 2px 5px rgba(0,0,0,0.1)',
-                zIndex: node.fx !== null && node.fy !== null ? 20 : 10, // 拖拽的节点置顶
+                zIndex: node.fx !== null && node.fy !== null ? 20 : 10,
               }}
+              onMouseDown={(e) => handleDragStart(e, node)}
+              onTouchStart={(e) => handleDragStart(e, node)}
             >
-              <span className="truncate w-full text-center px-1 font-semibold leading-tight" style={{ fontSize: node.r > 20 ? '12px' : '10px' }}>
-                {node.id}
-              </span>
+              <div
+                className="w-full h-full rounded-full flex items-center justify-center select-none shadow-md transition-shadow hover:shadow-lg overflow-hidden"
+                style={{
+                  backgroundColor: node.color,
+                  cursor: isDragging ? 'grabbing' : 'grab',
+                  color: '#fff',
+                  border: `2px solid ${isDark ? '#1e293b' : '#ffffff'}`,
+                  textShadow: '0px 1px 2px rgba(0,0,0,0.5)',
+                  boxShadow: node.fx !== null && node.fy !== null ? '0 0 15px rgba(0,0,0,0.3)' : '0 2px 5px rgba(0,0,0,0.1)',
+                  // 应用专属的呼吸浮动动画，且不与外部容器坐标冲突
+                  animation: `floatNode ${node.animDuration}s ease-in-out ${node.animDelay}s infinite`,
+                }}
+              >
+                <span className="truncate w-full text-center px-1 font-semibold leading-tight" style={{ fontSize: node.r > 20 ? '12px' : '10px' }}>
+                  {node.id}
+                </span>
+              </div>
             </div>
           ))}
         </div>
