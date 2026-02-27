@@ -2,6 +2,8 @@ import React, { useMemo, useState, useEffect, useRef } from "react";
 import * as d3 from "d3-force";
 import * as d3Select from "d3-selection";
 import * as d3Drag from "d3-drag";
+import * as d3Zoom from "d3-zoom";
+import "d3-transition";
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, ZAxis,
   ReferenceLine, ReferenceArea, BarChart, Bar, Cell, Tooltip as RechartsTooltip, ResponsiveContainer
@@ -104,14 +106,13 @@ const CustomTreeDiagram = ({ expenses, categories, currency, theme }: any) => {
 };
 
 // ==========================================
-// 组件 2: 共现网络（纯 SVG，D3 物理引擎）
+// 组件 2: 共现网络（纯 SVG + D3 zoom/drag/simulation）
 // ==========================================
 const CustomOrganicNetwork = ({ expenses, theme }: any) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement>(null);
-  const simulationRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState({ width: 800, height: 320 });
+  const [dimensions, setDimensions] = useState({ width: 800, height: 360 });
   const isDark = theme === 'dark';
 
   // 计算图数据（只算一次）
@@ -153,54 +154,80 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
     return { nodes, links };
   }, [expenses]);
 
-  // D3 全权管理：simulation + drag + 渲染，全部在 useEffect 内用 D3 操作 DOM
+  // D3 全权管理渲染
   useEffect(() => {
     if (!svgRef.current || !gRef.current || graphData.nodes.length === 0) return;
 
-    // 测量容器
-    if (containerRef.current) {
-      setDimensions({ width: containerRef.current.clientWidth || 800, height: 320 });
-    }
     const width = containerRef.current?.clientWidth || 800;
-    const height = 320;
+    const height = 360;
     const centerX = width / 2;
     const centerY = height / 2;
 
-    // 深拷贝数据给 D3（D3 会原地修改对象）
+    // 深拷贝（D3 会原地修改）
     const nodes: any[] = graphData.nodes.map(n => ({ ...n }));
     const links: any[] = graphData.links.map(l => ({ ...l }));
 
+    const svg = d3Select.select(svgRef.current);
     const g = d3Select.select(gRef.current);
-    g.selectAll('*').remove(); // 清空旧内容
+    g.selectAll('*').remove();
 
-    // 绘制连线
-    const linkSelection = g.selectAll('.net-link')
-      .data(links)
-      .enter()
+    // ---- Zoom：绑定到 SVG，控制 <g> 的 transform ----
+    const zoom = d3Zoom.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.3, 4])
+      .on('zoom', (event) => {
+        g.attr('transform', event.transform);
+      });
+
+    svg.call(zoom as any).on('dblclick.zoom', null);
+
+    // ---- 绘制连线 ----
+    const linkSel = g.selectAll('.net-link')
+      .data(links).enter()
       .append('line')
       .attr('class', 'net-link')
       .attr('stroke', isDark ? '#64748b' : '#94a3b8')
       .attr('stroke-width', (d: any) => 1 + d.weight * 0.8)
       .attr('stroke-opacity', (d: any) => Math.min(0.7, 0.15 + d.weight * 0.15));
 
-    // 绘制节点组
-    const nodeGroup = g.selectAll('.net-node')
-      .data(nodes, (d: any) => d.id)
-      .enter()
+    // ---- 绘制节点组 ----
+    const nodeSel = g.selectAll('.net-node')
+      .data(nodes, (d: any) => d.id).enter()
       .append('g')
       .attr('class', 'net-node')
       .style('cursor', 'grab');
 
-    // 圆形
-    nodeGroup.append('circle')
+    // 外圈光晕
+    nodeSel.append('circle')
+      .attr('r', (d: any) => d.r + 3)
+      .attr('fill', 'none')
+      .attr('stroke', (d: any) => d.color)
+      .attr('stroke-width', 1)
+      .attr('stroke-opacity', 0.25);
+
+    // 主圆
+    nodeSel.append('circle')
+      .attr('class', 'net-circle')
       .attr('r', (d: any) => d.r)
       .attr('fill', (d: any) => d.color)
-      .attr('fill-opacity', 0.9)
+      .attr('fill-opacity', 0.92)
       .attr('stroke', isDark ? '#1e293b' : '#fff')
       .attr('stroke-width', 2.5);
 
+    // 呼吸动画（SVG animateTransform，不影响 D3 坐标）
+    nodeSel.each(function (d: any) {
+      const dur = (3 + Math.random() * 2).toFixed(1);
+      const delay = (Math.random() * 2).toFixed(1);
+      d3Select.select(this).select('.net-circle')
+        .append('animate')
+        .attr('attributeName', 'r')
+        .attr('values', `${d.r};${d.r * 1.06};${d.r}`)
+        .attr('dur', `${dur}s`)
+        .attr('begin', `${delay}s`)
+        .attr('repeatCount', 'indefinite');
+    });
+
     // 文字
-    nodeGroup.append('text')
+    nodeSel.append('text')
       .attr('text-anchor', 'middle')
       .attr('dominant-baseline', 'central')
       .attr('fill', '#fff')
@@ -210,59 +237,73 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       .style('text-shadow', '0 1px 2px rgba(0,0,0,0.5)')
       .text((d: any) => d.id);
 
-    // 创建 simulation
+    // ---- Simulation ----
     const simulation = d3.forceSimulation(nodes)
       .force('link', d3.forceLink(links).id((d: any) => d.id).distance(100).strength(0.5))
-      .force('charge', d3.forceManyBody().strength(-200))
+      .force('charge', d3.forceManyBody().strength(-250))
       .force('center', d3.forceCenter(centerX, centerY))
-      .force('collide', d3.forceCollide().radius((d: any) => d.r + 5).iterations(2));
+      .force('collide', d3.forceCollide().radius((d: any) => d.r + 6).iterations(2));
 
-    simulationRef.current = simulation;
+    let fitted = false;
 
-    // tick 更新位置
     simulation.on('tick', () => {
-      linkSelection
-        .attr('x1', (d: any) => d.source.x)
-        .attr('y1', (d: any) => d.source.y)
-        .attr('x2', (d: any) => d.target.x)
-        .attr('y2', (d: any) => d.target.y);
+      linkSel
+        .attr('x1', (d: any) => d.source.x).attr('y1', (d: any) => d.source.y)
+        .attr('x2', (d: any) => d.target.x).attr('y2', (d: any) => d.target.y);
+      nodeSel.attr('transform', (d: any) => `translate(${d.x},${d.y})`);
 
-      nodeGroup.attr('transform', (d: any) => `translate(${d.x},${d.y})`);
+      // 引擎稳定后，自动 fit 到视口
+      if (!fitted && simulation.alpha() < 0.08 && nodes.length > 0) {
+        fitted = true;
+        const pad = 50;
+        const x0 = Math.min(...nodes.map(n => n.x - n.r)) - pad;
+        const y0 = Math.min(...nodes.map(n => n.y - n.r)) - pad;
+        const x1 = Math.max(...nodes.map(n => n.x + n.r)) + pad;
+        const y1 = Math.max(...nodes.map(n => n.y + n.r)) + pad;
+        const bw = x1 - x0, bh = y1 - y0;
+        if (bw > 0 && bh > 0) {
+          const scale = Math.min(width / bw, height / bh, 1.5);
+          const tx = width / 2 - ((x0 + x1) / 2) * scale;
+          const ty = height / 2 - ((y0 + y1) / 2) * scale;
+          svg.transition().duration(600).call(
+            zoom.transform as any,
+            d3Zoom.zoomIdentity.translate(tx, ty).scale(scale)
+          );
+        }
+      }
     });
 
-    // 拖拽
+    // ---- Drag：使用 d3-drag，自动感知 zoom transform ----
     const drag = d3Drag.drag<SVGGElement, any>()
-      .on('start', (event, d) => {
+      .on('start', function (event, d) {
         if (!event.active) simulation.alphaTarget(0.3).restart();
-        d.fx = d.x;
-        d.fy = d.y;
+        d.fx = d.x; d.fy = d.y;
+        d3Select.select(this).style('cursor', 'grabbing');
       })
       .on('drag', (event, d) => {
-        d.fx = event.x;
-        d.fy = event.y;
+        // event.x/y 已被 d3-drag 自动转换为 zoom 坐标系下的值
+        d.fx = event.x; d.fy = event.y;
       })
-      .on('end', (event, d) => {
+      .on('end', function (event, d) {
         if (!event.active) simulation.alphaTarget(0);
-        d.fx = null;
-        d.fy = null;
+        d.fx = null; d.fy = null;
+        d3Select.select(this).style('cursor', 'grab');
       });
 
-    nodeGroup.call(drag as any);
+    nodeSel.call(drag as any);
 
-    return () => {
-      simulation.stop();
-    };
+    return () => { simulation.stop(); };
   }, [graphData, dimensions.width, isDark]);
 
   // 监听容器大小
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const observer = new ResizeObserver(() => {
-      setDimensions({ width: el.clientWidth || 800, height: 320 });
+    const obs = new ResizeObserver(() => {
+      setDimensions({ width: el.clientWidth || 800, height: 360 });
     });
-    observer.observe(el);
-    return () => observer.disconnect();
+    obs.observe(el);
+    return () => obs.disconnect();
   }, []);
 
   if (graphData.nodes.length === 0) {
@@ -270,13 +311,13 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
   }
 
   return (
-    <div ref={containerRef} className="w-full overflow-hidden" style={{ minHeight: 320 }}>
+    <div ref={containerRef} className="network-container" style={{ height: dimensions.height }}>
       <svg
         ref={svgRef}
         width={dimensions.width}
         height={dimensions.height}
-        viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
         className="font-sans"
+        style={{ cursor: 'grab' }}
       >
         <g ref={gRef} />
       </svg>

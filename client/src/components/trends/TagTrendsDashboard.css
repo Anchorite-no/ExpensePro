@@ -3,6 +3,15 @@
   font-family: inherit;
 }
 
+/* 共现网络容器 */
+.network-container {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
 /* Fix black outline/focus ring on all chart elements when clicked */
 .tag-analysis-root svg,
 .tag-analysis-root svg *,
