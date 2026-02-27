@@ -298,7 +298,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       });
 
     // 为每个生成的节点绑定原生拖拽
-    d3Selection.select(containerRef.current).selectAll(".node-drag-target").data(nodes, (d: any) => d.id).call(drag as any);
+    d3Selection.select(containerRef.current).selectAll(".node-drag-target").data(nodes, (d: any) => d?.id ?? '').call(drag as any);
 
   }, [nodes]); // 需要依赖 nodes 因为 HTML 是动态生成的
 
