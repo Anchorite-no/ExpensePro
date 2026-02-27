@@ -215,8 +215,6 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       .attr('class', 'net-node')
       .style('cursor', 'grab');
 
-    // 外圈光晕 (已移除)
-
     // 主圆
     nodeSel.append('circle')
       .attr('class', 'net-circle')
@@ -224,8 +222,8 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       .attr('fill', (d: any) => d.color)
       .attr('fill-opacity', 0.92)
       .attr('stroke', isDark ? '#1e293b' : '#fff')
-      .attr('stroke-width', 2.5)
-      .style('filter', 'drop-shadow(0px 2px 4px rgba(0,0,0,0.15))');
+      .attr('stroke-width', 1.5)
+      .style('filter', 'drop-shadow(0px 2px 4px rgba(0,0,0,0.12))');
 
     // 呼吸动画（SVG animateTransform，不影响 D3 坐标）
     nodeSel.each(function (d: any) {
@@ -335,40 +333,30 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
     const el = containerRef.current;
     if (!el) return;
     const obs = new ResizeObserver(() => {
-      // 检查是否在全屏模式下
-      if (document.fullscreenElement === el) {
-        setDimensions({ width: window.innerWidth, height: window.innerHeight });
-      } else {
+      if (!isFullscreen) {
         setDimensions({ width: el.clientWidth || 800, height: 360 });
       }
     });
     obs.observe(el);
     return () => obs.disconnect();
-  }, []);
+  }, [isFullscreen]);
 
-  // 监听全屏变化
+  // 全屏时锁定 body 滚动并设置尺寸
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    };
-  }, []);
+    if (isFullscreen) {
+      document.body.style.overflow = 'hidden';
+      setDimensions({ width: window.innerWidth, height: window.innerHeight });
+      const handleResize = () => setDimensions({ width: window.innerWidth, height: window.innerHeight });
+      window.addEventListener('resize', handleResize);
+      return () => {
+        document.body.style.overflow = '';
+        window.removeEventListener('resize', handleResize);
+      };
+    }
+  }, [isFullscreen]);
 
   const toggleFullscreen = () => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    if (!document.fullscreenElement) {
-      el.requestFullscreen().catch((err) => {
-        console.error(`Error attempting to enable fullscreen: ${err.message}`);
-      });
-    } else {
-      document.exitFullscreen();
-    }
+    setIsFullscreen(prev => !prev);
   };
 
   if (graphData.nodes.length === 0) {
@@ -388,65 +376,72 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
   };
 
   return (
-    <div ref={containerRef} className={`network-container rounded-xl overflow-hidden transition-all ${isFullscreen ? 'fixed inset-0 z-[9999] bg-white dark:bg-slate-900 flex items-center justify-center rounded-none' : 'relative w-full'}`} style={{ height: dimensions.height }}>
+    <div
+      ref={containerRef}
+      className="network-container"
+      style={{
+        position: isFullscreen ? 'fixed' : 'relative',
+        top: isFullscreen ? 0 : undefined,
+        left: isFullscreen ? 0 : undefined,
+        right: isFullscreen ? 0 : undefined,
+        bottom: isFullscreen ? 0 : undefined,
+        zIndex: isFullscreen ? 9999 : undefined,
+        width: isFullscreen ? '100vw' : '100%',
+        height: isFullscreen ? '100vh' : dimensions.height,
+        borderRadius: isFullscreen ? 0 : undefined,
+        background: isFullscreen ? (isDark ? '#0f172a' : '#fff') : undefined,
+      }}
+    >
       <svg
         ref={svgRef}
         width={dimensions.width}
         height={dimensions.height}
-        className="absolute inset-0 w-full h-full font-sans cursor-grab z-0"
-        style={{ cursor: 'grab' }}
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', cursor: 'grab' }}
       >
         <g ref={gRef} />
       </svg>
-      {/* 右上角全屏按钮 UI */}
-      <div
-        className="absolute top-4 right-4 z-50 flex"
-        style={{ pointerEvents: 'auto' }}
-      >
-        <button
-          onClick={toggleFullscreen}
-          className="p-1.5 rounded-lg transition-colors hover:bg-black/10 dark:hover:bg-white/20 flex items-center justify-center cursor-pointer"
-          style={{
-            color: isDark ? '#94a3b8' : '#94a3b8',
-            background: 'none',
-            border: 'none',
-          }}
-          title="全屏预览"
-        >
-          {isFullscreen ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M8 3v3h-3" />
-              <path d="M21 8h-3v-3" />
-              <path d="M3 16h3v3" />
-              <path d="M16 21v-3h3" />
-            </svg>
-          ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M8 3H5a2 2 0 0 0-2 2v3" />
-              <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
-              <path d="M3 16v3a2 2 0 0 0 2 2h3" />
-              <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
-            </svg>
-          )}
-        </button>
-      </div>
-
-      {/* 缩放指示器 UI */}
-      <div
-        className="absolute bottom-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors z-50"
+      {/* 右上角全屏按钮 */}
+      <button
+        onClick={toggleFullscreen}
         style={{
-          background: 'none',
-          border: 'none',
-          color: isDark ? '#94a3b8' : '#94a3b8',
-          fontSize: '12px',
-          pointerEvents: 'auto'
+          position: 'absolute', top: 8, right: 8, zIndex: 50,
+          padding: 6, borderRadius: 6, cursor: 'pointer',
+          background: 'none', border: 'none',
+          color: isDark ? '#64748b' : '#94a3b8',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          pointerEvents: 'auto',
+        }}
+        title={isFullscreen ? '退出预览' : '全屏预览'}
+      >
+        {isFullscreen ? (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 3v3h-3" /><path d="M21 8h-3v-3" />
+            <path d="M3 16h3v3" /><path d="M16 21v-3h3" />
+          </svg>
+        ) : (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3" /><path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+            <path d="M3 16v3a2 2 0 0 0 2 2h3" /><path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+          </svg>
+        )}
+      </button>
+      {/* 右下角缩放指示 + 重置 */}
+      <div
+        style={{
+          position: 'absolute', bottom: 8, right: 8, zIndex: 50,
+          display: 'flex', alignItems: 'center', gap: 6,
+          color: isDark ? '#64748b' : '#94a3b8',
+          fontSize: 12, pointerEvents: 'auto',
         }}
       >
-        <span ref={zoomTextRef} className="font-semibold min-w-[36px] text-right">100%</span>
+        <span ref={zoomTextRef} style={{ fontWeight: 600, minWidth: 36, textAlign: 'right' }}>100%</span>
         <button
           onClick={handleResetZoom}
-          className="ml-1 p-1 hover:bg-black/10 dark:hover:bg-white/20 rounded-md transition-colors flex items-center justify-center cursor-pointer"
-          style={{ background: 'none', border: 'none', color: 'inherit' }}
+          style={{
+            padding: 4, borderRadius: 6, cursor: 'pointer',
+            background: 'none', border: 'none', color: 'inherit',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
           title="重置缩放并居中"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
