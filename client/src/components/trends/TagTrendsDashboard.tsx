@@ -384,27 +384,38 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
       }; 
     });
 
-    // 使用中位数作为四象限分割线，避免长尾数据导致左下角过密
+    // 使用去极值平均 (Trimmed Mean) 作为四象限分割线
+    // 避免长尾数据导致左下角过密，同时也避免中位数导致散点在整数线上扎堆
     const sortedByCount = [...scatterData].sort((a, b) => a.count - b.count);
     const sortedByAmount = [...scatterData].sort((a, b) => a.amount - b.amount);
-    const mid = Math.floor(sortedByCount.length / 2);
-    const medianCount = sortedByCount.length > 0 
-      ? (sortedByCount.length % 2 === 0 
-        ? (sortedByCount[mid - 1].count + sortedByCount[mid].count) / 2 
-        : sortedByCount[mid].count)
-      : 0;
-    const medianAmount = sortedByAmount.length > 0 
-      ? (sortedByAmount.length % 2 === 0 
-        ? (sortedByAmount[mid - 1].amount + sortedByAmount[mid].amount) / 2 
-        : sortedByAmount[mid].amount)
-      : 0;
-    
-    return { 
+
+    const len = scatterData.length;
+    let avgCount = 0;
+    let avgAmount = 0;
+
+    if (len > 0) {
+      const trimRatio = 0.1; // 去除两头各 10%
+      const lowerBound = Math.floor(len * trimRatio);
+      const upperBound = Math.max(lowerBound + 1, Math.ceil(len * (1 - trimRatio)));
+
+      const trimmedCountData = sortedByCount.slice(lowerBound, upperBound);
+      const trimmedAmountData = sortedByAmount.slice(lowerBound, upperBound);
+
+      avgCount = trimmedCountData.length > 0
+        ? trimmedCountData.reduce((sum, item) => sum + item.count, 0) / trimmedCountData.length
+        : sortedByCount[0].count;
+
+      avgAmount = trimmedAmountData.length > 0
+        ? trimmedAmountData.reduce((sum, item) => sum + item.amount, 0) / trimmedAmountData.length
+        : sortedByAmount[0].amount;
+    }
+
+    return {
       rankingData: sortedTags.slice(0, 8).map((t, i) => ({...t, color: COLOR_PALETTE[i % COLOR_PALETTE.length]})),
       scatterData,
-      quadrantLines: { 
-        x: medianCount, 
-        y: medianAmount 
+      quadrantLines: {
+        x: avgCount,
+        y: avgAmount
       },
       wordCloudData: sortedTags.map((t, i) => ({ 
         ...t, 
