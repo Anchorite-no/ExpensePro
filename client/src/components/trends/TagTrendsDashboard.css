@@ -91,10 +91,11 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 8px 3px 6px;
+  padding: 4px 10px 4px 8px;
   border-radius: 5px;
   border: 1px solid var(--border);
   background: var(--bg-card);
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;

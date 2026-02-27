@@ -82,26 +82,22 @@ const CustomTreeDiagram = ({ expenses, categories, currency, theme }: any) => {
 
   return (
     <div className="flow-list">
-      {treeData.map(cat => {
-        const tagSize = cat.tags.length > 6 ? 11 : 13;
-        const amtSize = cat.tags.length > 6 ? 9 : 11;
-        return (
-          <div key={cat.name} className="flow-row">
-            <div className="flow-cat" style={{ borderColor: cat.color, color: cat.color }}>
-              <span className="flow-cat-name">{cat.name}</span>
-              <span className="flow-cat-amount">{currency}{cat.amount.toFixed(2)}</span>
-            </div>
-            <div className="flow-tags">
-              {cat.tags.map(tag => (
-                <span key={tag.name} className="flow-tag" style={{ '--dot-color': cat.color, fontSize: `${tagSize}px` } as React.CSSProperties}>
-                  {tag.name}
-                  <span className="flow-tag-amount" style={{ fontSize: `${amtSize}px` }}>{currency}{Math.round(tag.amount)}</span>
-                </span>
-              ))}
-            </div>
+      {treeData.map(cat => (
+        <div key={cat.name} className="flow-row">
+          <div className="flow-cat" style={{ borderColor: cat.color, color: cat.color }}>
+            <span className="flow-cat-name">{cat.name}</span>
+            <span className="flow-cat-amount">{currency}{cat.amount.toFixed(2)}</span>
           </div>
-        );
-      })}
+          <div className="flow-tags">
+            {cat.tags.map(tag => (
+              <span key={tag.name} className="flow-tag" style={{ '--dot-color': cat.color } as React.CSSProperties}>
+                {tag.name}
+                <span className="flow-tag-amount">{currency}{Math.round(tag.amount)}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 };
