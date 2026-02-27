@@ -46,7 +46,7 @@ const TagBarTooltip = ({ active, payload, currency }: any) => {
 };
 
 // ==========================================
-// 组件 1: 极简脑图树状图
+// 组件 1: 资金流向（纯 HTML/CSS 布局）
 // ==========================================
 const CustomTreeDiagram = ({ expenses, categories, currency, theme }: any) => {
   const treeData = useMemo(() => {
@@ -62,7 +62,7 @@ const CustomTreeDiagram = ({ expenses, categories, currency, theme }: any) => {
       });
     });
 
-    const categoryList = Object.keys(catMap).map(cat => {
+    return Object.keys(catMap).map(cat => {
       const sortedTags = Object.keys(catMap[cat].tags)
         .map(tag => ({ name: tag, amount: catMap[cat].tags[tag] }))
         .sort((a, b) => b.amount - a.amount);
@@ -78,99 +78,26 @@ const CustomTreeDiagram = ({ expenses, categories, currency, theme }: any) => {
         tags: topTags 
       };
     }).sort((a, b) => b.amount - a.amount);
-
-    // Layout: category on left, tags on right with multi-row wrapping
-    const xCat = 80, startXTag = 180;
-    const maxRowWidth = 700; // max width for tags before wrapping
-    const tagH = 24, tagGapX = 6, tagGapY = 6;
-    let currentY = 30;
-    
-    const catNodes: any[] = [], tagNodes: any[] = [];
-
-    categoryList.forEach(cat => {
-      // Calculate tag rows with wrapping
-      const rows: { name: string, amount: number, width: number, x: number, y: number }[][] = [[]];
-      let rowX = 0;
-
-      cat.tags.forEach(tag => {
-        const nameWidth = tag.name.length * 10;
-        const amtWidth = String(Math.round(tag.amount)).length * 7 + currency.length * 7;
-        const boxWidth = 18 + nameWidth + 6 + amtWidth + 8;
-
-        if (rowX > 0 && rowX + boxWidth > maxRowWidth) {
-          rows.push([]);
-          rowX = 0;
-        }
-        rows[rows.length - 1].push({ ...tag, width: boxWidth, x: rowX, y: 0 });
-        rowX += boxWidth + tagGapX;
-      });
-
-      const totalTagHeight = rows.length * tagH + (rows.length - 1) * tagGapY;
-      const catCenterY = currentY + totalTagHeight / 2;
-
-      catNodes.push({ id: cat.name, name: cat.name, amount: cat.amount, x: xCat, y: catCenterY, color: cat.color });
-
-      rows.forEach((row, rowIdx) => {
-        const rowY = currentY + rowIdx * (tagH + tagGapY);
-        row.forEach(tag => {
-          tagNodes.push({
-            id: `${cat.name}-${tag.name}`,
-            name: tag.name,
-            amount: tag.amount,
-            x: startXTag + tag.x,
-            y: rowY,
-            width: tag.width,
-            color: cat.color,
-            catY: catCenterY
-          });
-        });
-      });
-
-      currentY += totalTagHeight + 20;
-    });
-
-    return { catNodes, tagNodes, height: Math.max(currentY + 10, 200) };
   }, [expenses, categories, currency]);
 
-  const isDark = theme === 'dark';
-  const textColor = isDark ? '#f1f5f9' : '#475569';
-  const catBg = isDark ? '#1e293b' : '#fff';
-  const tagBg = isDark ? '#1e293b' : '#fff';
-  const tagBorder = isDark ? '#475569' : '#e2e8f0';
-  const mutedText = isDark ? '#94a3b8' : '#64748b';
-
   return (
-    <div className="w-full overflow-x-auto custom-scrollbar">
-      <svg width="900" height={treeData.height} viewBox={`0 0 900 ${treeData.height}`} className="font-sans min-w-[600px]">
-        
-        {/* 连接线：分类 -> 标签 */}
-        {treeData.tagNodes.map((node: any) => (
-          <path 
-            key={node.id + '-link'}
-            d={`M ${80 + 50} ${node.catY} C ${130} ${node.catY}, ${node.x - 20} ${node.y + 12}, ${node.x} ${node.y + 12}`}
-            fill="none" stroke={node.color} strokeWidth="2" strokeOpacity={0.25}
-          />
-        ))}
-
-        {/* 分类节点 */}
-        {treeData.catNodes.map((node: any) => (
-          <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
-            <rect x="-50" y="-16" width="100" height="32" rx="6" fill={catBg} stroke={node.color} strokeWidth="2" />
-            <text x="0" y="-1" textAnchor="middle" fill={node.color} fontSize="12" fontWeight="bold">{node.name}</text>
-            <text x="0" y="11" textAnchor="middle" fill={mutedText} fontSize="9">{currency}{node.amount.toFixed(2)}</text>
-          </g>
-        ))}
-
-        {/* 标签节点 */}
-        {treeData.tagNodes.map((node: any) => (
-          <g key={node.id} transform={`translate(${node.x}, ${node.y})`} className="cursor-pointer">
-            <rect x="0" y="0" width={node.width} height="24" rx="5" fill={tagBg} stroke={tagBorder} strokeWidth="1" className="hover:stroke-gray-400 transition-colors" />
-            <circle cx="9" cy="12" r="3" fill={node.color} />
-            <text x="18" y="12" textAnchor="start" fill={textColor} fontSize="10" fontWeight="600" dominantBaseline="central">{node.name}</text>
-            <text x={node.width - 6} y="12" textAnchor="end" fill={mutedText} fontSize="9" dominantBaseline="central">{currency}{Math.round(node.amount)}</text>
-          </g>
-        ))}
-      </svg>
+    <div className="flow-list">
+      {treeData.map(cat => (
+        <div key={cat.name} className="flow-row">
+          <div className="flow-cat" style={{ borderColor: cat.color, color: cat.color }}>
+            <span className="flow-cat-name">{cat.name}</span>
+            <span className="flow-cat-amount">{currency}{cat.amount.toFixed(2)}</span>
+          </div>
+          <div className="flow-tags">
+            {cat.tags.map(tag => (
+              <span key={tag.name} className="flow-tag" style={{ '--dot-color': cat.color } as React.CSSProperties}>
+                {tag.name}
+                <span className="flow-tag-amount">{currency}{Math.round(tag.amount)}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 };
