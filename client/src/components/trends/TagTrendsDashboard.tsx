@@ -542,8 +542,8 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                 <XAxis type="number" dataKey="count" name="消费次数" tick={{fill: axisColor, fontSize: 12}} />
                 <YAxis type="number" dataKey="amount" name="总金额" tick={{fill: axisColor, fontSize: 12}} />
                 <ZAxis type="number" dataKey="avgAmount" range={[50, 400]} />
-                <ReferenceLine x={quadrantLines.x} stroke={axisColor} strokeDasharray="5 5" label={{ position: 'top', value: '频次中位', fill: axisColor, fontSize: 10 }} />
-                <ReferenceLine y={quadrantLines.y} stroke={axisColor} strokeDasharray="5 5" label={{ position: 'right', value: '金额中位', fill: axisColor, fontSize: 10 }} />
+                <ReferenceLine x={quadrantLines.x} stroke={axisColor} strokeDasharray="5 5" label={{ position: 'top', value: '频次平均', fill: axisColor, fontSize: 10 }} />
+                <ReferenceLine y={quadrantLines.y} stroke={axisColor} strokeDasharray="5 5" label={{ position: 'insideTopLeft', value: '金额平均', fill: axisColor, fontSize: 10 }} />
                 <RechartsTooltip 
                   cursor={{strokeDasharray: '3 3'}} 
                   content={<ScatterTooltip currency={currency} />}
