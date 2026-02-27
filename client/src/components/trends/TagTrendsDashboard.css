@@ -39,6 +39,7 @@
 
 .tag-analysis-root .charts-grid {
   margin-bottom: 20px;
+  grid-template-columns: 10fr 11fr;
 }
 
 /* Ensure no double gaps */
@@ -282,13 +283,13 @@ html.dark .chart-bg-wrapper,
 .heatmap-top-controls {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   margin-bottom: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .heatmap-top-controls .heatmap-select-wrapper {
-  width: 160px;
+  width: 140px;
   flex-shrink: 0;
 }
 

@@ -408,7 +408,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
       },
       wordCloudData: sortedTags.map((t, i) => ({ 
         ...t, 
-        fontSize: Math.max(14, Math.min(32, 12 + (t.count / (totalCount / sortedTags.length || 1)) * 8)), 
+        fontSize: Math.max(14, Math.min(46, 12 + (t.count / (totalCount / sortedTags.length || 1)) * 18)), 
         color: COLOR_PALETTE[i % COLOR_PALETTE.length] 
       })).sort(() => Math.random() - 0.5),
       dailyData: daily,
@@ -552,7 +552,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
               <Select 
                 value={heatmapTag} 
                 onChange={setHeatmapTag} 
-                options={allTags.map(tag => ({ value: tag, label: `#${tag}` }))}
+                options={allTags.map((tag, i) => ({ value: tag, label: `#${tag}`, color: COLOR_PALETTE[i % COLOR_PALETTE.length] }))}
                 placeholder="选择标签..."
               />
             </div>
@@ -585,20 +585,47 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                 ))}
               </div>
             ) : timeRange === 'current-week' ? (
-              <div className="heatmap-single-week">
-                <div className="heatmap-single-week-header">
-                  <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+              <div className="flex flex-col gap-4">
+                <div className="heatmap-single-week">
+                  <div className="heatmap-single-week-header">
+                    <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+                  </div>
+                  <div className="heatmap-single-week-row">
+                    {heatmapGridData[0]?.map((day) => (
+                      <div 
+                        key={day.id} 
+                        className="heatmap-cell" 
+                        style={{ backgroundColor: getHeatmapColor(day.count) }} 
+                        data-tooltip={`${day.date}: ${day.count} 次`}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <div className="heatmap-single-week-row">
-                  {heatmapGridData[0]?.map((day) => (
-                    <div 
-                      key={day.id} 
-                      className="heatmap-cell" 
-                      style={{ backgroundColor: getHeatmapColor(day.count) }} 
-                      data-tooltip={`${day.date}: ${day.count} 次`}
-                    />
-                  ))}
-                </div>
+                
+                {/* 增加 Top 2/3 热力图补充单周模式下的空白 */}
+                {allTags.slice(1, 3).map(tag => {
+                  const tagData = heatmapGridData[0]?.map(day => {
+                    const count = dailyData[day.date]?.[tag] || 0;
+                    return { ...day, count };
+                  });
+                  return (
+                    <div className="heatmap-single-week" key={tag}>
+                      <div className="heatmap-single-week-header" style={{opacity: 0.6}}>
+                        <span style={{width: 'auto', minWidth: '40px', paddingRight: '8px', textAlign: 'left', fontWeight: 'bold'}}>#{tag}</span>
+                      </div>
+                      <div className="heatmap-single-week-row">
+                        {tagData?.map((day) => (
+                          <div 
+                            key={day.id} 
+                            className="heatmap-cell" 
+                            style={{ backgroundColor: getHeatmapColor(day.count) }} 
+                            data-tooltip={`${day.date}: ${day.count} 次 (#${tag})`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="heatmap-grid">
