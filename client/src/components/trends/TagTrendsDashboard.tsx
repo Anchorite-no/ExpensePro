@@ -521,55 +521,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
         </div>
       </div>
 
-      {/* ROW 3: 理性绝对值 */}
-      <div className="charts-grid">
-        
-        <div className="chart-card flex flex-col relative">
-          <h3>习惯矩阵</h3>
-          <div className="flex-grow min-h-[300px] relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.5} />
-                <XAxis type="number" dataKey="count" name="消费次数" tick={{fill: axisColor, fontSize: 12}} />
-                <YAxis type="number" dataKey="amount" name="总金额" tick={{fill: axisColor, fontSize: 12}} />
-                <ZAxis type="number" dataKey="avgAmount" range={[50, 400]} />
-                <ReferenceLine x={quadrantLines.x} stroke={axisColor} strokeDasharray="5 5" label={{ position: 'top', value: '平均频次', fill: axisColor, fontSize: 10 }} />
-                <ReferenceLine y={quadrantLines.y} stroke={axisColor} strokeDasharray="5 5" label={{ position: 'right', value: '平均金额', fill: axisColor, fontSize: 10 }} />
-                <RechartsTooltip 
-                  cursor={{strokeDasharray: '3 3'}} 
-                  content={<ScatterTooltip currency={currency} />}
-                />
-                <Scatter data={scatterData} fillOpacity={0.85}>
-                    {scatterData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                </Scatter>
-              </ScatterChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="chart-card flex flex-col">
-          <h3>消费榜单</h3>
-          <div className="flex-grow min-h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={rankingData} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={gridColor} />
-                <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: 'var(--text-secondary)', fontSize: 13}} width={70} />
-                <RechartsTooltip 
-                  cursor={{fill: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'}} 
-                  content={<TagBarTooltip currency={currency} />}
-                />
-                <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={20}>
-                  {rankingData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-      </div>
-
-      {/* ROW 4: 时间与视觉调剂 */}
+      {/* ROW 3: 习惯追踪 + 消费榜单 */}
       <div className="charts-grid">
         
         <div className="chart-card flex flex-col">
@@ -646,6 +598,54 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                 </div>
               )}
             </div>
+          </div>
+        </div>
+
+        <div className="chart-card flex flex-col">
+          <h3>消费榜单</h3>
+          <div className="flex-grow min-h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={rankingData} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={gridColor} />
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: 'var(--text-secondary)', fontSize: 13}} width={70} />
+                <RechartsTooltip 
+                  cursor={{fill: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'}} 
+                  content={<TagBarTooltip currency={currency} />}
+                />
+                <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={20}>
+                  {rankingData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ROW 4: 习惯矩阵 + 频率词云 */}
+      <div className="charts-grid">
+        
+        <div className="chart-card flex flex-col relative">
+          <h3>习惯矩阵</h3>
+          <div className="flex-grow min-h-[300px] relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.5} />
+                <XAxis type="number" dataKey="count" name="消费次数" tick={{fill: axisColor, fontSize: 12}} />
+                <YAxis type="number" dataKey="amount" name="总金额" tick={{fill: axisColor, fontSize: 12}} />
+                <ZAxis type="number" dataKey="avgAmount" range={[50, 400]} />
+                <ReferenceLine x={quadrantLines.x} stroke={axisColor} strokeDasharray="5 5" label={{ position: 'top', value: '平均频次', fill: axisColor, fontSize: 10 }} />
+                <ReferenceLine y={quadrantLines.y} stroke={axisColor} strokeDasharray="5 5" label={{ position: 'right', value: '平均金额', fill: axisColor, fontSize: 10 }} />
+                <RechartsTooltip 
+                  cursor={{strokeDasharray: '3 3'}} 
+                  content={<ScatterTooltip currency={currency} />}
+                />
+                <Scatter data={scatterData} fillOpacity={0.85}>
+                    {scatterData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                </Scatter>
+              </ScatterChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
