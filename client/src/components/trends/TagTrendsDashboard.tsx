@@ -103,13 +103,16 @@ const CustomTreeDiagram = ({ expenses, categories, currency, theme }: any) => {
 };
 
 // ==========================================
-// 组件 2: 神经元共现网络图
+// 组件 2: 神经元共现网络图 (升级版: 物理拖拽 + HTML 节点 + 边界约束)
 // ==========================================
 const CustomOrganicNetwork = ({ expenses, theme }: any) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const simulationRef = useRef<any>(null);
   const [nodes, setNodes] = useState<any[]>([]);
   const [links, setLinks] = useState<any[]>([]);
-  const [dimensions, setDimensions] = useState({ width: 800, height: 320 });
+  const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [zoom, setZoom] = useState(1);
 
   useEffect(() => {
     if (!containerRef.current || expenses.length === 0) return;
@@ -117,7 +120,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
     // Allow React to render first, then get width
     const updateDimensions = () => {
       if (containerRef.current) {
-        setDimensions({ width: containerRef.current.clientWidth || 800, height: 320 });
+        setDimensions({ width: containerRef.current.clientWidth || 800, height: 400 });
       }
     };
     
@@ -151,22 +154,44 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
     const centerX = dimensions.width / 2, centerY = dimensions.height / 2;
     
     initNodes.forEach((node: any, i) => {
-      node.x = centerX + (Math.random() - 0.5) * dimensions.width * 0.5; 
-      node.y = centerY + (Math.random() - 0.5) * dimensions.height * 0.5;
+      // 初始随机分布在中心附近
+      node.x = centerX + (Math.random() - 0.5) * dimensions.width * 0.3; 
+      node.y = centerY + (Math.random() - 0.5) * dimensions.height * 0.3;
       node.color = COLOR_PALETTE[i % COLOR_PALETTE.length];
-      node.r = Math.max(14, Math.min(34, 10 + node.count * 3));
-      node.animDelay = Math.random() * 2;
-      node.animDuration = 3 + Math.random() * 2;
+      node.r = Math.max(16, Math.min(36, 12 + node.count * 3)); // 稍微调大基础半径
     });
 
+    // 计算最大连线权重，用于规范化连线粗细
+    const maxWeight = Math.max(...initLinks.map(l => l.weight), 1);
+
     const simulation = d3.forceSimulation(initNodes as any)
-      .force("link", d3.forceLink(initLinks).id((d: any) => d.id).distance(100).strength(0.5))
-      .force("charge", d3.forceManyBody().strength(-200))
+      // 连线距离：经常共现的拉得更近
+      .force("link", d3.forceLink(initLinks).id((d: any) => d.id).distance((d: any) => 120 - (d.weight / maxWeight) * 40).strength(0.6))
+      // 斥力：不要靠得太紧
+      .force("charge", d3.forceManyBody().strength(-180))
+      // 整体居中吸引力
       .force("center", d3.forceCenter(centerX, centerY))
-      .force("collide", d3.forceCollide().radius((d: any) => d.r + 5).iterations(2));
+      .force("x", d3.forceX(centerX).strength(0.05)) // 弱 X 轴向心力
+      .force("y", d3.forceY(centerY).strength(0.05)) // 弱 Y 轴向心力
+      // 碰撞体积
+      .force("collide", d3.forceCollide().radius((d: any) => d.r + 8).iterations(3));
+
+    simulationRef.current = simulation;
 
     simulation.on("tick", () => {
-      setNodes([...simulation.nodes()]);
+      // --- 核心更新：增加边界约束算法 ---
+      const padding = 5;
+      const currentNodes = simulation.nodes();
+      
+      currentNodes.forEach((d: any) => {
+        // 限制 X 轴范围
+        d.x = Math.max(d.r + padding, Math.min(dimensions.width - d.r - padding, d.x));
+        // 限制 Y 轴范围
+        d.y = Math.max(d.r + padding, Math.min(dimensions.height - d.r - padding, d.y));
+      });
+
+      // 强制触发 React 状态更新
+      setNodes([...currentNodes]);
       setLinks([...initLinks]);
     });
 
@@ -177,46 +202,123 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
   }, [expenses, dimensions.width]); // dependency on width to center properly
 
   const isDark = theme === 'dark';
-  const trackStroke = isDark ? '#475569' : '#e2e8f0';
   const linkStroke = isDark ? '#64748b' : '#94a3b8';
 
+  // --- 拖拽事件处理 ---
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent, node: any) => {
+    if (!simulationRef.current) return;
+    setIsDragging(true);
+    // 重新加热物理引擎
+    simulationRef.current.alphaTarget(0.3).restart();
+    
+    node.fx = node.x;
+    node.fy = node.y;
+    
+    // 绑定全局移动和抬起事件
+    const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
+      const mx = 'touches' in moveEvent ? (moveEvent as TouchEvent).touches[0].clientX : (moveEvent as MouseEvent).clientX;
+      const my = 'touches' in moveEvent ? (moveEvent as TouchEvent).touches[0].clientY : (moveEvent as MouseEvent).clientY;
+      
+      // 计算相对于容器的坐标
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+        
+        // 应用缩放比例修正坐标 (以中心为原点)
+        const logicalX = (mx - rect.left - cx) / zoom + cx;
+        const logicalY = (my - rect.top - cy) / zoom + cy;
+        
+        // 直接设置 fixed x, y，并且同样加上边界限制防止鼠标拖到外面导致节点卡住
+        node.fx = Math.max(node.r, Math.min(dimensions.width - node.r, logicalX));
+        node.fy = Math.max(node.r, Math.min(dimensions.height - node.r, logicalY));
+      }
+    };
+
+    const handleUp = () => {
+      if (!simulationRef.current) return;
+      simulationRef.current.alphaTarget(0); // 冷却引擎
+      node.fx = null; // 解除坐标锁定
+      node.fy = null;
+      setIsDragging(false);
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleUp);
+    };
+
+    window.addEventListener('mousemove', handleMove, { passive: false });
+    window.addEventListener('mouseup', handleUp);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false }); // Prevent scrolling while dragging
+    window.addEventListener('touchend', handleUp);
+  };
+
   return (
-    <div className="w-full overflow-x-auto flex justify-center custom-scrollbar" ref={containerRef}>
-      <svg width={dimensions.width} height={dimensions.height} viewBox={`0 0 ${dimensions.width} ${dimensions.height}`} className="font-sans min-w-[800px]">
-        <defs>
-          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-        </defs>
+    <div className="w-full relative flex justify-center custom-scrollbar overflow-hidden rounded-xl border border-gray-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30" ref={containerRef} style={{ height: dimensions.height, touchAction: 'none' }}>
+      
+      {/* 缩放控件 (右上角) */}
+      <div className="absolute top-3 right-3 flex flex-col bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden z-20">
+        <button onClick={() => setZoom(z => Math.min(z + 0.25, 3))} className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 font-bold transition-colors">+</button>
+        <button onClick={() => setZoom(1)} className="w-8 h-6 flex items-center justify-center text-[10px] hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 font-medium border-y border-gray-100 dark:border-gray-700 transition-colors">1X</button>
+        <button onClick={() => setZoom(z => Math.max(z - 0.25, 0.5))} className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 font-bold transition-colors">-</button>
+      </div>
 
-        {/* 辅助轨道 */}
-        <ellipse cx={dimensions.width/2} cy={dimensions.height/2} rx="140" ry="70" fill="none" stroke={trackStroke} strokeDasharray="4 4" strokeOpacity="0.8" />
-        <ellipse cx={dimensions.width/2} cy={dimensions.height/2} rx="260" ry="120" fill="none" stroke={trackStroke} strokeDasharray="4 4" strokeOpacity="0.6" />
-        <ellipse cx={dimensions.width/2} cy={dimensions.height/2} rx="380" ry="160" fill="none" stroke={trackStroke} strokeDasharray="4 4" strokeOpacity="0.3" />
+      <div className="absolute top-0 left-0 w-full h-full origin-center transition-transform duration-200" style={{ transform: `scale(${zoom})` }}>
+        {/* 底层 SVG：只绘制弹性连线 */}
+        <svg width={dimensions.width} height={dimensions.height} className="absolute top-0 left-0 pointer-events-none z-0">
+          {links.map((link, i) => {
+            const source = link.source.x !== undefined ? link.source : nodes.find(n => n.id === link.source);
+            const target = link.target.x !== undefined ? link.target : nodes.find(n => n.id === link.target);
+            if (!source || !target) return null;
+            
+            // 连线粗细和透明度根据权重计算，突出强关联
+            const strokeWidth = 1 + link.weight * 0.8;
+            const opacity = Math.min(0.8, 0.2 + link.weight * 0.15);
 
-        {links.map((link, i) => {
-          // d3-force replaces string IDs with node object references
-          const source = link.source.x !== undefined ? link.source : nodes.find(n => n.id === link.source);
-          const target = link.target.x !== undefined ? link.target : nodes.find(n => n.id === link.target);
-          if (!source || !target) return null;
-          
-          const dx = target.x - source.x, dy = target.y - source.y;
-          const cx = source.x + dx / 2 - dy * 0.2; 
-          const cy = source.y + dy / 2 + dx * 0.2;
-          return (
-            <path key={i} d={`M ${source.x} ${source.y} Q ${cx} ${cy} ${target.x} ${target.y}`} fill="none" stroke={linkStroke} strokeWidth={link.weight * 1.5} strokeOpacity={0.4} />
-          )
-        })}
+            return (
+              <line 
+                key={i} 
+                x1={source.x} y1={source.y} 
+                x2={target.x} y2={target.y} 
+                stroke={linkStroke} 
+                strokeWidth={strokeWidth} 
+                strokeOpacity={opacity} 
+              />
+            )
+          })}
+        </svg>
 
-        {nodes.map((node) => (
-          <g key={node.id} className="cursor-pointer">
-            <animateTransform attributeName="transform" type="translate" values={`${node.x},${node.y}; ${node.x},${node.y - 6}; ${node.x},${node.y}`} dur={`${node.animDuration}s`} begin={`${node.animDelay}s`} repeatCount="indefinite" />
-            <circle r={node.r} fill={node.color} fillOpacity="0.95" stroke={isDark ? '#1e293b' : '#fff'} strokeWidth="2.5" filter="url(#glow)" />
-            <text x="0" y="3" textAnchor="middle" fill="#fff" fontSize={node.r > 18 ? 12 : 10} fontWeight="bold" className="select-none" style={{textShadow: '0px 1px 2px rgba(0,0,0,0.5)'}}>{node.id}</text>
-          </g>
-        ))}
-      </svg>
+        {/* 顶层 HTML：渲染可交互的节点 */}
+        <div className="absolute top-0 left-0 w-full h-full z-10">
+          {nodes.map((node) => (
+            <div
+              key={node.id}
+              onMouseDown={(e) => handleDragStart(e, node)}
+              onTouchStart={(e) => handleDragStart(e, node)}
+              className="absolute rounded-full flex items-center justify-center select-none shadow-md transition-shadow hover:shadow-lg overflow-hidden"
+              style={{
+                width: node.r * 2,
+                height: node.r * 2,
+                backgroundColor: node.color,
+                // 使用 transform 而不是直接修改 left/top，性能更好
+                transform: `translate(${node.x - node.r}px, ${node.y - node.r}px)`,
+                // 拖拽时稍微放大并增加阴影层级，增加手感
+                cursor: isDragging ? 'grabbing' : 'grab',
+                color: '#fff',
+                border: `2px solid ${isDark ? '#1e293b' : '#ffffff'}`,
+                textShadow: '0px 1px 2px rgba(0,0,0,0.5)',
+                boxShadow: node.fx !== null && node.fy !== null ? '0 0 15px rgba(0,0,0,0.3)' : '0 2px 5px rgba(0,0,0,0.1)',
+                zIndex: node.fx !== null && node.fy !== null ? 20 : 10, // 拖拽的节点置顶
+              }}
+            >
+              <span className="truncate w-full text-center px-1 font-semibold leading-tight" style={{ fontSize: node.r > 20 ? '12px' : '10px' }}>
+                {node.id}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
@@ -394,12 +496,9 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
 
       {/* ROW 2: 潜意识挖掘 */}
       <div className="chart-card flex flex-col items-center">
-        <div className="w-full flex items-center justify-between">
-          <h3 className="w-full text-left">共现网络</h3>
-        </div>
-        <div className="w-full chart-bg-wrapper flex justify-center py-6 relative">
+        <h3 className="w-full text-left mb-2">共现网络</h3>
+        <div className="w-full relative">
             <CustomOrganicNetwork expenses={expenses} theme={theme} />
-            <div className="absolute bottom-3 right-3 text-[10px] text-gray-400">基于 D3 物理引力</div>
         </div>
       </div>
 
