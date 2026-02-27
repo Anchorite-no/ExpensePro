@@ -152,6 +152,8 @@ function AppContent() {
   /* ========== Expense CRUD ========== */
   const fetchExpenses = useCallback(async () => {
     if (!token) return;
+    // 加密模式下，masterKey 尚未就绪时不要拉取数据，否则密文会直接渲染
+    if (encryption && !masterKey) return;
     try {
       const res = await fetch("/api/expenses", { headers: { Authorization: `Bearer ${token}` } });
       if (res.status === 401 || res.status === 403) { logout(); return; }

@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [masterKey, setMasterKey] = useState<CryptoKey | null>(null);
-  const [encryption, setEncryption] = useState(false);
+  const [encryption, setEncryption] = useState(() => localStorage.getItem('encryption') === 'true');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -37,15 +37,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = (newToken: string, newUsername: string, newMasterKey?: CryptoKey, encryptionEnabled?: boolean) => {
     localStorage.setItem('token', newToken);
     localStorage.setItem('username', newUsername);
-    setToken(newToken);
-    setUser({ username: newUsername });
+    if (encryptionEnabled) localStorage.setItem('encryption', 'true');
+    else localStorage.removeItem('encryption');
+    // 先设置 masterKey 和 encryption，再设置 token，避免 token 触发 fetch 时 key 还没就绪
     if (newMasterKey) setMasterKey(newMasterKey);
     if (encryptionEnabled) setEncryption(true);
+    else setEncryption(false);
+    setToken(newToken);
+    setUser({ username: newUsername });
   };
 
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
+    localStorage.removeItem('encryption');
     setToken(null);
     setUser(null);
     setMasterKey(null);
