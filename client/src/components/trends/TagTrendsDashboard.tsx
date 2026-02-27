@@ -82,22 +82,26 @@ const CustomTreeDiagram = ({ expenses, categories, currency, theme }: any) => {
 
   return (
     <div className="flow-list">
-      {treeData.map(cat => (
-        <div key={cat.name} className="flow-row">
-          <div className="flow-cat" style={{ borderColor: cat.color, color: cat.color }}>
-            <span className="flow-cat-name">{cat.name}</span>
-            <span className="flow-cat-amount">{currency}{cat.amount.toFixed(2)}</span>
+      {treeData.map(cat => {
+        const tagSize = cat.tags.length > 6 ? 11 : 13;
+        const amtSize = cat.tags.length > 6 ? 9 : 11;
+        return (
+          <div key={cat.name} className="flow-row">
+            <div className="flow-cat" style={{ borderColor: cat.color, color: cat.color }}>
+              <span className="flow-cat-name">{cat.name}</span>
+              <span className="flow-cat-amount">{currency}{cat.amount.toFixed(2)}</span>
+            </div>
+            <div className="flow-tags">
+              {cat.tags.map(tag => (
+                <span key={tag.name} className="flow-tag" style={{ '--dot-color': cat.color, fontSize: `${tagSize}px` } as React.CSSProperties}>
+                  {tag.name}
+                  <span className="flow-tag-amount" style={{ fontSize: `${amtSize}px` }}>{currency}{Math.round(tag.amount)}</span>
+                </span>
+              ))}
+            </div>
           </div>
-          <div className="flow-tags">
-            {cat.tags.map(tag => (
-              <span key={tag.name} className="flow-tag" style={{ '--dot-color': cat.color } as React.CSSProperties}>
-                {tag.name}
-                <span className="flow-tag-amount">{currency}{Math.round(tag.amount)}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
@@ -409,14 +413,6 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
         <div className="chart-card flex flex-col relative">
           <h3>习惯矩阵</h3>
           <div className="flex-grow min-h-[300px] relative">
-            <div className="absolute top-[8%] right-[8%] text-right opacity-40 pointer-events-none z-10">
-              <div className="text-xl font-bold text-red-500">高频高额</div>
-              <div className="text-xs text-gray-400">需重点干预</div>
-            </div>
-            <div className="absolute bottom-[15%] right-[8%] text-right opacity-40 pointer-events-none z-10">
-              <div className="text-xl font-bold text-blue-500">高频低额</div>
-              <div className="text-xs text-gray-400">拿铁因子区</div>
-            </div>
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.5} />
@@ -425,7 +421,6 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                 <ZAxis type="number" dataKey="avgAmount" range={[50, 400]} />
                 <ReferenceLine x={quadrantLines.x} stroke={axisColor} strokeDasharray="5 5" label={{ position: 'top', value: '平均频次', fill: axisColor, fontSize: 10 }} />
                 <ReferenceLine y={quadrantLines.y} stroke={axisColor} strokeDasharray="5 5" label={{ position: 'right', value: '平均金额', fill: axisColor, fontSize: 10 }} />
-                <ReferenceArea x1={quadrantLines.x} y1={quadrantLines.y} fill="#fee2e2" fillOpacity={isDark ? 0.1 : 0.2} />
                 <RechartsTooltip 
                   cursor={{strokeDasharray: '3 3'}} 
                   content={<ScatterTooltip currency={currency} />}
