@@ -139,7 +139,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       .slice(0, 20)
       .map((n, i) => ({
         ...n,
-        color: COLOR_PALETTE[i % COLOR_PALETTE.length],
+        color: tagColors[t.name],
         r: Math.max(14, Math.min(34, 10 + n.count * 3)),
       }));
 
@@ -352,9 +352,10 @@ const ScatterTooltip = ({ active, payload, currency }: any) => {
 export default function TagTrendsDashboard({ expenses, theme, categories, currency, timeRange = 'all' }: Props) {
   const [heatmapTag, setHeatmapTag] = useState('');
 
-  const { rankingData, scatterData, quadrantLines, wordCloudData, dailyData, allTags } = useMemo(() => {
+  const { rankingData, scatterData, quadrantLines, wordCloudData, dailyData, allTags, tagColors } = useMemo(() => {
     const stats: Record<string, { name: string, amount: number, count: number }> = {}; 
     const daily: Record<string, Record<string, number>> = {};
+    const tagCatCount: Record<string, Record<string, number>> = {};
     
     expenses.forEach(t => { 
       const tags = extractTags(t.note);
@@ -366,12 +367,24 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
         stats[tag].amount += t.amount; 
         stats[tag].count += 1; 
         
-        daily[day][tag] = (daily[day][tag] || 0) + 1; // Frequency per day
+        daily[day][tag] = (daily[day][tag] || 0) + 1;
+        if (!tagCatCount[tag]) tagCatCount[tag] = {};
+        tagCatCount[tag][t.category] = (tagCatCount[tag][t.category] || 0) + 1;
       }); 
     });
     
     const sortedTags = Object.values(stats).sort((a, b) => b.amount - a.amount);
     const allTagsList = sortedTags.map(t => t.name);
+    
+    const tagColors: Record<string, string> = {};
+    Object.keys(tagCatCount).forEach(tag => {
+      let bestCat = "";
+      let max = -1;
+      Object.entries(tagCatCount[tag]).forEach(([cat, count]) => {
+        if (count > max) { max = count; bestCat = cat; }
+      });
+      tagColors[tag] = getCategoryColor(bestCat, categories);
+    });
 
     let totalCount = 0, totalAmount = 0;
     const scatterData = sortedTags.map((t, i) => { 
@@ -380,7 +393,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
       return { 
         ...t, 
         avgAmount: Math.round(t.amount / t.count),
-        color: COLOR_PALETTE[i % COLOR_PALETTE.length]
+        color: tagColors[t.name]
       }; 
     });
 
@@ -400,7 +413,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
       : 0;
     
     return { 
-      rankingData: sortedTags.slice(0, 8).map((t, i) => ({...t, color: COLOR_PALETTE[i % COLOR_PALETTE.length]})),
+      rankingData: sortedTags.slice(0, 8).map((t, i) => ({...t, color: tagColors[t.name]})),
       scatterData,
       quadrantLines: { 
         x: medianCount, 
@@ -412,6 +425,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
         color: COLOR_PALETTE[i % COLOR_PALETTE.length] 
       })).sort(() => Math.random() - 0.5),
       dailyData: daily,
+      tagColors,
       allTags: allTagsList
     };
   }, [expenses]);
@@ -486,12 +500,23 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
 
   const isMonthView = timeRange === 'current-month';
 
-  const getHeatmapColor = (count: number) => {
+  const hexToRgb = (hex: string) => {
+    if (!hex) return '99, 102, 241';
+    let c = hex.substring(1);
+    if (c.length === 3) c = c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+    const r = parseInt(c.substring(0,2), 16);
+    const g = parseInt(c.substring(2,4), 16);
+    const b = parseInt(c.substring(4,6), 16);
+    return `${r}, ${g}, ${b}`;
+  };
+
+  const getHeatmapColor = (count: number, tag: string) => {
     if (count < 0) return 'transparent'; // empty placeholder
     if (count === 0) return isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(241, 245, 249, 1)';
-    if (count === 1) return 'rgba(99, 102, 241, 0.3)';
-    if (count === 2) return 'rgba(99, 102, 241, 0.6)'; 
-    return 'rgba(99, 102, 241, 1)'; 
+    const rgb = hexToRgb(tagColors[tag]);
+    if (count === 1) return `rgba(${rgb}, 0.3)`;
+    if (count === 2) return `rgba(${rgb}, 0.6)`; 
+    return `rgba(${rgb}, 1)`; 
   };
 
   const isDark = theme === 'dark';
@@ -552,16 +577,16 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
               <Select 
                 value={heatmapTag} 
                 onChange={setHeatmapTag} 
-                options={allTags.map((tag, i) => ({ value: tag, label: `#${tag}`, color: COLOR_PALETTE[i % COLOR_PALETTE.length] }))}
+                options={allTags.map((tag) => ({ value: tag, label: `#${tag}`, color: tagColors[tag] }))}
                 placeholder="选择标签..."
               />
             </div>
             <div className="heatmap-legend">
               <span className="heatmap-legend-label">少</span>
               <div className="heatmap-legend-cell" style={{ backgroundColor: isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(241, 245, 249, 1)' }} />
-              <div className="heatmap-legend-cell" style={{ backgroundColor: 'rgba(99, 102, 241, 0.3)' }} />
-              <div className="heatmap-legend-cell" style={{ backgroundColor: 'rgba(99, 102, 241, 0.6)' }} />
-              <div className="heatmap-legend-cell" style={{ backgroundColor: 'rgba(99, 102, 241, 1)' }} />
+              <div className="heatmap-legend-cell" style={{ backgroundColor: `rgba(${hexToRgb(tagColors[heatmapTag])}, 0.3)` }} />
+              <div className="heatmap-legend-cell" style={{ backgroundColor: `rgba(${hexToRgb(tagColors[heatmapTag])}, 0.6)` }} />
+              <div className="heatmap-legend-cell" style={{ backgroundColor: `rgba(${hexToRgb(tagColors[heatmapTag])}, 1)` }} />
               <span className="heatmap-legend-label">多</span>
             </div>
           </div>
@@ -577,7 +602,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                       <div 
                         key={day.id} 
                         className={`heatmap-cell ${day.count < 0 ? 'heatmap-cell-empty' : ''}`}
-                        style={{ backgroundColor: getHeatmapColor(day.count) }} 
+                        style={{ backgroundColor: getHeatmapColor(day.count, heatmapTag) }} 
                         data-tooltip={day.date ? `${day.date}: ${day.count} 次` : undefined}
                       />
                     ))}
@@ -595,7 +620,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                       <div 
                         key={day.id} 
                         className="heatmap-cell" 
-                        style={{ backgroundColor: getHeatmapColor(day.count) }} 
+                        style={{ backgroundColor: getHeatmapColor(day.count, heatmapTag) }} 
                         data-tooltip={`${day.date}: ${day.count} 次`}
                       />
                     ))}
@@ -618,7 +643,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                           <div 
                             key={day.id} 
                             className="heatmap-cell" 
-                            style={{ backgroundColor: getHeatmapColor(day.count) }} 
+                            style={{ backgroundColor: getHeatmapColor(day.count, heatmapTag) }} 
                             data-tooltip={`${day.date}: ${day.count} 次 (#${tag})`}
                           />
                         ))}
@@ -636,7 +661,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                       <div 
                         key={day.id} 
                         className="heatmap-cell" 
-                        style={{ backgroundColor: getHeatmapColor(day.count) }} 
+                        style={{ backgroundColor: getHeatmapColor(day.count, heatmapTag) }} 
                         data-tooltip={`${day.date}: ${day.count} 次`}
                       />
                     ))}

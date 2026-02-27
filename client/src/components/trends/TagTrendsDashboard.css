@@ -39,7 +39,7 @@
 
 .tag-analysis-root .charts-grid {
   margin-bottom: 20px;
-  grid-template-columns: 10fr 11fr;
+  grid-template-columns: 8fr 6fr;
 }
 
 /* Ensure no double gaps */
