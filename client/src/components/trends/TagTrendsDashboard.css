@@ -310,18 +310,18 @@ html.dark .chart-bg-wrapper,
   padding-left: 16px; /* 增加左侧留白，使整体略微偏右 */
 }
 
-/* 2. 让选择器按钮更紧凑、通过加粗和边框适度显眼 */
+/* 2. 扁平化选择器，边框做轻微强调 */
 .heatmap-top-controls .heatmap-select-wrapper .custom-select-trigger {
-  min-height: 32px !important;
-  padding: 6px 12px !important;
+  min-height: 30px !important;
+  padding: 5px 10px !important;
   border-radius: 6px !important;
-  font-size: 13px !important;
-  font-weight: 600;
-  border-width: 1px !important;
-  border-color: var(--border) !important;
-  background-color: var(--bg-input) !important;
+  font-size: 12px !important;
+  font-weight: 500;
+  border-width: 1.5px !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
+  background-color: transparent !important;
   color: var(--text-primary) !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: none !important;
 }
 
 .heatmap-top-controls .heatmap-select-wrapper {

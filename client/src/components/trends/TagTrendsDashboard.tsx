@@ -115,7 +115,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
   const zoomTextRef = useRef<HTMLSpanElement>(null);
   const zoomInstanceRef = useRef<any>(null);
   const initialTransformRef = useRef<any>(null);
-  const [dimensions, setDimensions] = useState({ width: 800, height: 360 });
+  const [dimensions, setDimensions] = useState({ width: 800, height: 480 });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const isDark = theme === 'dark';
 
@@ -163,7 +163,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
     if (!svgRef.current || !gRef.current || graphData.nodes.length === 0) return;
 
     const width = containerRef.current?.clientWidth || 800;
-    const height = 360;
+    const height = 480;
     const centerX = width / 2;
     const centerY = height / 2;
 
@@ -231,7 +231,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       .attr('class', 'net-link')
       .attr('fill', 'none')
       .attr('stroke', (_d: any, i: number) => `url(#link-grad-${i})`)
-      .attr('stroke-width', (d: any) => Math.max(1.5, 1 + d.weight * 0.6))
+      .attr('stroke-width', (d: any) => Math.max(2.5, 1.5 + d.weight * 1))
       .attr('stroke-opacity', (d: any) => Math.min(0.7, 0.15 + d.weight * 0.15))
       .attr('stroke-linecap', 'round');
 
@@ -243,8 +243,8 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       .attr('text-anchor', 'middle')
       .attr('dominant-baseline', 'central')
       .attr('fill', isDark ? '#cbd5e1' : '#475569')
-      .attr('font-size', 10)
-      .attr('font-weight', 600)
+      .attr('font-size', 18)
+      .attr('font-weight', 700)
       .style('pointer-events', 'none')
       .style('opacity', 0)
       .text((d: any) => d.weight);
@@ -281,7 +281,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       .attr('text-anchor', 'middle')
       .attr('dominant-baseline', 'central')
       .attr('fill', '#fff')
-      .attr('font-size', (d: any) => d.r > 18 ? 11 : 9)
+      .attr('font-size', (d: any) => d.r > 18 ? 18 : 14)
       .attr('font-weight', 'bold')
       .style('pointer-events', 'none')
       .style('text-shadow', '0 1px 2px rgba(0,0,0,0.5)')
@@ -325,7 +325,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
           const isRelated = srcId === d.id || tgtId === d.id;
           d3Select.select(this)
             .attr('stroke-opacity', isRelated ? 0.9 : 0.03)
-            .attr('stroke-width', isRelated ? Math.max(2.5, 1.5 + l.weight * 0.8) : Math.max(1.5, 1 + l.weight * 0.6));
+            .attr('stroke-width', isRelated ? Math.max(3.5, 2 + l.weight * 1.2) : Math.max(2.5, 1.5 + l.weight * 1));
         });
         // 显示关联连线的权重标签
         linkLabelSel.each(function (l: any) {
@@ -342,7 +342,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
           .attr('r', (n: any) => n.r);
         linkSel
           .attr('stroke-opacity', (l: any) => Math.min(0.7, 0.15 + l.weight * 0.15))
-          .attr('stroke-width', (l: any) => Math.max(1.5, 1 + l.weight * 0.6));
+          .attr('stroke-width', (l: any) => Math.max(2.5, 1.5 + l.weight * 1));
         linkLabelSel.style('opacity', 0);
       });
 
@@ -369,7 +369,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       });
 
     // ---- Step 1: 自适应力学参数 Simulation ----
-    const chargeStrength = -350 - nodeCount * 8;
+    const chargeStrength = -300 - nodeCount * 5;
     const simulation = d3.forceSimulation(nodes)
       .force('link', d3.forceLink(links).id((d: any) => d.id)
         .distance((d: any) => {
@@ -484,7 +484,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
     if (!el) return;
     const obs = new ResizeObserver(() => {
       if (!isFullscreen) {
-        setDimensions({ width: el.clientWidth || 800, height: 360 });
+        setDimensions({ width: el.clientWidth || 800, height: 480 });
       }
     });
     obs.observe(el);
