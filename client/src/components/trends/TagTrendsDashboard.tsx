@@ -157,6 +157,9 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       const [source, target] = pair.split('||'); return { source, target, weight };
     }).filter(l => validNodeIds.has(l.source as string) && validNodeIds.has(l.target as string));
 
+    // 防御性编程：如果没有节点则直接返回，避免 forceSimulation 报错
+    if (initNodes.length === 0) return;
+
     // 使用容器中心作为初始发射点
     const centerX = dimensions.width / 2, centerY = dimensions.height / 2;
     
@@ -342,9 +345,12 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
           <g transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}>
               {/* 绘制所有弹性连线 */}
               {links.map((link, i) => {
-                const source = link.source.x !== undefined ? link.source : nodes.find(n => n.id === link.source);
-                const target = link.target.x !== undefined ? link.target : nodes.find(n => n.id === link.target);
-                if (!source || !target) return null;
+                // 安全获取节点引用，应对 D3 forceLink 修改了源数据引用的情况
+                const source = typeof link.source === 'object' ? link.source : nodes.find(n => n.id === link.source);
+                const target = typeof link.target === 'object' ? link.target : nodes.find(n => n.id === link.target);
+                
+                // 如果找不到对应的 source 或 target（已被过滤掉的无效连接），则跳过渲染
+                if (!source || !target || source.x === undefined || target.x === undefined) return null;
                 
                 const strokeWidth = 1 + link.weight * 0.8;
                 const opacity = Math.min(0.8, 0.2 + link.weight * 0.15);
