@@ -50,11 +50,9 @@ const TagBarTooltip = ({ active, payload, currency }: any) => {
 // ==========================================
 const CustomTreeDiagram = ({ expenses, categories, currency, theme }: any) => {
   const treeData = useMemo(() => {
-    let total = 0;
     const catMap: Record<string, { amount: number, tags: Record<string, number> }> = {};
     
     expenses.forEach((t: Expense) => {
-      total += t.amount;
       if (!catMap[t.category]) catMap[t.category] = { amount: 0, tags: {} };
       catMap[t.category].amount += t.amount;
       
@@ -69,7 +67,7 @@ const CustomTreeDiagram = ({ expenses, categories, currency, theme }: any) => {
         .map(tag => ({ name: tag, amount: catMap[cat].tags[tag] }))
         .sort((a, b) => b.amount - a.amount);
       
-      const topTags = sortedTags.slice(0, 5); 
+      const topTags = sortedTags.slice(0, 8); 
       const topAmount = topTags.reduce((sum, t) => sum + t.amount, 0);
       if (catMap[cat].amount > topAmount) topTags.push({ name: '其他', amount: catMap[cat].amount - topAmount });
       
@@ -81,88 +79,95 @@ const CustomTreeDiagram = ({ expenses, categories, currency, theme }: any) => {
       };
     }).sort((a, b) => b.amount - a.amount);
 
-    const xRoot = 120, xCat = 340, startXTag = 410; 
-    let currentY = 40;
+    // Layout: category on left, tags on right with multi-row wrapping
+    const xCat = 80, startXTag = 180;
+    const maxRowWidth = 700; // max width for tags before wrapping
+    const tagH = 24, tagGapX = 6, tagGapY = 6;
+    let currentY = 30;
     
-    const catNodes: any[] = [], tagNodes: any[] = [], links: any[] = [];
+    const catNodes: any[] = [], tagNodes: any[] = [];
 
     categoryList.forEach(cat => {
-      catNodes.push({ id: cat.name, name: cat.name, amount: cat.amount, x: xCat, y: currentY, color: cat.color });
-      links.push({ source: { x: xRoot, y: 0 }, target: { x: xCat, y: currentY }, color: cat.color });
+      // Calculate tag rows with wrapping
+      const rows: { name: string, amount: number, width: number, x: number, y: number }[][] = [[]];
+      let rowX = 0;
 
-      let currentXTag = startXTag;
       cat.tags.forEach(tag => {
-        // Dynamic width calculation
-        const nameWidth = tag.name.length * 13;
-        const amtWidth = String(Math.round(tag.amount)).length * 8 + currency.length * 8;
-        const boxWidth = 24 + nameWidth + 8 + amtWidth + 12; 
-        
-        tagNodes.push({ 
-          id: `${cat.name}-${tag.name}`, 
-          name: tag.name, 
-          amount: tag.amount, 
-          x: currentXTag, 
-          y: currentY, 
-          width: boxWidth, 
-          color: cat.color 
-        });
-        currentXTag += boxWidth + 10;
+        const nameWidth = tag.name.length * 10;
+        const amtWidth = String(Math.round(tag.amount)).length * 7 + currency.length * 7;
+        const boxWidth = 18 + nameWidth + 6 + amtWidth + 8;
+
+        if (rowX > 0 && rowX + boxWidth > maxRowWidth) {
+          rows.push([]);
+          rowX = 0;
+        }
+        rows[rows.length - 1].push({ ...tag, width: boxWidth, x: rowX, y: 0 });
+        rowX += boxWidth + tagGapX;
       });
 
-      currentY += 65; 
+      const totalTagHeight = rows.length * tagH + (rows.length - 1) * tagGapY;
+      const catCenterY = currentY + totalTagHeight / 2;
+
+      catNodes.push({ id: cat.name, name: cat.name, amount: cat.amount, x: xCat, y: catCenterY, color: cat.color });
+
+      rows.forEach((row, rowIdx) => {
+        const rowY = currentY + rowIdx * (tagH + tagGapY);
+        row.forEach(tag => {
+          tagNodes.push({
+            id: `${cat.name}-${tag.name}`,
+            name: tag.name,
+            amount: tag.amount,
+            x: startXTag + tag.x,
+            y: rowY,
+            width: tag.width,
+            color: cat.color,
+            catY: catCenterY
+          });
+        });
+      });
+
+      currentY += totalTagHeight + 20;
     });
 
-    const rootY = catNodes.length > 0 ? (catNodes[0].y + catNodes[catNodes.length - 1].y) / 2 : 100;
-    links.forEach(l => { l.source.y = rootY; });
-
-    return { total, rootY, catNodes, tagNodes, links, height: Math.max(currentY + 10, 200) };
+    return { catNodes, tagNodes, height: Math.max(currentY + 10, 200) };
   }, [expenses, categories, currency]);
 
   const isDark = theme === 'dark';
   const textColor = isDark ? '#f1f5f9' : '#475569';
-  const rootBg = isDark ? '#334155' : '#1e293b';
-  const rootText = '#fff';
   const catBg = isDark ? '#1e293b' : '#fff';
   const tagBg = isDark ? '#1e293b' : '#fff';
   const tagBorder = isDark ? '#475569' : '#e2e8f0';
   const mutedText = isDark ? '#94a3b8' : '#64748b';
 
   return (
-    <div className="w-full overflow-x-auto custom-scrollbar flex justify-start lg:justify-center">
-      <svg width="1000" height={treeData.height} viewBox={`0 0 1000 ${treeData.height}`} className="font-sans min-w-[800px]">
+    <div className="w-full overflow-x-auto custom-scrollbar">
+      <svg width="900" height={treeData.height} viewBox={`0 0 900 ${treeData.height}`} className="font-sans min-w-[600px]">
         
-        {treeData.links.map((link: any) => (
+        {/* 连接线：分类 -> 标签 */}
+        {treeData.tagNodes.map((node: any) => (
           <path 
-            key={link.id || link.target.y}
-            d={`M ${link.source.x} ${link.source.y} C ${link.source.x + 80} ${link.source.y}, ${link.target.x - 80} ${link.target.y}, ${link.target.x} ${link.target.y}`}
-            fill="none" stroke={link.color} strokeWidth="3" strokeOpacity={0.4}
-            className="transition-all duration-300 hover:stroke-opacity-100 cursor-pointer"
+            key={node.id + '-link'}
+            d={`M ${80 + 50} ${node.catY} C ${130} ${node.catY}, ${node.x - 20} ${node.y + 12}, ${node.x} ${node.y + 12}`}
+            fill="none" stroke={node.color} strokeWidth="2" strokeOpacity={0.25}
           />
         ))}
-
-        {/* 根节点：总支出 */}
-        <g transform={`translate(120, ${treeData.rootY})`}>
-          <rect x="-60" y="-22" width="120" height="44" rx="8" fill={rootBg} />
-          <text x="0" y="-4" textAnchor="middle" fill={rootText} fontSize="14" fontWeight="bold">总支出</text>
-          <text x="0" y="14" textAnchor="middle" fill={mutedText} fontSize="11">{currency}{treeData.total.toFixed(2)}</text>
-        </g>
 
         {/* 分类节点 */}
         {treeData.catNodes.map((node: any) => (
           <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
-            <rect x="-50" y="-18" width="100" height="36" rx="6" fill={catBg} stroke={node.color} strokeWidth="2" />
-            <text x="0" y="-2" textAnchor="middle" fill={node.color} fontSize="13" fontWeight="bold">{node.name}</text>
-            <text x="0" y="12" textAnchor="middle" fill={mutedText} fontSize="10">{currency}{node.amount.toFixed(2)}</text>
+            <rect x="-50" y="-16" width="100" height="32" rx="6" fill={catBg} stroke={node.color} strokeWidth="2" />
+            <text x="0" y="-1" textAnchor="middle" fill={node.color} fontSize="12" fontWeight="bold">{node.name}</text>
+            <text x="0" y="11" textAnchor="middle" fill={mutedText} fontSize="9">{currency}{node.amount.toFixed(2)}</text>
           </g>
         ))}
 
         {/* 标签节点 */}
         {treeData.tagNodes.map((node: any) => (
           <g key={node.id} transform={`translate(${node.x}, ${node.y})`} className="cursor-pointer">
-            <rect x="0" y="-15" width={node.width} height="30" rx="6" fill={tagBg} stroke={tagBorder} strokeWidth="1.5" className="hover:stroke-gray-400 transition-colors" />
-            <circle cx="12" cy="0" r="4" fill={node.color} />
-            <text x="24" y="1" textAnchor="start" fill={textColor} fontSize="12" fontWeight="600" dominantBaseline="central">{node.name}</text>
-            <text x={node.width - 10} y="1" textAnchor="end" fill={mutedText} fontSize="10" dominantBaseline="central">{currency}{Math.round(node.amount)}</text>
+            <rect x="0" y="0" width={node.width} height="24" rx="5" fill={tagBg} stroke={tagBorder} strokeWidth="1" className="hover:stroke-gray-400 transition-colors" />
+            <circle cx="9" cy="12" r="3" fill={node.color} />
+            <text x="18" y="12" textAnchor="start" fill={textColor} fontSize="10" fontWeight="600" dominantBaseline="central">{node.name}</text>
+            <text x={node.width - 6} y="12" textAnchor="end" fill={mutedText} fontSize="9" dominantBaseline="central">{currency}{Math.round(node.amount)}</text>
           </g>
         ))}
       </svg>
@@ -457,9 +462,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
       {/* ROW 1: 宏观把控 */}
       <div className="chart-card">
         <h3>资金流向</h3>
-        <div className="chart-bg-wrapper">
-          <CustomTreeDiagram expenses={expenses} categories={categories} currency={currency} theme={theme} />
-        </div>
+        <CustomTreeDiagram expenses={expenses} categories={categories} currency={currency} theme={theme} />
       </div>
 
       {/* ROW 2: 潜意识挖掘 */}
