@@ -103,7 +103,7 @@ const CustomTreeDiagram = ({ expenses, categories, currency, theme }: any) => {
 };
 
 // ==========================================
-// 组件 2: 神经元共现网络图 (升级版: 物理拖拽 + HTML 节点 + 边界约束)
+// 组件 2: 神经元共现网络图 (升级版: 物理拖拽 + HTML 节点 + 自动全景镜头)
 // ==========================================
 const CustomOrganicNetwork = ({ expenses, theme }: any) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -112,7 +112,16 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
   const [links, setLinks] = useState<any[]>([]);
   const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
   const [isDragging, setIsDragging] = useState(false);
+  
+  // 缩放与镜头状态
   const [zoom, setZoom] = useState(1);
+  const zoomRef = useRef(1);
+  const [camera, setCamera] = useState({ x: 0, y: 0, k: 1 });
+  const cameraRef = useRef({ x: 0, y: 0, k: 1 });
+
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
 
   useEffect(() => {
     if (!containerRef.current || expenses.length === 0) return;
@@ -178,21 +187,49 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
 
     simulationRef.current = simulation;
 
+    // 初始镜头重置
+    cameraRef.current = { x: 0, y: 0, k: 1 };
+
     simulation.on("tick", () => {
-      // --- 核心更新：增加边界约束算法 ---
-      const padding = 5;
       const currentNodes = simulation.nodes();
       
-      currentNodes.forEach((d: any) => {
-        // 限制 X 轴范围
-        d.x = Math.max(d.r + padding, Math.min(dimensions.width - d.r - padding, d.x));
-        // 限制 Y 轴范围
-        d.y = Math.max(d.r + padding, Math.min(dimensions.height - d.r - padding, d.y));
-      });
+      // 自动全景镜头算法 (Auto-fit Camera)
+      // 动态计算所有节点的边界，并自动缩放/平移以确保所有节点都在视野内
+      if (currentNodes.length > 0) {
+        const padding = 60; // 留白边距
+        const minX = Math.min(...currentNodes.map((d: any) => d.x - d.r));
+        const maxX = Math.max(...currentNodes.map((d: any) => d.x + d.r));
+        const minY = Math.min(...currentNodes.map((d: any) => d.y - d.r));
+        const maxY = Math.max(...currentNodes.map((d: any) => d.y + d.r));
 
-      // 强制触发 React 状态更新
+        const w = maxX - minX + padding * 2;
+        const h = maxY - minY + padding * 2;
+        const cx = (minX + maxX) / 2;
+        const cy = (minY + maxY) / 2;
+
+        let autoScale = 1;
+        if (w > 0 && h > 0) {
+            autoScale = Math.min(dimensions.width / w, dimensions.height / h, 2); 
+        }
+
+        // 最终缩放 = 自动缩放比例 * 用户手动缩放比例
+        const finalScale = autoScale * zoomRef.current;
+        
+        // 目标平移坐标：使集群中心对齐到容器中心
+        const tx = dimensions.width / 2 - cx * finalScale;
+        const ty = dimensions.height / 2 - cy * finalScale;
+
+        // 镜头平滑过渡插值
+        cameraRef.current = {
+            x: cameraRef.current.x + (tx - cameraRef.current.x) * 0.15,
+            y: cameraRef.current.y + (ty - cameraRef.current.y) * 0.15,
+            k: cameraRef.current.k + (finalScale - cameraRef.current.k) * 0.15
+        };
+      }
+
       setNodes([...currentNodes]);
       setLinks([...initLinks]);
+      setCamera({...cameraRef.current});
     });
 
     return () => {
@@ -219,19 +256,17 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       const mx = 'touches' in moveEvent ? (moveEvent as TouchEvent).touches[0].clientX : (moveEvent as MouseEvent).clientX;
       const my = 'touches' in moveEvent ? (moveEvent as TouchEvent).touches[0].clientY : (moveEvent as MouseEvent).clientY;
       
-      // 计算相对于容器的坐标
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        const cx = rect.width / 2;
-        const cy = rect.height / 2;
         
-        // 应用缩放比例修正坐标 (以中心为原点)
-        const logicalX = (mx - rect.left - cx) / zoom + cx;
-        const logicalY = (my - rect.top - cy) / zoom + cy;
+        // 使用当前最新的镜头参数将屏幕物理坐标逆向转换为逻辑物理坐标
+        const { x: tx, y: ty, k } = cameraRef.current;
+        const logicalX = (mx - rect.left - tx) / k;
+        const logicalY = (my - rect.top - ty) / k;
         
-        // 直接设置 fixed x, y，并且同样加上边界限制防止鼠标拖到外面导致节点卡住
-        node.fx = Math.max(node.r, Math.min(dimensions.width - node.r, logicalX));
-        node.fy = Math.max(node.r, Math.min(dimensions.height - node.r, logicalY));
+        // 移除硬性边界限制，允许拖拽到屏幕外，镜头会自动追随
+        node.fx = logicalX;
+        node.fy = logicalY;
       }
     };
 
@@ -264,9 +299,13 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
         <button onClick={() => setZoom(z => Math.max(z - 0.25, 0.5))} className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 font-bold transition-colors">-</button>
       </div>
 
-      <div className="absolute top-0 left-0 w-full h-full origin-center transition-transform duration-200" style={{ transform: `scale(${zoom})` }}>
+      {/* 内容层：通过 CSS 硬件加速应用平移和缩放 */}
+      <div 
+        className="absolute top-0 left-0 w-full h-full transform-gpu origin-top-left will-change-transform" 
+        style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.k})` }}
+      >
         {/* 底层 SVG：只绘制弹性连线 */}
-        <svg width={dimensions.width} height={dimensions.height} className="absolute top-0 left-0 pointer-events-none z-0">
+        <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none', zIndex: 0 }}>
           {links.map((link, i) => {
             const source = link.source.x !== undefined ? link.source : nodes.find(n => n.id === link.source);
             const target = link.target.x !== undefined ? link.target : nodes.find(n => n.id === link.target);
@@ -290,16 +329,17 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
         </svg>
 
         {/* 顶层 HTML：渲染可交互的节点 */}
-        <div className="absolute top-0 left-0 w-full h-full z-10">
+        <div className="absolute top-0 left-0 w-full h-full z-10 pointer-events-none">
           {nodes.map((node) => (
             <div
               key={node.id}
               onMouseDown={(e) => handleDragStart(e, node)}
               onTouchStart={(e) => handleDragStart(e, node)}
-              className="absolute rounded-full flex items-center justify-center select-none shadow-md transition-shadow hover:shadow-lg overflow-hidden"
+              className="absolute flex items-center justify-center select-none shadow-md transition-shadow hover:shadow-lg overflow-hidden pointer-events-auto"
               style={{
                 width: node.r * 2,
                 height: node.r * 2,
+                borderRadius: '50%', // 强制正圆形
                 backgroundColor: node.color,
                 // 使用 transform 而不是直接修改 left/top，性能更好
                 transform: `translate(${node.x - node.r}px, ${node.y - node.r}px)`,
