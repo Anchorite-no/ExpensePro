@@ -59,7 +59,7 @@
 
 .flow-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
 }
 
@@ -73,7 +73,7 @@
   padding: 6px 8px;
   border-radius: 6px;
   border: 2px solid;
-  background: var(--bg-card);
+  background: var(--bg-input);
 }
 
 .flow-cat-name {
@@ -91,7 +91,7 @@
 .flow-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 10px;
   align-items: center;
   flex: 1;
   min-width: 0;
@@ -100,24 +100,25 @@
 .flow-tag {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px 4px 8px;
-  border-radius: 5px;
+  gap: 6px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 6px;
   border: 1px solid var(--border);
-  background: var(--bg-card);
-  font-size: 12px;
-  font-weight: 600;
+  background: var(--bg-input);
+  font-size: 13px;
+  font-weight: 500;
   color: var(--text-primary);
   white-space: nowrap;
   cursor: default;
-  transition: border-color 0.15s ease;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .flow-tag::before {
   content: '';
   display: inline-block;
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background-color: var(--dot-color);
   flex-shrink: 0;
@@ -125,13 +126,14 @@
 
 .flow-tag:hover {
   border-color: var(--text-secondary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
 .flow-tag-amount {
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--text-secondary);
-  margin-left: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-left: 4px;
 }
 
 .chart-bg-wrapper {
@@ -280,12 +282,27 @@ html.dark .chart-bg-wrapper,
 /* ==========================================
    Heatmap Styles
    ========================================== */
+/* 1. 顶部控件区域向右平移 */
 .heatmap-top-controls {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
   flex-wrap: nowrap;
+  padding-left: 16px; /* 增加左侧留白，使整体略微偏右 */
+}
+
+/* 2. 让选择器按钮更紧凑、通过加粗和边框适度显眼 */
+.heatmap-top-controls .heatmap-select-wrapper .custom-select-trigger {
+  min-height: 32px !important;
+  padding: 6px 12px !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+  font-weight: 600;
+  border-width: 1px !important;
+  border-color: var(--border) !important;
+  background-color: var(--bg-input) !important;
+  color: var(--text-primary) !important;
 }
 
 .heatmap-top-controls .heatmap-select-wrapper {
@@ -314,9 +331,11 @@ html.dark .chart-bg-wrapper,
 }
 
 /* Heatmap container: allow cells to overflow on hover */
+/* 3. 下方热力图网格容器同样向右平移，与顶部对齐 */
 .heatmap-container {
   overflow: visible !important;
   padding-top: 6px;
+  padding-left: 16px; /* 增加左侧留白 */
 }
 
 .heatmap-grid {

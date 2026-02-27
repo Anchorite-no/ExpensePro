@@ -68,17 +68,17 @@ const CustomTreeDiagram = ({ expenses, categories, currency, theme }: any) => {
     return Object.keys(catMap).map(cat => {
       const sortedTags = Object.keys(catMap[cat].tags)
         .map(tag => ({ name: tag, amount: catMap[cat].tags[tag] }))
+        .filter(t => t.amount > 0)
         .sort((a, b) => b.amount - a.amount);
-      
-      const topTags = sortedTags.slice(0, 8); 
-      const topAmount = topTags.reduce((sum, t) => sum + t.amount, 0);
-      if (catMap[cat].amount > topAmount) topTags.push({ name: '其他', amount: catMap[cat].amount - topAmount });
-      
-      return { 
-        name: cat, 
-        amount: catMap[cat].amount, 
-        color: getCategoryColor(cat, categories), 
-        tags: topTags 
+
+      const topAmount = sortedTags.reduce((sum, t) => sum + t.amount, 0);
+      if (catMap[cat].amount - topAmount > 0.01) sortedTags.push({ name: '其他', amount: catMap[cat].amount - topAmount });
+
+      return {
+        name: cat,
+        amount: catMap[cat].amount,
+        color: getCategoryColor(cat, categories),
+        tags: sortedTags
       };
     }).sort((a, b) => b.amount - a.amount);
   }, [expenses, categories, currency]);
@@ -601,9 +601,16 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                     ))}
                   </div>
                 </div>
-                
+
                 {/* 增加 Top 2/3 热力图补充单周模式下的空白 */}
-                {allTags.slice(1, 3).map(tag => {
+                <div
+                  className="text-sm mt-2 font-bold"
+                  style={{ color: 'var(--primary)', display: 'inline-block' }}
+                >
+                  Top 3 活跃标签
+                </div>
+                <div className="flex flex-col gap-2 -mt-1">
+                  {allTags.slice(0, 3).map(tag => {
                   const tagData = heatmapGridData[0]?.map(day => {
                     const count = dailyData[day.date]?.[tag] || 0;
                     return { ...day, count };
@@ -626,6 +633,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                     </div>
                   );
                 })}
+                </div>
               </div>
             ) : (
               <div className="heatmap-grid">
