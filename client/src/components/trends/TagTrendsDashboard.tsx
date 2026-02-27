@@ -477,13 +477,28 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
         color: COLOR_PALETTE[i % COLOR_PALETTE.length]
       }; 
     });
+
+    // 使用中位数作为四象限分割线，避免长尾数据导致左下角过密
+    const sortedByCount = [...scatterData].sort((a, b) => a.count - b.count);
+    const sortedByAmount = [...scatterData].sort((a, b) => a.amount - b.amount);
+    const mid = Math.floor(sortedByCount.length / 2);
+    const medianCount = sortedByCount.length > 0 
+      ? (sortedByCount.length % 2 === 0 
+        ? (sortedByCount[mid - 1].count + sortedByCount[mid].count) / 2 
+        : sortedByCount[mid].count)
+      : 0;
+    const medianAmount = sortedByAmount.length > 0 
+      ? (sortedByAmount.length % 2 === 0 
+        ? (sortedByAmount[mid - 1].amount + sortedByAmount[mid].amount) / 2 
+        : sortedByAmount[mid].amount)
+      : 0;
     
     return { 
       rankingData: sortedTags.slice(0, 8).map((t, i) => ({...t, color: COLOR_PALETTE[i % COLOR_PALETTE.length]})),
       scatterData,
       quadrantLines: { 
-        x: sortedTags.length > 0 ? totalCount / sortedTags.length : 0, 
-        y: sortedTags.length > 0 ? totalAmount / sortedTags.length : 0 
+        x: medianCount, 
+        y: medianAmount 
       },
       wordCloudData: sortedTags.map((t, i) => ({ 
         ...t, 
@@ -712,8 +727,8 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                 <XAxis type="number" dataKey="count" name="消费次数" tick={{fill: axisColor, fontSize: 12}} />
                 <YAxis type="number" dataKey="amount" name="总金额" tick={{fill: axisColor, fontSize: 12}} />
                 <ZAxis type="number" dataKey="avgAmount" range={[50, 400]} />
-                <ReferenceLine x={quadrantLines.x} stroke={axisColor} strokeDasharray="5 5" label={{ position: 'top', value: '平均频次', fill: axisColor, fontSize: 10 }} />
-                <ReferenceLine y={quadrantLines.y} stroke={axisColor} strokeDasharray="5 5" label={{ position: 'right', value: '平均金额', fill: axisColor, fontSize: 10 }} />
+                <ReferenceLine x={quadrantLines.x} stroke={axisColor} strokeDasharray="5 5" label={{ position: 'top', value: '频次中位', fill: axisColor, fontSize: 10 }} />
+                <ReferenceLine y={quadrantLines.y} stroke={axisColor} strokeDasharray="5 5" label={{ position: 'right', value: '金额中位', fill: axisColor, fontSize: 10 }} />
                 <RechartsTooltip 
                   cursor={{strokeDasharray: '3 3'}} 
                   content={<ScatterTooltip currency={currency} />}
