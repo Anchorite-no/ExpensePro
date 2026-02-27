@@ -112,7 +112,11 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const zoomTextRef = useRef<HTMLSpanElement>(null);
+  const zoomInstanceRef = useRef<any>(null);
+  const initialTransformRef = useRef<any>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 360 });
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const isDark = theme === 'dark';
 
   // 计算图数据（只算一次）
@@ -173,11 +177,26 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
 
     // ---- Zoom：绑定到 SVG，控制 <g> 的 transform ----
     const zoom = d3Zoom.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.3, 4])
+      .scaleExtent([0.25, 5])
+      // 停止不当的滚轮冒泡，防止在极值处发生外层窗口滚动
+      .filter((event) => {
+        // Only allow primary button (0), or wheels (regardless of modifier)
+        return (!event.ctrlKey || event.type === 'wheel') && !event.button;
+      })
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
+        if (zoomTextRef.current) {
+          zoomTextRef.current.innerText = `${Math.round(event.transform.k * 100)}%`;
+        }
       });
 
+    // 为 SVG 显式绑定 wheel 事件以彻底阻止默认滚动行为
+    svg.on("wheel.zoom", function(event) {
+        event.preventDefault(); // 阻断系统滚动
+        zoom.zoomWheel.call(this, event, d3Select.select(this).property("__zoom")); // 透传给 d3
+    });
+
+    zoomInstanceRef.current = zoom;
     svg.call(zoom as any).on('dblclick.zoom', null);
 
     // ---- 绘制连线 ----
@@ -196,13 +215,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       .attr('class', 'net-node')
       .style('cursor', 'grab');
 
-    // 外圈光晕
-    nodeSel.append('circle')
-      .attr('r', (d: any) => d.r + 3)
-      .attr('fill', 'none')
-      .attr('stroke', (d: any) => d.color)
-      .attr('stroke-width', 1)
-      .attr('stroke-opacity', 0.25);
+    // 外圈光晕 (已移除)
 
     // 主圆
     nodeSel.append('circle')
@@ -211,7 +224,8 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       .attr('fill', (d: any) => d.color)
       .attr('fill-opacity', 0.92)
       .attr('stroke', isDark ? '#1e293b' : '#fff')
-      .attr('stroke-width', 2.5);
+      .attr('stroke-width', 2.5)
+      .style('filter', 'drop-shadow(0px 2px 4px rgba(0,0,0,0.15))');
 
     // 呼吸动画（SVG animateTransform，不影响 D3 坐标）
     nodeSel.each(function (d: any) {
@@ -239,10 +253,15 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
 
     // ---- Simulation ----
     const simulation = d3.forceSimulation(nodes)
-      .force('link', d3.forceLink(links).id((d: any) => d.id).distance(100).strength(0.5))
+      .force('link', d3.forceLink(links).id((d: any) => d.id).distance(140).strength(0.8))
+      // 增强互斥，将 charge.strength 修改为 -250，重新让节点互相推开
       .force('charge', d3.forceManyBody().strength(-250))
-      .force('center', d3.forceCenter(centerX, centerY))
-      .force('collide', d3.forceCollide().radius((d: any) => d.r + 6).iterations(2));
+      // 重新调整向中心力：横向 x 弱一些
+      .force('x', d3.forceX(centerX).strength(0.05))
+      // 降低向中心力 y
+      .force('y', d3.forceY(centerY).strength(0.05))
+      // 加大碰撞半径
+      .force('collide', d3.forceCollide().radius((d: any) => d.r + 15).iterations(2));
 
     let fitted = false;
 
@@ -262,12 +281,19 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
         const y1 = Math.max(...nodes.map(n => n.y + n.r)) + pad;
         const bw = x1 - x0, bh = y1 - y0;
         if (bw > 0 && bh > 0) {
-          const scale = Math.min(width / bw, height / bh, 1.5);
+          // 限制缩放最小值，防止分布过散导致缩成一个小点
+          let scale = Math.min(width / bw, height / bh, 1.5);
+          scale = Math.max(scale, 0.6); // 设置较宽容的阈值，不要低于 60%
+
           const tx = width / 2 - ((x0 + x1) / 2) * scale;
           const ty = height / 2 - ((y0 + y1) / 2) * scale;
+
+          const transform = d3Zoom.zoomIdentity.translate(tx, ty).scale(scale);
+          initialTransformRef.current = transform;
+
           svg.transition().duration(600).call(
             zoom.transform as any,
-            d3Zoom.zoomIdentity.translate(tx, ty).scale(scale)
+            transform
           );
         }
       }
@@ -295,32 +321,140 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
     return () => { simulation.stop(); };
   }, [graphData, dimensions.width, isDark]);
 
+  // 阻止默认滚动行为，防止缩放到极限时滚动页面
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const preventScroll = (e: any) => e.preventDefault();
+    el.addEventListener("wheel", preventScroll, { passive: false });
+    return () => el.removeEventListener("wheel", preventScroll);
+  }, []);
+
   // 监听容器大小
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const obs = new ResizeObserver(() => {
-      setDimensions({ width: el.clientWidth || 800, height: 360 });
+      // 检查是否在全屏模式下
+      if (document.fullscreenElement === el) {
+        setDimensions({ width: window.innerWidth, height: window.innerHeight });
+      } else {
+        setDimensions({ width: el.clientWidth || 800, height: 360 });
+      }
     });
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
 
+  // 监听全屏变化
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const toggleFullscreen = () => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    if (!document.fullscreenElement) {
+      el.requestFullscreen().catch((err) => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
   if (graphData.nodes.length === 0) {
     return <div className="text-center py-10 text-gray-500">暂无共现数据</div>;
   }
 
+  const handleResetZoom = () => {
+    if (svgRef.current && zoomInstanceRef.current && initialTransformRef.current) {
+      d3Select.select(svgRef.current)
+        .transition()
+        .duration(600)
+        .call(
+          zoomInstanceRef.current.transform as any,
+          initialTransformRef.current
+        );
+    }
+  };
+
   return (
-    <div ref={containerRef} className="network-container" style={{ height: dimensions.height }}>
+    <div ref={containerRef} className={`network-container rounded-xl overflow-hidden transition-all ${isFullscreen ? 'fixed inset-0 z-[9999] bg-white dark:bg-slate-900 flex items-center justify-center rounded-none' : 'relative w-full'}`} style={{ height: dimensions.height }}>
       <svg
         ref={svgRef}
         width={dimensions.width}
         height={dimensions.height}
-        className="font-sans"
+        className="absolute inset-0 w-full h-full font-sans cursor-grab z-0"
         style={{ cursor: 'grab' }}
       >
         <g ref={gRef} />
       </svg>
+      {/* 右上角全屏按钮 UI */}
+      <div
+        className="absolute top-4 right-4 z-50 flex"
+        style={{ pointerEvents: 'auto' }}
+      >
+        <button
+          onClick={toggleFullscreen}
+          className="p-1.5 rounded-lg transition-colors hover:bg-black/10 dark:hover:bg-white/20 flex items-center justify-center cursor-pointer"
+          style={{
+            color: isDark ? '#94a3b8' : '#94a3b8',
+            background: 'none',
+            border: 'none',
+          }}
+          title="全屏预览"
+        >
+          {isFullscreen ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 3v3h-3" />
+              <path d="M21 8h-3v-3" />
+              <path d="M3 16h3v3" />
+              <path d="M16 21v-3h3" />
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+              <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+              <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+              <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+            </svg>
+          )}
+        </button>
+      </div>
+
+      {/* 缩放指示器 UI */}
+      <div
+        className="absolute bottom-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors z-50"
+        style={{
+          background: 'none',
+          border: 'none',
+          color: isDark ? '#94a3b8' : '#94a3b8',
+          fontSize: '12px',
+          pointerEvents: 'auto'
+        }}
+      >
+        <span ref={zoomTextRef} className="font-semibold min-w-[36px] text-right">100%</span>
+        <button
+          onClick={handleResetZoom}
+          className="ml-1 p-1 hover:bg-black/10 dark:hover:bg-white/20 rounded-md transition-colors flex items-center justify-center cursor-pointer"
+          style={{ background: 'none', border: 'none', color: 'inherit' }}
+          title="重置缩放并居中"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 };

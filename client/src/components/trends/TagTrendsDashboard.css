@@ -8,7 +8,7 @@
   width: 100%;
   overflow: hidden;
   border-radius: 12px;
-  border: 1px solid var(--border);
+  border: none;
   background: var(--bg-card);
 }
 
@@ -497,3 +497,35 @@ html.dark .chart-bg-wrapper,
 .heatmap-cell[data-tooltip]:hover::after {
   opacity: 1;
 }
+
+/* ==========================================
+   Network overlay buttons (fullscreen / zoom)
+   ========================================== */
+.top-4 { top: 16px; }
+.right-4 { right: 16px; }
+.bottom-4 { bottom: 16px; }
+.inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+.fixed { position: fixed; }
+.z-50 { z-index: 50; }
+.z-\[9999\] { z-index: 9999; }
+.p-1 { padding: 4px; }
+.p-1\.5 { padding: 6px; }
+.py-1\.5 { padding-top: 6px; padding-bottom: 6px; }
+.ml-1 { margin-left: 4px; }
+.-mt-1 { margin-top: -4px; }
+.rounded-lg { border-radius: 8px; }
+.rounded-md { border-radius: 6px; }
+.rounded-none { border-radius: 0; }
+.border { border: 1px solid var(--border); }
+.shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+.backdrop-blur-md { backdrop-filter: blur(12px); }
+.font-semibold { font-weight: 600; }
+.min-w-\[36px\] { min-width: 36px; }
+.bg-white { background-color: #fff; }
+.hover\:bg-black\/10:hover { background-color: rgba(0, 0, 0, 0.1); }
+.dark\:hover\:bg-white\/20:hover { background-color: rgba(255, 255, 255, 0.2); }
+.text-slate-700 { color: #334155; }
+.dark\:text-slate-200 { color: #e2e8f0; }
+.dark\:bg-slate-900 { background-color: #0f172a; }
+.border-slate-200 { border-color: #e2e8f0; }
+.dark\:border-slate-800 { border-color: #1e293b; }
