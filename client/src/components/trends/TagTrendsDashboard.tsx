@@ -137,7 +137,9 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
     const linksMap: Record<string, number> = {};
     
     expenses.forEach((t: Expense) => {
-      const tags = extractTags(t.note);
+      // 1. 严格过滤：确保提取出来的都是有效的、非空的字符串标签
+      const tags = (extractTags(t.note) || []).filter(tag => tag && typeof tag === 'string' && tag.trim() !== '');
+      
       tags.forEach(tag => { 
         if (!nodesMap[tag]) nodesMap[tag] = { id: tag, count: 0 }; 
         nodesMap[tag].count += 1; 
@@ -151,13 +153,21 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       }
     });
 
-    const initNodes = Object.values(nodesMap).sort((a, b) => b.count - a.count).slice(0, 20); 
-    const validNodeIds = new Set(initNodes.map(n => n.id));
-    const initLinks = Object.entries(linksMap).map(([pair, weight]) => {
-      const [source, target] = pair.split('||'); return { source, target, weight };
-    }).filter(l => validNodeIds.has(l.source as string) && validNodeIds.has(l.target as string));
+    // 2. 深度清洗：剔除 undefined 节点，只保留包含合法 id 的对象
+    const initNodes = Object.values(nodesMap)
+      .filter(n => n && n.id) // 防止类似 __proto__ 等脏数据污染 Object.values
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20); 
 
-    // 防御性编程：如果没有节点则直接返回，避免 forceSimulation 报错
+    const validNodeIds = new Set(initNodes.map(n => n.id));
+    
+    // 3. 连线清洗：确保连线两端的节点不仅存在于 validNodeIds 中，且格式正确
+    const initLinks = Object.entries(linksMap).map(([pair, weight]) => {
+      const [source, target] = pair.split('||'); 
+      return { source, target, weight };
+    }).filter(l => l.source && l.target && validNodeIds.has(l.source as string) && validNodeIds.has(l.target as string));
+
+    // 防御性编程：如果没有合法节点则直接返回，避免 forceSimulation 报错
     if (initNodes.length === 0) return;
 
     // 使用容器中心作为初始发射点
@@ -175,13 +185,19 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
 
     const maxWeight = Math.max(...initLinks.map(l => l.weight), 1);
 
-    const simulation = d3Force.forceSimulation(initNodes as any)
-      .force("link", d3Force.forceLink(initLinks).id((d: any) => d.id).distance((d: any) => 150 - (d.weight / maxWeight) * 60).strength(0.6))
+    // 彻底解决 D3 引擎和 React 状态冲突导致的 'id of undefined' 错误：
+    // 我们必须将传入 D3 的数据深拷贝，防止 React 渲染过程冻结或修改对象导致底层报错。
+    const d3Nodes = initNodes.map(n => ({...n}));
+    const d3Links = initLinks.map(l => ({...l}));
+
+    const simulation = d3Force.forceSimulation(d3Nodes as any)
+      // 使用最安全的闭包写法，如果因为特殊原因 d 丢失，返回一个空字符串兜底
+      .force("link", d3Force.forceLink(d3Links).id((d: any) => d ? d.id : '').distance((d: any) => 150 - (d.weight / maxWeight) * 60).strength(0.6))
       .force("charge", d3Force.forceManyBody().strength(-300)) // 强大的斥力推开节点
       .force("center", d3Force.forceCenter(centerX, centerY)) // 整体依然有向心力，但不再有硬性边界
       .force("x", d3Force.forceX(centerX).strength(0.01))
       .force("y", d3Force.forceY(centerY).strength(0.01))
-      .force("collide", d3Force.forceCollide().radius((d: any) => d.r + 15).iterations(3));
+      .force("collide", d3Force.forceCollide().radius((d: any) => (d ? d.r : 20) + 15).iterations(3));
 
     simulationRef.current = simulation;
 
