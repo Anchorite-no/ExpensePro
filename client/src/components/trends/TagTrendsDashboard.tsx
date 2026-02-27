@@ -170,6 +170,16 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
     // 深拷贝（D3 会原地修改）
     const nodes: any[] = graphData.nodes.map(n => ({ ...n }));
     const links: any[] = graphData.links.map(l => ({ ...l }));
+    const nodeCount = nodes.length;
+    const maxWeight = Math.max(1, ...links.map((l: any) => l.weight));
+
+    // 构建邻接表（用于悬停高亮）
+    const adjacency = new Map<string, Set<string>>();
+    nodes.forEach(n => adjacency.set(n.id, new Set()));
+    links.forEach(l => {
+      adjacency.get(l.source as string)?.add(l.target as string);
+      adjacency.get(l.target as string)?.add(l.source as string);
+    });
 
     const svg = d3Select.select(svgRef.current);
     const g = d3Select.select(gRef.current);
@@ -199,14 +209,45 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
     zoomInstanceRef.current = zoom;
     svg.call(zoom as any).on('dblclick.zoom', null);
 
-    // ---- 绘制连线 ----
+    // ---- 创建 <defs> 用于渐变 ----
+    const defs = g.append('defs');
+
+    // 为每条连线创建渐变
+    links.forEach((l: any, i: number) => {
+      const srcNode = nodes.find((n: any) => n.id === l.source);
+      const tgtNode = nodes.find((n: any) => n.id === l.target);
+      const grad = defs.append('linearGradient')
+        .attr('id', `link-grad-${i}`)
+        .attr('gradientUnits', 'userSpaceOnUse');
+      grad.append('stop').attr('offset', '0%').attr('stop-color', srcNode?.color || '#94a3b8');
+      grad.append('stop').attr('offset', '100%').attr('stop-color', tgtNode?.color || '#94a3b8');
+    });
+
+    // ---- 绘制连线（二次贝塞尔曲线） ----
+    const CURVATURE = 0.15;
     const linkSel = g.selectAll('.net-link')
       .data(links).enter()
-      .append('line')
+      .append('path')
       .attr('class', 'net-link')
-      .attr('stroke', isDark ? '#64748b' : '#94a3b8')
-      .attr('stroke-width', (d: any) => 1 + d.weight * 0.8)
-      .attr('stroke-opacity', (d: any) => Math.min(0.7, 0.15 + d.weight * 0.15));
+      .attr('fill', 'none')
+      .attr('stroke', (_d: any, i: number) => `url(#link-grad-${i})`)
+      .attr('stroke-width', (d: any) => Math.max(1.5, 1 + d.weight * 0.6))
+      .attr('stroke-opacity', (d: any) => Math.min(0.7, 0.15 + d.weight * 0.15))
+      .attr('stroke-linecap', 'round');
+
+    // 连线悬停用的权重标签（初始隐藏）
+    const linkLabelSel = g.selectAll('.net-link-label')
+      .data(links).enter()
+      .append('text')
+      .attr('class', 'net-link-label')
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'central')
+      .attr('fill', isDark ? '#cbd5e1' : '#475569')
+      .attr('font-size', 10)
+      .attr('font-weight', 600)
+      .style('pointer-events', 'none')
+      .style('opacity', 0)
+      .text((d: any) => d.weight);
 
     // ---- 绘制节点组 ----
     const nodeSel = g.selectAll('.net-node')
@@ -225,20 +266,17 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       .attr('stroke-width', 1.5)
       .style('filter', 'drop-shadow(0px 2px 4px rgba(0,0,0,0.12))');
 
-    // 呼吸动画（SVG animateTransform，不影响 D3 坐标）
-    nodeSel.each(function (d: any) {
-      const dur = (3 + Math.random() * 2).toFixed(1);
-      const delay = (Math.random() * 2).toFixed(1);
+    // 呼吸动画（CSS animation 方式，重建时自动重启）
+    nodeSel.each(function (d: any, _i: number) {
+      const dur = 3 + Math.random() * 2;
+      const delay = Math.random() * 2;
       d3Select.select(this).select('.net-circle')
-        .append('animate')
-        .attr('attributeName', 'r')
-        .attr('values', `${d.r};${d.r * 1.06};${d.r}`)
-        .attr('dur', `${dur}s`)
-        .attr('begin', `${delay}s`)
-        .attr('repeatCount', 'indefinite');
+        .style('transform-origin', 'center')
+        .style('transform-box', 'fill-box')
+        .style('animation', `node-breathe ${dur.toFixed(1)}s ease-in-out ${delay.toFixed(1)}s infinite`);
     });
 
-    // 文字
+    // 文字（长标签截断）
     nodeSel.append('text')
       .attr('text-anchor', 'middle')
       .attr('dominant-baseline', 'central')
@@ -247,26 +285,137 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       .attr('font-weight', 'bold')
       .style('pointer-events', 'none')
       .style('text-shadow', '0 1px 2px rgba(0,0,0,0.5)')
-      .text((d: any) => d.id);
+      .text((d: any) => {
+        const maxChars = Math.max(2, Math.floor(d.r / 5.5));
+        return d.id.length > maxChars ? d.id.slice(0, maxChars) + '…' : d.id;
+      });
 
-    // ---- Simulation ----
+    // <title> 显示完整标签名和次数
+    nodeSel.append('title')
+      .text((d: any) => `${d.id}（${d.count} 次）`);
+
+    // ---- Step 3: 悬停高亮交互 ----
+    // 连线 tooltip（挂在 container div 上）
+    let tooltip: HTMLDivElement | null = null;
+    if (containerRef.current) {
+      tooltip = document.createElement('div');
+      tooltip.style.cssText = 'position:absolute;padding:6px 10px;border-radius:8px;font-size:12px;pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:100;white-space:nowrap;backdrop-filter:blur(8px);box-shadow:0 4px 20px rgba(0,0,0,0.15);';
+      tooltip.style.background = isDark ? 'rgba(30,41,59,0.95)' : 'rgba(255,255,255,0.95)';
+      tooltip.style.color = isDark ? '#e2e8f0' : '#1e293b';
+      tooltip.style.border = `1px solid ${isDark ? '#334155' : '#e2e8f0'}`;
+      containerRef.current.appendChild(tooltip);
+    }
+
+    // 节点悬停
+    nodeSel
+      .on('mouseenter', function (_event: any, d: any) {
+        const neighbors = adjacency.get(d.id) || new Set();
+        // 降低非关联节点
+        nodeSel.each(function (n: any) {
+          const isRelated = n.id === d.id || neighbors.has(n.id);
+          d3Select.select(this)
+            .style('opacity', isRelated ? 1 : 0.15)
+            .select('.net-circle')
+            .attr('r', n.id === d.id ? n.r * 1.15 : n.r);
+        });
+        // 降低非关联连线，加亮关联连线
+        linkSel.each(function (l: any) {
+          const srcId = typeof l.source === 'object' ? l.source.id : l.source;
+          const tgtId = typeof l.target === 'object' ? l.target.id : l.target;
+          const isRelated = srcId === d.id || tgtId === d.id;
+          d3Select.select(this)
+            .attr('stroke-opacity', isRelated ? 0.9 : 0.03)
+            .attr('stroke-width', isRelated ? Math.max(2.5, 1.5 + l.weight * 0.8) : Math.max(1.5, 1 + l.weight * 0.6));
+        });
+        // 显示关联连线的权重标签
+        linkLabelSel.each(function (l: any) {
+          const srcId = typeof l.source === 'object' ? l.source.id : l.source;
+          const tgtId = typeof l.target === 'object' ? l.target.id : l.target;
+          const isRelated = srcId === d.id || tgtId === d.id;
+          d3Select.select(this).style('opacity', isRelated ? 1 : 0);
+        });
+      })
+      .on('mouseleave', function () {
+        // 恢复全部
+        nodeSel.style('opacity', 1)
+          .select('.net-circle')
+          .attr('r', (n: any) => n.r);
+        linkSel
+          .attr('stroke-opacity', (l: any) => Math.min(0.7, 0.15 + l.weight * 0.15))
+          .attr('stroke-width', (l: any) => Math.max(1.5, 1 + l.weight * 0.6));
+        linkLabelSel.style('opacity', 0);
+      });
+
+    // 连线悬停 tooltip
+    linkSel
+      .style('pointer-events', 'stroke')
+      .on('mouseenter', function (_event: any, d: any) {
+        const srcId = typeof d.source === 'object' ? d.source.id : d.source;
+        const tgtId = typeof d.target === 'object' ? d.target.id : d.target;
+        if (tooltip) {
+          tooltip.textContent = `${srcId} & ${tgtId}: 共现 ${d.weight} 次`;
+          tooltip.style.opacity = '1';
+        }
+      })
+      .on('mousemove', function (event: any) {
+        if (tooltip && containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect();
+          tooltip.style.left = `${event.clientX - rect.left + 12}px`;
+          tooltip.style.top = `${event.clientY - rect.top - 10}px`;
+        }
+      })
+      .on('mouseleave', function () {
+        if (tooltip) tooltip.style.opacity = '0';
+      });
+
+    // ---- Step 1: 自适应力学参数 Simulation ----
+    const chargeStrength = -350 - nodeCount * 8;
     const simulation = d3.forceSimulation(nodes)
-      .force('link', d3.forceLink(links).id((d: any) => d.id).distance(140).strength(0.8))
-      // 增强互斥，将 charge.strength 修改为 -250，重新让节点互相推开
-      .force('charge', d3.forceManyBody().strength(-250))
-      // 重新调整向中心力：横向 x 弱一些
-      .force('x', d3.forceX(centerX).strength(0.05))
-      // 降低向中心力 y
-      .force('y', d3.forceY(centerY).strength(0.05))
-      // 加大碰撞半径
-      .force('collide', d3.forceCollide().radius((d: any) => d.r + 15).iterations(2));
+      .force('link', d3.forceLink(links).id((d: any) => d.id)
+        .distance((d: any) => {
+          const norm = d.weight / maxWeight; // 0~1
+          return 220 - norm * 120; // 强关联 100，弱关联 220
+        })
+        .strength((d: any) => {
+          const norm = d.weight / maxWeight;
+          return 0.3 + norm * 0.5; // 弱 0.3，强 0.8
+        }))
+      .force('charge', d3.forceManyBody().strength(chargeStrength))
+      .force('x', d3.forceX(centerX).strength(0.03))
+      .force('y', d3.forceY(centerY).strength(0.03))
+      .force('collide', d3.forceCollide().radius((d: any) => d.r + 22).iterations(3));
 
     let fitted = false;
 
     simulation.on('tick', () => {
-      linkSel
-        .attr('x1', (d: any) => d.source.x).attr('y1', (d: any) => d.source.y)
-        .attr('x2', (d: any) => d.target.x).attr('y2', (d: any) => d.target.y);
+      // 更新曲线路径和渐变坐标
+      linkSel.attr('d', (d: any) => {
+        const sx = d.source.x, sy = d.source.y;
+        const tx = d.target.x, ty = d.target.y;
+        const mx = (sx + tx) / 2, my = (sy + ty) / 2;
+        const dx = tx - sx, dy = ty - sy;
+        const cx = mx - dy * CURVATURE, cy = my + dx * CURVATURE;
+        return `M${sx},${sy} Q${cx},${cy} ${tx},${ty}`;
+      });
+
+      // 同步渐变坐标
+      links.forEach((l: any, i: number) => {
+        defs.select(`#link-grad-${i}`)
+          .attr('x1', l.source.x).attr('y1', l.source.y)
+          .attr('x2', l.target.x).attr('y2', l.target.y);
+      });
+
+      // 更新连线权重标签位置（贝塞尔中点）
+      linkLabelSel.attr('x', (d: any) => {
+        const sx = d.source.x, tx = d.target.x;
+        const mx = (sx + tx) / 2, dy = d.target.y - d.source.y;
+        return mx - dy * CURVATURE * 0.5;
+      }).attr('y', (d: any) => {
+        const sy = d.source.y, ty = d.target.y;
+        const my = (sy + ty) / 2, dx = d.target.x - d.source.x;
+        return my + dx * CURVATURE * 0.5;
+      });
+
       nodeSel.attr('transform', (d: any) => `translate(${d.x},${d.y})`);
 
       // 引擎稳定后，自动 fit 到视口
@@ -279,9 +428,8 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
         const y1 = Math.max(...nodes.map(n => n.y + n.r)) + pad;
         const bw = x1 - x0, bh = y1 - y0;
         if (bw > 0 && bh > 0) {
-          // 限制缩放最小值，防止分布过散导致缩成一个小点
           let scale = Math.min(width / bw, height / bh, 1.5);
-          scale = Math.max(scale, 0.6); // 设置较宽容的阈值，不要低于 60%
+          scale = Math.max(scale, 0.6);
 
           const tx = width / 2 - ((x0 + x1) / 2) * scale;
           const ty = height / 2 - ((y0 + y1) / 2) * scale;
@@ -305,7 +453,6 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
         d3Select.select(this).style('cursor', 'grabbing');
       })
       .on('drag', (event, d) => {
-        // event.x/y 已被 d3-drag 自动转换为 zoom 坐标系下的值
         d.fx = event.x; d.fy = event.y;
       })
       .on('end', function (event, d) {
@@ -316,7 +463,10 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
 
     nodeSel.call(drag as any);
 
-    return () => { simulation.stop(); };
+    return () => {
+      simulation.stop();
+      if (tooltip && tooltip.parentNode) tooltip.parentNode.removeChild(tooltip);
+    };
   }, [graphData, dimensions.width, isDark]);
 
   // 阻止默认滚动行为，防止缩放到极限时滚动页面
@@ -480,6 +630,7 @@ const ScatterTooltip = ({ active, payload, currency }: any) => {
 // ==========================================
 export default function TagTrendsDashboard({ expenses, theme, categories, currency, timeRange = 'all' }: Props) {
   const [heatmapTag, setHeatmapTag] = useState('');
+  const [matrixExpanded, setMatrixExpanded] = useState(false);
 
   const { rankingData, scatterData, quadrantLines, wordCloudData, dailyData, allTags } = useMemo(() => {
     const stats: Record<string, { name: string, amount: number, count: number }> = {}; 
@@ -682,8 +833,89 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                 </Scatter>
               </ScatterChart>
             </ResponsiveContainer>
+            {/* 放大预览按钮 */}
+            <button
+              onClick={() => setMatrixExpanded(true)}
+              style={{
+                position: 'absolute', top: 4, right: 4, zIndex: 10,
+                padding: 5, borderRadius: 6, cursor: 'pointer',
+                background: 'none', border: 'none',
+                color: isDark ? '#64748b' : '#b0b8c8',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+              title="放大预览"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3" /><path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+                <path d="M3 16v3a2 2 0 0 0 2 2h3" /><path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+              </svg>
+            </button>
           </div>
         </div>
+
+        {/* 习惯矩阵放大预览遮罩 — 仅覆盖内容区（侧边栏右侧） */}
+        {matrixExpanded && (
+          <div
+            onClick={() => setMatrixExpanded(false)}
+            style={{
+              position: 'fixed', top: 0, right: 0, bottom: 0,
+              left: document.querySelector('.sidebar')?.getBoundingClientRect().right ?? 0,
+              zIndex: 100,
+              background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'zoom-out',
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                width: '88%', maxWidth: 920, height: '72%',
+                background: isDark ? '#1e293b' : '#fff',
+                borderRadius: 16, padding: '24px 20px 20px',
+                boxShadow: '0 25px 60px rgba(0,0,0,0.3)',
+                display: 'flex', flexDirection: 'column',
+                cursor: 'default',
+                position: 'relative',
+              }}
+            >
+              <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: isDark ? '#f1f5f9' : '#1e293b' }}>习惯矩阵</h3>
+              <button
+                onClick={() => setMatrixExpanded(false)}
+                style={{
+                  position: 'absolute', top: 16, right: 16,
+                  padding: 6, borderRadius: 6, cursor: 'pointer',
+                  background: 'none', border: 'none',
+                  color: isDark ? '#94a3b8' : '#64748b',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+                title="关闭"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6L6 18" /><path d="M6 6l12 12" />
+                </svg>
+              </button>
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <ScatterChart margin={{ top: 20, right: 30, bottom: 30, left: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.5} />
+                    <XAxis type="number" dataKey="count" name="消费次数" tick={{fill: axisColor, fontSize: 13}} label={{value: '消费次数', position: 'insideBottom', offset: -10, fill: axisColor, fontSize: 12}} />
+                    <YAxis type="number" dataKey="amount" name="总金额" tick={{fill: axisColor, fontSize: 13}} label={{value: '总金额', angle: -90, position: 'insideLeft', offset: 10, fill: axisColor, fontSize: 12}} />
+                    <ZAxis type="number" dataKey="avgAmount" range={[80, 600]} />
+                    <ReferenceLine x={quadrantLines.x} stroke={axisColor} strokeDasharray="5 5" label={{ position: 'top', value: '频次平均', fill: axisColor, fontSize: 11 }} />
+                    <ReferenceLine y={quadrantLines.y} stroke={axisColor} strokeDasharray="5 5" label={{ position: 'insideTopRight', value: '金额平均', fill: axisColor, fontSize: 11, offset: 5, fillOpacity: 0.8 }} />
+                    <RechartsTooltip
+                      cursor={{strokeDasharray: '3 3'}}
+                      content={<ScatterTooltip currency={currency} />}
+                    />
+                    <Scatter data={scatterData}>
+                        {scatterData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={0.65} />)}
+                    </Scatter>
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="chart-card flex flex-col">
           <h3>习惯追踪</h3>
