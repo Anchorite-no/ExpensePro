@@ -1,5 +1,9 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import * as d3 from "d3-force";
+import * as d3Force from "d3-force";
+import * as d3Zoom from "d3-zoom";
+import * as d3Selection from "d3-selection";
+import * as d3Drag from "d3-drag";
+import "d3-transition";
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, ZAxis,
   ReferenceLine, ReferenceArea, BarChart, Bar, Cell, Tooltip as RechartsTooltip, ResponsiveContainer
@@ -103,16 +107,18 @@ const CustomTreeDiagram = ({ expenses, categories, currency, theme }: any) => {
 };
 
 // ==========================================
-// 组件 2: 神经元共现网络图 (完美版: 物理拖拽 + HTML 呼吸节点 + 手动缩放)
+// 组件 2: 神经元共现网络图 (无限画布 + D3 原生 Zoom/Drag + 完美圆形呼吸)
 // ==========================================
 const CustomOrganicNetwork = ({ expenses, theme }: any) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
   const simulationRef = useRef<any>(null);
+  const zoomRef = useRef<any>(null);
   const [nodes, setNodes] = useState<any[]>([]);
   const [links, setLinks] = useState<any[]>([]);
   const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
   const [isDragging, setIsDragging] = useState(false);
-  const [zoom, setZoom] = useState(1);
+  const [transform, setTransform] = useState(d3Zoom.zoomIdentity);
 
   useEffect(() => {
     if (!containerRef.current || expenses.length === 0) return;
@@ -151,48 +157,91 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       const [source, target] = pair.split('||'); return { source, target, weight };
     }).filter(l => validNodeIds.has(l.source as string) && validNodeIds.has(l.target as string));
 
+    // 使用容器中心作为初始发射点
     const centerX = dimensions.width / 2, centerY = dimensions.height / 2;
     
     initNodes.forEach((node: any, i) => {
-      // 初始随机分布在中心附近
-      node.x = centerX + (Math.random() - 0.5) * 100; 
-      node.y = centerY + (Math.random() - 0.5) * 100;
+      // 初始随机分布在中心附近，允许被物理引擎推向无限远
+      node.x = centerX + (Math.random() - 0.5) * dimensions.width * 0.2; 
+      node.y = centerY + (Math.random() - 0.5) * dimensions.height * 0.2;
       node.color = COLOR_PALETTE[i % COLOR_PALETTE.length];
       node.r = Math.max(16, Math.min(36, 12 + node.count * 3));
-      // 为每个节点生成随机的呼吸动画参数
       node.animDelay = Math.random() * 2;
       node.animDuration = 3 + Math.random() * 2;
     });
 
-    // 计算最大连线权重，用于规范化连线粗细
     const maxWeight = Math.max(...initLinks.map(l => l.weight), 1);
 
-    const simulation = d3.forceSimulation(initNodes as any)
-      // 连线距离：经常共现的拉得更近
-      .force("link", d3.forceLink(initLinks).id((d: any) => d.id).distance((d: any) => 150 - (d.weight / maxWeight) * 60).strength(0.6))
-      // 斥力：加强斥力，让节点更充分利用 400px 的空间
-      .force("charge", d3.forceManyBody().strength(-250))
-      // 整体居中吸引力
-      .force("center", d3.forceCenter(centerX, centerY))
-      .force("x", d3.forceX(centerX).strength(0.02))
-      .force("y", d3.forceY(centerY).strength(0.02))
-      // 碰撞体积
-      .force("collide", d3.forceCollide().radius((d: any) => d.r + 10).iterations(3));
+    const simulation = d3Force.forceSimulation(initNodes as any)
+      .force("link", d3Force.forceLink(initLinks).id((d: any) => d.id).distance((d: any) => 150 - (d.weight / maxWeight) * 60).strength(0.6))
+      .force("charge", d3Force.forceManyBody().strength(-300)) // 强大的斥力推开节点
+      .force("center", d3Force.forceCenter(centerX, centerY)) // 整体依然有向心力，但不再有硬性边界
+      .force("x", d3Force.forceX(centerX).strength(0.01))
+      .force("y", d3Force.forceY(centerY).strength(0.01))
+      .force("collide", d3Force.forceCollide().radius((d: any) => d.r + 15).iterations(3));
 
     simulationRef.current = simulation;
+
+    // --- 引入 D3 原生 Zoom (拖拽画布 + 滚轮缩放) ---
+    const zoom = d3Zoom.zoom()
+      .scaleExtent([0.2, 4]) // 允许缩放的倍率范围
+      .on("zoom", (e) => {
+        setTransform(e.transform);
+      });
+    
+    zoomRef.current = zoom;
+    
+    if (svgRef.current) {
+        // 绑定 zoom 事件到顶层 SVG，拦截所有的鼠标/触控操作
+        d3Selection.select(svgRef.current as any).call(zoom as any);
+        // 双击不自动放大，以免冲突
+        d3Selection.select(svgRef.current as any).on("dblclick.zoom", null);
+    }
+
+    // 自动追踪逻辑 (Auto-fit) - 当物理引擎冷静下来后，自动缩放到全景
+    let isAutoFitted = false;
 
     simulation.on("tick", () => {
       const currentNodes = simulation.nodes();
       
-      // 刚性边界约束：确保节点永远不会飞出画框
-      const padding = 10;
-      currentNodes.forEach((d: any) => {
-        d.x = Math.max(d.r + padding, Math.min(dimensions.width - d.r - padding, d.x));
-        d.y = Math.max(d.r + padding, Math.min(dimensions.height - d.r - padding, d.y));
-      });
+      // 注意：这里彻底移除了 x, y 的硬性容器边界约束 d.x = Math.max(...)
+      // 节点现在是在一个无限坐标系里运动
 
       setNodes([...currentNodes]);
       setLinks([...initLinks]);
+
+      // 自动适应视口 (Auto-fit Camera)
+      // 当物理引擎的热度 (alpha) 降到比较稳定时，执行一次优雅的全景缩放平移
+      if (!isAutoFitted && simulation.alpha() < 0.1 && svgRef.current && currentNodes.length > 0) {
+        isAutoFitted = true;
+        
+        // 计算整个星云的包围盒 (Bounding Box)
+        const padding = 60;
+        const minX = Math.min(...currentNodes.map((d: any) => d.x - d.r));
+        const maxX = Math.max(...currentNodes.map((d: any) => d.x + d.r));
+        const minY = Math.min(...currentNodes.map((d: any) => d.y - d.r));
+        const maxY = Math.max(...currentNodes.map((d: any) => d.y + d.r));
+
+        const w = maxX - minX + padding * 2;
+        const h = maxY - minY + padding * 2;
+        const cx = (minX + maxX) / 2;
+        const cy = (minY + maxY) / 2;
+
+        if (w > 0 && h > 0) {
+            // 计算刚好能装下所有节点的缩放倍率
+            const autoScale = Math.min(dimensions.width / w, dimensions.height / h, 1.5); 
+            
+            // 计算将中心点平移到视口中心的偏移量
+            const tx = dimensions.width / 2 - cx * autoScale;
+            const ty = dimensions.height / 2 - cy * autoScale;
+
+            // D3 平滑过渡动画
+            d3Selection.select(svgRef.current as any).transition().duration(750).call(
+                zoom.transform as any, 
+                d3Zoom.zoomIdentity.translate(tx, ty).scale(autoScale)
+            );
+        }
+      }
     });
 
     return () => {
@@ -204,139 +253,161 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
   const isDark = theme === 'dark';
   const linkStroke = isDark ? '#64748b' : '#94a3b8';
 
-  // --- 拖拽事件处理 ---
-  const handleDragStart = (e: React.MouseEvent | React.TouchEvent, node: any) => {
-    if (!simulationRef.current) return;
-    setIsDragging(true);
-    simulationRef.current.alphaTarget(0.3).restart();
-    
-    // 记录拖拽起始点（屏幕绝对坐标）
-    const startX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-    const startY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-    
-    // 记录节点起始坐标
-    const initialFx = node.x;
-    const initialFy = node.y;
-    
-    node.fx = initialFx;
-    node.fy = initialFy;
-    
-    // 使用 Delta (差值) 算法进行拖拽，完美兼容任何 Zoom 比例
-    const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
-      const mx = 'touches' in moveEvent ? (moveEvent as TouchEvent).touches[0].clientX : (moveEvent as MouseEvent).clientX;
-      const my = 'touches' in moveEvent ? (moveEvent as TouchEvent).touches[0].clientY : (moveEvent as MouseEvent).clientY;
-      
-      // 鼠标移动的物理距离除以缩放比例 = 逻辑距离
-      const dx = (mx - startX) / zoom;
-      const dy = (my - startY) / zoom;
-      
-      // 直接应用差值并限制在容器内
-      node.fx = Math.max(node.r, Math.min(dimensions.width - node.r, initialFx + dx));
-      node.fy = Math.max(node.r, Math.min(dimensions.height - node.r, initialFy + dy));
-    };
+  // --- D3 原生拖拽集成 (完美的降维打击) ---
+  // 通过 D3 接管，它可以完美消化由于 zoom 和 pan 产生的坐标系偏移
+  useEffect(() => {
+    if (!simulationRef.current || !containerRef.current) return;
 
-    const handleUp = () => {
-      if (!simulationRef.current) return;
-      simulationRef.current.alphaTarget(0);
-      node.fx = null;
-      node.fy = null;
-      setIsDragging(false);
-      window.removeEventListener('mousemove', handleMove);
-      window.removeEventListener('mouseup', handleUp);
-      window.removeEventListener('touchmove', handleMove);
-      window.removeEventListener('touchend', handleUp);
-    };
+    // 选择所有带有 'node-drag-target' class 的 HTML 元素
+    const drag = d3Drag.drag()
+      .on("start", (event, d: any) => {
+        if (!event.active) simulationRef.current.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+        setIsDragging(true);
+      })
+      .on("drag", (event, d: any) => {
+        // D3 drag 已经自动帮我们把屏幕移动转换成了画布坐标移动！
+        d.fx = event.x;
+        d.fy = event.y;
+      })
+      .on("end", (event, d: any) => {
+        if (!event.active) simulationRef.current.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+        setIsDragging(false);
+      });
 
-    window.addEventListener('mousemove', handleMove, { passive: false });
-    window.addEventListener('mouseup', handleUp);
-    window.addEventListener('touchmove', handleMove, { passive: false });
-    window.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false }); 
-    window.addEventListener('touchend', handleUp);
+    // 为每个生成的节点绑定原生拖拽
+    d3Selection.select(containerRef.current).selectAll(".node-drag-target").data(nodes, (d: any) => d.id).call(drag as any);
+
+  }, [nodes]); // 需要依赖 nodes 因为 HTML 是动态生成的
+
+  // 手动缩放控制按钮的回调
+  const handleZoomIn = () => {
+      if (svgRef.current && zoomRef.current) {
+          d3Selection.select(svgRef.current as any).transition().duration(300).call(zoomRef.current.scaleBy as any, 1.3);
+      }
+  };
+  const handleZoomOut = () => {
+      if (svgRef.current && zoomRef.current) {
+          d3Selection.select(svgRef.current as any).transition().duration(300).call(zoomRef.current.scaleBy as any, 1 / 1.3);
+      }
+  };
+  const handleZoomReset = () => {
+      if (svgRef.current && zoomRef.current) {
+          // 重置回容器中心和 1.0 倍率
+          d3Selection.select(svgRef.current as any).transition().duration(500).call(
+              zoomRef.current.transform as any, 
+              d3Zoom.zoomIdentity
+          );
+      }
   };
 
   return (
-    <div className="w-full relative flex justify-center custom-scrollbar overflow-hidden rounded-xl border border-gray-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30" ref={containerRef} style={{ height: dimensions.height, touchAction: 'none' }}>
+    <div 
+        className="w-full relative flex justify-center overflow-hidden rounded-xl border border-gray-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30" 
+        ref={containerRef} 
+        style={{ height: dimensions.height, touchAction: 'none' }}
+    >
       
       {/* 动态注入 CSS 呼吸动画 */}
       <style>{`
-        @keyframes floatNode {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-8px); }
-          100% { transform: translateY(0px); }
+        @keyframes organicFloat {
+          0% { transform: translateY(0px) scale(1); }
+          50% { transform: translateY(-5px) scale(1.02); }
+          100% { transform: translateY(0px) scale(1); }
         }
       `}</style>
 
       {/* 缩放控件 (右上角) */}
       <div className="absolute top-3 right-3 flex flex-col bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden z-20">
-        <button onClick={() => setZoom(z => Math.min(z + 0.25, 2))} className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 font-bold transition-colors cursor-pointer">+</button>
-        <button onClick={() => setZoom(1)} className="w-8 h-6 flex items-center justify-center text-[10px] hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 font-medium border-y border-gray-100 dark:border-gray-700 transition-colors cursor-pointer">1X</button>
-        <button onClick={() => setZoom(z => Math.max(z - 0.25, 0.5))} className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 font-bold transition-colors cursor-pointer">-</button>
+        <button onClick={handleZoomIn} className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 font-bold transition-colors cursor-pointer">+</button>
+        <button onClick={handleZoomReset} className="w-8 h-6 flex items-center justify-center text-[10px] hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 font-medium border-y border-gray-100 dark:border-gray-700 transition-colors cursor-pointer">1X</button>
+        <button onClick={handleZoomOut} className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 font-bold transition-colors cursor-pointer">-</button>
       </div>
 
-      {/* 缩放画幅容器 */}
-      <div 
-        className="absolute top-0 left-0 w-full h-full origin-center transition-transform duration-300 ease-out" 
-        style={{ transform: `scale(${zoom})` }}
+      {/* 
+        拦截器层 SVG:
+        覆盖整个 800x400 的容器，专门用来接收鼠标和触控的 zoom (滚轮缩放，拖拽空白处平移) 
+      */}
+      <svg 
+        ref={svgRef}
+        width={dimensions.width} 
+        height={dimensions.height} 
+        className="absolute top-0 left-0 w-full h-full z-0"
+        style={{ cursor: 'grab' }}
       >
-        {/* 底层 SVG：绘制弹性连线 */}
-        <svg width={dimensions.width} height={dimensions.height} className="absolute top-0 left-0 pointer-events-none z-0">
-          {links.map((link, i) => {
-            const source = link.source.x !== undefined ? link.source : nodes.find(n => n.id === link.source);
-            const target = link.target.x !== undefined ? link.target : nodes.find(n => n.id === link.target);
-            if (!source || !target) return null;
-            
-            const strokeWidth = 1 + link.weight * 0.8;
-            const opacity = Math.min(0.8, 0.2 + link.weight * 0.15);
+          {/* 无限大的内部群组 (受 Zoom 矩阵控制) */}
+          <g transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}>
+              {/* 绘制所有弹性连线 */}
+              {links.map((link, i) => {
+                const source = link.source.x !== undefined ? link.source : nodes.find(n => n.id === link.source);
+                const target = link.target.x !== undefined ? link.target : nodes.find(n => n.id === link.target);
+                if (!source || !target) return null;
+                
+                const strokeWidth = 1 + link.weight * 0.8;
+                const opacity = Math.min(0.8, 0.2 + link.weight * 0.15);
 
-            return (
-              <line 
-                key={i} 
-                x1={source.x} y1={source.y} 
-                x2={target.x} y2={target.y} 
-                stroke={linkStroke} 
-                strokeWidth={strokeWidth} 
-                strokeOpacity={opacity} 
-              />
-            )
-          })}
-        </svg>
+                return (
+                  <line 
+                    key={i} 
+                    x1={source.x} y1={source.y} 
+                    x2={target.x} y2={target.y} 
+                    stroke={linkStroke} 
+                    strokeWidth={strokeWidth} 
+                    strokeOpacity={opacity} 
+                  />
+                )
+              })}
+          </g>
+      </svg>
 
-        {/* 顶层 HTML：渲染可交互的呼吸节点 */}
-        <div className="absolute top-0 left-0 w-full h-full z-10 pointer-events-none">
-          {nodes.map((node) => (
+      {/* 
+        HTML 渲染层: 同样必须接受 transform 矩阵，做到与 SVG 完全同步对齐 
+      */}
+      <div 
+        className="absolute top-0 left-0 w-full h-full pointer-events-none transform-gpu origin-top-left"
+        style={{ transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.k})` }}
+      >
+        {nodes.map((node) => (
+          // Div A: 绝对定位容器，负责接收 D3 坐标，不可绑定 CSS 动画
+          <div
+            key={node.id}
+            className="node-drag-target absolute pointer-events-auto"
+            style={{
+              left: node.x - node.r,
+              top: node.y - node.r,
+              width: node.r * 2,
+              height: node.r * 2,
+              zIndex: node.fx !== null && node.fy !== null ? 30 : 10,
+            }}
+          >
+            {/* Div B: 内容容器，负责颜色、强制完美正圆、阴影与专属呼吸特效 (彻底解耦) */}
             <div
-              key={node.id}
-              className="absolute pointer-events-auto"
+              className="w-full h-full flex items-center justify-center select-none shadow-md transition-shadow hover:shadow-lg"
               style={{
-                left: node.x - node.r,
-                top: node.y - node.r,
-                width: node.r * 2,
-                height: node.r * 2,
-                zIndex: node.fx !== null && node.fy !== null ? 20 : 10,
+                backgroundColor: node.color,
+                borderRadius: '50%', // 无论内容如何，强制正圆
+                cursor: isDragging ? 'grabbing' : 'grab',
+                color: '#fff',
+                border: `2px solid ${isDark ? '#1e293b' : '#ffffff'}`,
+                textShadow: '0px 1px 2px rgba(0,0,0,0.5)',
+                boxShadow: node.fx !== null && node.fy !== null ? '0 0 15px rgba(0,0,0,0.3)' : '0 2px 5px rgba(0,0,0,0.1)',
+                animation: `organicFloat ${node.animDuration}s ease-in-out ${node.animDelay}s infinite`,
               }}
-              onMouseDown={(e) => handleDragStart(e, node)}
-              onTouchStart={(e) => handleDragStart(e, node)}
             >
-              <div
-                className="w-full h-full rounded-full flex items-center justify-center select-none shadow-md transition-shadow hover:shadow-lg overflow-hidden"
-                style={{
-                  backgroundColor: node.color,
-                  cursor: isDragging ? 'grabbing' : 'grab',
-                  color: '#fff',
-                  border: `2px solid ${isDark ? '#1e293b' : '#ffffff'}`,
-                  textShadow: '0px 1px 2px rgba(0,0,0,0.5)',
-                  boxShadow: node.fx !== null && node.fy !== null ? '0 0 15px rgba(0,0,0,0.3)' : '0 2px 5px rgba(0,0,0,0.1)',
-                  // 应用专属的呼吸浮动动画，且不与外部容器坐标冲突
-                  animation: `floatNode ${node.animDuration}s ease-in-out ${node.animDelay}s infinite`,
-                }}
+              {/* Span C: 文本内容，居中，超长省略号，禁止换行破坏圆形 */}
+              <span 
+                  className="w-full text-center px-1 font-semibold block overflow-hidden text-ellipsis whitespace-nowrap" 
+                  style={{ fontSize: node.r > 20 ? '12px' : '9px' }}
+                  title={node.id}
               >
-                <span className="truncate w-full text-center px-1 font-semibold leading-tight" style={{ fontSize: node.r > 20 ? '12px' : '10px' }}>
-                  {node.id}
-                </span>
-              </div>
+                {node.id}
+              </span>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     </div>
   );
