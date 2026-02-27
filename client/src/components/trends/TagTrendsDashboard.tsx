@@ -429,7 +429,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
         const bw = x1 - x0, bh = y1 - y0;
         if (bw > 0 && bh > 0) {
           let scale = Math.min(width / bw, height / bh, 1.5);
-          scale = Math.max(scale, 0.6);
+          scale = Math.max(scale, 0.9);
 
           const tx = width / 2 - ((x0 + x1) / 2) * scale;
           const ty = height / 2 - ((y0 + y1) / 2) * scale;
