@@ -519,109 +519,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
         </div>
       </div>
 
-      {/* ROW 3: 习惯追踪 + 消费榜单 */}
-      <div className="charts-grid">
-        
-        <div className="chart-card flex flex-col">
-          <h3>习惯追踪</h3>
-          <div className="heatmap-layout">
-            <div className="heatmap-sidebar">
-              <div className="heatmap-select-wrapper">
-                <Select 
-                  value={heatmapTag} 
-                  onChange={setHeatmapTag} 
-                  options={allTags.map(tag => ({ value: tag, label: `#${tag}` }))}
-                  placeholder="选择标签..."
-                />
-              </div>
-              <div className="heatmap-legend">
-                <span className="heatmap-legend-label">少</span>
-                <div className="heatmap-legend-cell" style={{ backgroundColor: isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(241, 245, 249, 1)' }} />
-                <div className="heatmap-legend-cell" style={{ backgroundColor: 'rgba(99, 102, 241, 0.3)' }} />
-                <div className="heatmap-legend-cell" style={{ backgroundColor: 'rgba(99, 102, 241, 0.6)' }} />
-                <div className="heatmap-legend-cell" style={{ backgroundColor: 'rgba(99, 102, 241, 1)' }} />
-                <span className="heatmap-legend-label">多</span>
-              </div>
-            </div>
-            <div className="flex-1 overflow-x-auto w-full custom-scrollbar heatmap-container">
-              {isMonthView ? (
-                <div className="heatmap-calendar">
-                  <div className="heatmap-calendar-header">
-                    <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
-                  </div>
-                  {heatmapGridData.map((week, wIndex) => (
-                    <div key={wIndex} className="heatmap-calendar-row">
-                      {week.map((day) => (
-                        <div 
-                          key={day.id} 
-                          className={`heatmap-cell ${day.count < 0 ? 'heatmap-cell-empty' : ''}`}
-                          style={{ backgroundColor: getHeatmapColor(day.count) }} 
-                          data-tooltip={day.date ? `${day.date}: ${day.count} 次` : undefined}
-                        />
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              ) : timeRange === 'current-week' ? (
-                <div className="heatmap-single-week">
-                  <div className="heatmap-single-week-header">
-                    <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
-                  </div>
-                  <div className="heatmap-single-week-row">
-                    {heatmapGridData[0]?.map((day) => (
-                      <div 
-                        key={day.id} 
-                        className="heatmap-cell" 
-                        style={{ backgroundColor: getHeatmapColor(day.count) }} 
-                        data-tooltip={`${day.date}: ${day.count} 次`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="heatmap-grid">
-                  <div className="heatmap-day-labels"><span>一</span><span>三</span><span>五</span><span>日</span></div>
-                  {heatmapGridData.map((week, wIndex) => (
-                    <div key={wIndex} className="heatmap-week-col">
-                      {week.map((day) => (
-                        <div 
-                          key={day.id} 
-                          className="heatmap-cell" 
-                          style={{ backgroundColor: getHeatmapColor(day.count) }} 
-                          data-tooltip={`${day.date}: ${day.count} 次`}
-                        />
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="chart-card flex flex-col">
-          <h3>消费榜单</h3>
-          <div className="flex-grow min-h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={rankingData} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={gridColor} />
-                <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: 'var(--text-secondary)', fontSize: 13}} width={70} />
-                <RechartsTooltip 
-                  cursor={{fill: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'}} 
-                  content={<TagBarTooltip currency={currency} />}
-                />
-                <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={20}>
-                  {rankingData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-      </div>
-
-      {/* ROW 4: 习惯矩阵 + 频率词云 */}
+      {/* ROW 3: 习惯矩阵 + 习惯追踪 */}
       <div className="charts-grid">
         
         <div className="chart-card flex flex-col relative">
@@ -648,6 +546,86 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
         </div>
 
         <div className="chart-card flex flex-col">
+          <h3>习惯追踪</h3>
+          <div className="heatmap-top-controls">
+            <div className="heatmap-select-wrapper">
+              <Select 
+                value={heatmapTag} 
+                onChange={setHeatmapTag} 
+                options={allTags.map(tag => ({ value: tag, label: `#${tag}` }))}
+                placeholder="选择标签..."
+              />
+            </div>
+            <div className="heatmap-legend">
+              <span className="heatmap-legend-label">少</span>
+              <div className="heatmap-legend-cell" style={{ backgroundColor: isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(241, 245, 249, 1)' }} />
+              <div className="heatmap-legend-cell" style={{ backgroundColor: 'rgba(99, 102, 241, 0.3)' }} />
+              <div className="heatmap-legend-cell" style={{ backgroundColor: 'rgba(99, 102, 241, 0.6)' }} />
+              <div className="heatmap-legend-cell" style={{ backgroundColor: 'rgba(99, 102, 241, 1)' }} />
+              <span className="heatmap-legend-label">多</span>
+            </div>
+          </div>
+          <div className="flex-1 overflow-x-auto w-full custom-scrollbar heatmap-container">
+            {isMonthView ? (
+              <div className="heatmap-calendar">
+                <div className="heatmap-calendar-header">
+                  <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+                </div>
+                {heatmapGridData.map((week, wIndex) => (
+                  <div key={wIndex} className="heatmap-calendar-row">
+                    {week.map((day) => (
+                      <div 
+                        key={day.id} 
+                        className={`heatmap-cell ${day.count < 0 ? 'heatmap-cell-empty' : ''}`}
+                        style={{ backgroundColor: getHeatmapColor(day.count) }} 
+                        data-tooltip={day.date ? `${day.date}: ${day.count} 次` : undefined}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : timeRange === 'current-week' ? (
+              <div className="heatmap-single-week">
+                <div className="heatmap-single-week-header">
+                  <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+                </div>
+                <div className="heatmap-single-week-row">
+                  {heatmapGridData[0]?.map((day) => (
+                    <div 
+                      key={day.id} 
+                      className="heatmap-cell" 
+                      style={{ backgroundColor: getHeatmapColor(day.count) }} 
+                      data-tooltip={`${day.date}: ${day.count} 次`}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="heatmap-grid">
+                <div className="heatmap-day-labels"><span>一</span><span>三</span><span>五</span><span>日</span></div>
+                {heatmapGridData.map((week, wIndex) => (
+                  <div key={wIndex} className="heatmap-week-col">
+                    {week.map((day) => (
+                      <div 
+                        key={day.id} 
+                        className="heatmap-cell" 
+                        style={{ backgroundColor: getHeatmapColor(day.count) }} 
+                        data-tooltip={`${day.date}: ${day.count} 次`}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+      </div>
+
+      {/* ROW 4: 频率词云 + 消费榜单 */}
+      <div className="charts-grid">
+
+        <div className="chart-card flex flex-col">
           <h3>频率词云</h3>
           <div className="flex-grow flex flex-wrap content-center justify-center gap-4 px-4 py-6 chart-bg-wrapper rounded-xl min-h-[200px]" style={{borderStyle: 'dashed'}}>
             {wordCloudData.map((tag, i) => (
@@ -665,6 +643,26 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                 {tag.name}
               </span>
             ))}
+          </div>
+        </div>
+
+        <div className="chart-card flex flex-col">
+          <h3>消费榜单</h3>
+          <div className="flex-grow min-h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={rankingData} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={gridColor} />
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: 'var(--text-secondary)', fontSize: 13}} width={70} />
+                <RechartsTooltip 
+                  cursor={{fill: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'}} 
+                  content={<TagBarTooltip currency={currency} />}
+                />
+                <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={20}>
+                  {rankingData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 

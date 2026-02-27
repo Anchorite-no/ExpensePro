@@ -279,32 +279,16 @@ html.dark .chart-bg-wrapper,
 /* ==========================================
    Heatmap Styles
    ========================================== */
-.heatmap-layout {
+.heatmap-top-controls {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 
-@media (min-width: 640px) {
-  .heatmap-layout {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 24px;
-  }
-}
-
-.heatmap-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  flex-shrink: 0;
-  width: 100%;
-  max-width: 180px;
-}
-
-.heatmap-select-wrapper {
-  width: 100%;
+.heatmap-top-controls .heatmap-select-wrapper {
+  width: 160px;
   flex-shrink: 0;
 }
 
