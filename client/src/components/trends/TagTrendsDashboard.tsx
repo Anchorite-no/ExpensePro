@@ -829,7 +829,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
         
         <div className="chart-card flex flex-col relative">
           <h3>习惯矩阵</h3>
-          <div className="flex-grow min-h-[480px] relative">
+          <div className="flex-grow min-h-[420px] relative">
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.5} />
@@ -888,7 +888,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
             <div
               onClick={e => e.stopPropagation()}
               style={{
-                width: '88%', maxWidth: 920, height: '72%',
+                width: '92%', maxWidth: 1100, height: '72%',
                 background: isDark ? '#1e293b' : '#fff',
                 borderRadius: 16, padding: '24px 20px 20px',
                 boxShadow: '0 25px 60px rgba(0,0,0,0.3)',
