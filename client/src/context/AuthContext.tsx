@@ -16,6 +16,34 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/** 将 CryptoKey 导出为 Base64 存入 sessionStorage（刷新保留，关标签页自动清除） */
+async function persistMasterKey(key: CryptoKey) {
+  try {
+    const raw = await crypto.subtle.exportKey('raw', key);
+    const bytes = new Uint8Array(raw);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    sessionStorage.setItem('masterKey', btoa(binary));
+  } catch { /* non-extractable key, skip */ }
+}
+
+/** 从 sessionStorage 恢复 CryptoKey */
+async function restoreMasterKey(): Promise<CryptoKey | null> {
+  const stored = sessionStorage.getItem('masterKey');
+  if (!stored) return null;
+  try {
+    const binary = atob(stored);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return await crypto.subtle.importKey(
+      'raw', bytes.buffer, { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']
+    );
+  } catch {
+    sessionStorage.removeItem('masterKey');
+    return null;
+  }
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -27,15 +55,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const storedToken = localStorage.getItem('token');
     const storedUsername = localStorage.getItem('username');
     const storedEncryption = localStorage.getItem('encryption') === 'true';
+
     if (storedToken && storedUsername) {
+      setToken(storedToken);
+      setUser({ username: storedUsername });
+
       if (storedEncryption) {
-        // 加密模式：masterKey 无法持久化，必须重新登录输入密码派生密钥
-        localStorage.removeItem('token');
-        localStorage.removeItem('username');
-        localStorage.removeItem('encryption');
-      } else {
-        setToken(storedToken);
-        setUser({ username: storedUsername });
+        // 从 sessionStorage 恢复 masterKey（刷新时保留，关标签页时自动清除）
+        restoreMasterKey().then(key => {
+          if (key) {
+            setMasterKey(key);
+          } else {
+            // sessionStorage 中没有密钥（新标签页或浏览器重启），清除登录态
+            localStorage.removeItem('token');
+            localStorage.removeItem('username');
+            localStorage.removeItem('encryption');
+            setToken(null);
+            setUser(null);
+            setEncryption(false);
+          }
+          setIsLoading(false);
+        });
+        return; // 异步恢复，不要提前 setIsLoading(false)
       }
     }
     setIsLoading(false);
@@ -47,7 +88,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (encryptionEnabled) localStorage.setItem('encryption', 'true');
     else localStorage.removeItem('encryption');
     // 先设置 masterKey 和 encryption，再设置 token，避免 token 触发 fetch 时 key 还没就绪
-    if (newMasterKey) setMasterKey(newMasterKey);
+    if (newMasterKey) {
+      setMasterKey(newMasterKey);
+      persistMasterKey(newMasterKey); // 存入 sessionStorage
+    }
     if (encryptionEnabled) setEncryption(true);
     else setEncryption(false);
     setToken(newToken);
@@ -58,6 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('encryption');
+    sessionStorage.removeItem('masterKey');
     setToken(null);
     setUser(null);
     setMasterKey(null);
