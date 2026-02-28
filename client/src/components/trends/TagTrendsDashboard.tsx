@@ -117,6 +117,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
   const initialTransformRef = useRef<any>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 480 });
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [navbarHeight, setNavbarHeight] = useState(0);
   const isDark = theme === 'dark';
 
   // 计算图数据（只算一次）
@@ -491,17 +492,29 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
     return () => obs.disconnect();
   }, [isFullscreen]);
 
-  // 全屏时锁定 body 滚动并设置尺寸
+  // 全屏时锁定 body 滚动并设置尺寸（避开顶部导航栏）
   useEffect(() => {
     if (isFullscreen) {
       document.body.style.overflow = 'hidden';
-      setDimensions({ width: window.innerWidth, height: window.innerHeight });
-      const handleResize = () => setDimensions({ width: window.innerWidth, height: window.innerHeight });
+      const sidebar = document.querySelector('.sidebar');
+      const sidebarH = sidebar ? sidebar.getBoundingClientRect().height : 0;
+      // 仅在移动端（sidebar 变为顶部导航栏）时偏移
+      const isMobileNav = window.innerWidth <= 768;
+      const offset = isMobileNav ? sidebarH : 0;
+      setNavbarHeight(offset);
+      setDimensions({ width: window.innerWidth, height: window.innerHeight - offset });
+      const handleResize = () => {
+        const newOffset = isMobileNav ? (sidebar?.getBoundingClientRect().height || 0) : 0;
+        setNavbarHeight(newOffset);
+        setDimensions({ width: window.innerWidth, height: window.innerHeight - newOffset });
+      };
       window.addEventListener('resize', handleResize);
       return () => {
         document.body.style.overflow = '';
         window.removeEventListener('resize', handleResize);
       };
+    } else {
+      setNavbarHeight(0);
     }
   }, [isFullscreen]);
 
@@ -531,13 +544,13 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       className="network-container"
       style={{
         position: isFullscreen ? 'fixed' : 'relative',
-        top: isFullscreen ? 0 : undefined,
+        top: isFullscreen ? navbarHeight : undefined,
         left: isFullscreen ? 0 : undefined,
         right: isFullscreen ? 0 : undefined,
         bottom: isFullscreen ? 0 : undefined,
-        zIndex: isFullscreen ? 10001 : undefined,
+        zIndex: isFullscreen ? 9999 : undefined,
         width: isFullscreen ? '100vw' : '100%',
-        height: isFullscreen ? '100vh' : dimensions.height,
+        height: isFullscreen ? `calc(100vh - ${navbarHeight}px)` : dimensions.height,
         borderRadius: isFullscreen ? 0 : undefined,
         background: isFullscreen ? (isDark ? '#0f172a' : '#fff') : undefined,
       }}
@@ -554,7 +567,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       <button
         onClick={toggleFullscreen}
         style={{
-          position: 'absolute', top: isFullscreen ? 'max(12px, env(safe-area-inset-top, 12px))' : 8, right: 8, zIndex: 10000,
+          position: 'absolute', top: 8, right: 8, zIndex: 50,
           padding: 6, borderRadius: 6, cursor: 'pointer',
           background: 'none', border: 'none',
           color: isDark ? '#64748b' : '#94a3b8',
@@ -578,7 +591,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       {/* 右下角缩放指示 + 重置 */}
       <div
         style={{
-          position: 'absolute', bottom: isFullscreen ? 'max(12px, env(safe-area-inset-bottom, 12px))' : 8, right: 8, zIndex: 10000,
+          position: 'absolute', bottom: 8, right: 8, zIndex: 50,
           display: 'flex', alignItems: 'center', gap: 6,
           color: isDark ? '#64748b' : '#94a3b8',
           fontSize: 12, pointerEvents: 'auto',
