@@ -829,7 +829,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
         
         <div className="chart-card flex flex-col relative">
           <h3>习惯矩阵</h3>
-          <div className="flex-grow min-h-[300px] relative">
+          <div className="flex-grow min-h-[380px] relative">
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.5} />
@@ -1053,22 +1053,37 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
 
         <div className="chart-card flex flex-col">
           <h3>频率词云</h3>
-          <div className="flex-grow flex flex-wrap content-center justify-center gap-4 px-4 py-6 chart-bg-wrapper rounded-xl min-h-[200px]" style={{borderStyle: 'dashed'}}>
-            {wordCloudData.map((tag, i) => (
-              <span 
-                key={i} 
-                className="hover:scale-110 cursor-pointer drop-shadow-sm select-none transition-transform" 
-                style={{ 
-                  fontSize: `${tag.fontSize}px`, 
-                  color: tag.color, 
+          <div className="flex-grow flex flex-wrap content-center justify-center gap-x-5 gap-y-3 px-4 py-6 chart-bg-wrapper rounded-xl min-h-[200px]" style={{borderStyle: 'dashed'}}>
+            {wordCloudData.map((tag, i) => {
+              // 多样化：按索引交替添加轻微旋转和样式变化
+              const rotation = [0, -8, 5, 0, -5, 8, 0, -3, 6, 0][i % 10];
+              const isLarge = tag.fontSize > 28;
+              const isMedium = tag.fontSize > 18;
+              return (
+              <span
+                key={i}
+                className="hover:scale-110 cursor-pointer select-none transition-transform"
+                style={{
+                  fontSize: `${tag.fontSize}px`,
+                  color: tag.color,
                   fontWeight: tag.fontSize > 22 ? 800 : (tag.fontSize > 16 ? 600 : 400),
-                  opacity: 0.8 + (tag.fontSize / 32) * 0.2
-                }} 
+                  opacity: 0.8 + (tag.fontSize / 32) * 0.2,
+                  transform: `rotate(${rotation}deg)`,
+                  display: 'inline-block',
+                  letterSpacing: isLarge ? '2px' : undefined,
+                  textDecoration: (!isLarge && !isMedium && i % 3 === 0) ? 'underline' : undefined,
+                  textDecorationColor: tag.color,
+                  textDecorationThickness: '1.5px',
+                  textUnderlineOffset: '3px',
+                  fontStyle: (!isLarge && i % 5 === 2) ? 'italic' : undefined,
+                  filter: isLarge ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' : undefined,
+                }}
                 title={`${tag.name} (出现 ${tag.count} 次)`}
               >
-                {tag.name}
+                {isLarge ? `「${tag.name}」` : `#${tag.name}`}
               </span>
-            ))}
+              );
+            })}
           </div>
         </div>
 
