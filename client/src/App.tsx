@@ -152,8 +152,6 @@ function AppContent() {
   /* ========== Expense CRUD ========== */
   const fetchExpenses = useCallback(async () => {
     if (!token) return;
-    // 加密模式下，masterKey 尚未就绪时不要拉取数据，否则密文会直接渲染
-    if (encryption && !masterKey) return;
     try {
       const res = await fetch("/api/expenses", { headers: { Authorization: `Bearer ${token}` } });
       if (res.status === 401 || res.status === 403) { logout(); return; }
@@ -164,9 +162,19 @@ function AppContent() {
         date: item.date.split("T")[0],
         note: item.note || "",
       }));
-      // E2E 解密
+      // E2E 解密（masterKey 就绪时才解密，否则由 decryptExpense safety check 兜底）
       if (masterKey && encryption) {
         formatted = await decryptExpenses(formatted, masterKey);
+      } else if (encryption && !masterKey) {
+        // 加密模式但密钥未就绪：用 safety check 将密文替换为友好提示，避免显示乱码
+        formatted = formatted.map((e: any) => {
+          const looksEncrypted = (s: unknown) =>
+            typeof s === 'string' && /^[A-Za-z0-9+/]+=*:[A-Za-z0-9+/]+=*:[A-Za-z0-9+/]+=*$/.test(s);
+          if (looksEncrypted(e.title) || looksEncrypted(e.category)) {
+            return { ...e, title: '【解密失败】', category: '加密数据', note: '请重新登录以恢复密钥' };
+          }
+          return e;
+        });
       }
       setExpenses(formatted);
     } catch (err) {
