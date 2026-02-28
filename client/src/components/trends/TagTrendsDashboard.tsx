@@ -139,13 +139,14 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       }
     });
 
+    const maxCount = Math.max(1, ...Object.values(nodesMap).map(n => n.count));
     const nodes = Object.values(nodesMap)
       .sort((a, b) => b.count - a.count)
       .slice(0, 20)
       .map((n, i) => ({
         ...n,
         color: COLOR_PALETTE[i % COLOR_PALETTE.length],
-        r: Math.max(14, Math.min(34, 10 + n.count * 3)),
+        r: Math.max(18, Math.min(38, 18 + (n.count / maxCount) * 20)),
       }));
 
     const validIds = new Set(nodes.map(n => n.id));
@@ -430,7 +431,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
         const bw = x1 - x0, bh = y1 - y0;
         if (bw > 0 && bh > 0) {
           let scale = Math.min(width / bw, height / bh, 1.5);
-          scale = Math.max(scale, 0.9);
+          scale = Math.max(scale, 0.8);
 
           const tx = width / 2 - ((x0 + x1) / 2) * scale;
           const ty = height / 2 - ((y0 + y1) / 2) * scale;
@@ -866,14 +867,19 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
           </div>
         </div>
 
-        {/* 习惯矩阵放大预览遮罩 — 仅覆盖内容区（侧边栏右侧） */}
-        {matrixExpanded && (
+        {/* 习惯矩阵放大预览遮罩 — 移动端全屏，桌面端仅覆盖内容区 */}
+        {matrixExpanded && (() => {
+          const isMobile = window.innerWidth <= 768;
+          const sidebar = document.querySelector('.sidebar');
+          const sidebarRight = (!isMobile && sidebar) ? sidebar.getBoundingClientRect().right : 0;
+          const topOffset = (isMobile && sidebar) ? sidebar.getBoundingClientRect().height : 0;
+          return (
           <div
             onClick={() => setMatrixExpanded(false)}
             style={{
-              position: 'fixed', top: 0, right: 0, bottom: 0,
-              left: document.querySelector('.sidebar')?.getBoundingClientRect().right ?? 0,
-              zIndex: 100,
+              position: 'fixed', top: topOffset, right: 0, bottom: 0,
+              left: sidebarRight,
+              zIndex: 10001,
               background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'zoom-out',
@@ -928,7 +934,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
               </div>
             </div>
           </div>
-        )}
+          ); })()}
 
         <div className="chart-card flex flex-col">
           <h3>习惯追踪</h3>
