@@ -829,7 +829,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
         
         <div className="chart-card flex flex-col relative">
           <h3>习惯矩阵</h3>
-          <div className="flex-grow min-h-[380px] relative">
+          <div className="flex-grow min-h-[480px] relative">
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.5} />
