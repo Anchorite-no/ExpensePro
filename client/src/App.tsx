@@ -162,19 +162,13 @@ function AppContent() {
         date: item.date.split("T")[0],
         note: item.note || "",
       }));
-      // E2E 解密（masterKey 就绪时才解密，否则由 decryptExpense safety check 兜底）
+      // E2E 解密
       if (masterKey && encryption) {
         formatted = await decryptExpenses(formatted, masterKey);
       } else if (encryption && !masterKey) {
-        // 加密模式但密钥未就绪：用 safety check 将密文替换为友好提示，避免显示乱码
-        formatted = formatted.map((e: any) => {
-          const looksEncrypted = (s: unknown) =>
-            typeof s === 'string' && /^[A-Za-z0-9+/]+=*:[A-Za-z0-9+/]+=*:[A-Za-z0-9+/]+=*$/.test(s);
-          if (looksEncrypted(e.title) || looksEncrypted(e.category)) {
-            return { ...e, title: '【解密失败】', category: '加密数据', note: '请重新登录以恢复密钥' };
-          }
-          return e;
-        });
+        // 加密模式但密钥丢失（理论上不会到这里，因为 AuthContext 会强制重新登录）
+        logout();
+        return;
       }
       setExpenses(formatted);
     } catch (err) {

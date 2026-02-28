@@ -26,10 +26,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
     const storedUsername = localStorage.getItem('username');
+    const storedEncryption = localStorage.getItem('encryption') === 'true';
     if (storedToken && storedUsername) {
-      setToken(storedToken);
-      setUser({ username: storedUsername });
-      // Note: masterKey must be re-derived on each login (not stored in localStorage for security)
+      if (storedEncryption) {
+        // 加密模式：masterKey 无法持久化，必须重新登录输入密码派生密钥
+        localStorage.removeItem('token');
+        localStorage.removeItem('username');
+        localStorage.removeItem('encryption');
+      } else {
+        setToken(storedToken);
+        setUser({ username: storedUsername });
+      }
     }
     setIsLoading(false);
   }, []);
