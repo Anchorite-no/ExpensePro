@@ -888,7 +888,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
             <div
               onClick={e => e.stopPropagation()}
               style={{
-                width: '88%', maxWidth: 920, height: '72%',
+                width: '88%', maxWidth: 920, height: '88%',
                 background: isDark ? '#1e293b' : '#fff',
                 borderRadius: 16, padding: '24px 20px 20px',
                 boxShadow: '0 25px 60px rgba(0,0,0,0.3)',
@@ -1053,37 +1053,22 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
 
         <div className="chart-card flex flex-col">
           <h3>频率词云</h3>
-          <div className="flex-grow flex flex-wrap content-center justify-center gap-x-5 gap-y-3 px-4 py-6 chart-bg-wrapper rounded-xl min-h-[200px]" style={{borderStyle: 'dashed'}}>
-            {wordCloudData.map((tag, i) => {
-              // 多样化：按索引交替添加轻微旋转和样式变化
-              const rotation = [0, -8, 5, 0, -5, 8, 0, -3, 6, 0][i % 10];
-              const isLarge = tag.fontSize > 28;
-              const isMedium = tag.fontSize > 18;
-              return (
+          <div className="flex-grow flex flex-wrap content-center justify-center gap-4 px-4 py-6 chart-bg-wrapper rounded-xl min-h-[200px]" style={{borderStyle: 'dashed'}}>
+            {wordCloudData.map((tag, i) => (
               <span
                 key={i}
-                className="hover:scale-110 cursor-pointer select-none transition-transform"
+                className="hover:scale-110 cursor-pointer drop-shadow-sm select-none transition-transform"
                 style={{
                   fontSize: `${tag.fontSize}px`,
                   color: tag.color,
                   fontWeight: tag.fontSize > 22 ? 800 : (tag.fontSize > 16 ? 600 : 400),
-                  opacity: 0.8 + (tag.fontSize / 32) * 0.2,
-                  transform: `rotate(${rotation}deg)`,
-                  display: 'inline-block',
-                  letterSpacing: isLarge ? '2px' : undefined,
-                  textDecoration: (!isLarge && !isMedium && i % 3 === 0) ? 'underline' : undefined,
-                  textDecorationColor: tag.color,
-                  textDecorationThickness: '1.5px',
-                  textUnderlineOffset: '3px',
-                  fontStyle: (!isLarge && i % 5 === 2) ? 'italic' : undefined,
-                  filter: isLarge ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' : undefined,
+                  opacity: 0.8 + (tag.fontSize / 32) * 0.2
                 }}
-                title={`${tag.name} (出现 ${tag.count} 次)`}
+                title={`${tag.name} (出现 ${tag.count} 次, 共 ${currency}${Math.round(tag.amount)})`}
               >
-                {isLarge ? `「${tag.name}」` : `#${tag.name}`}
+                {tag.name}
               </span>
-              );
-            })}
+            ))}
           </div>
         </div>
 

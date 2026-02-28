@@ -302,6 +302,17 @@ html.dark .chart-bg-wrapper,
 .net-node .net-circle {
   transition: r 0.3s ease;
 }
+/* 词云悬停效果 */
+.tag-analysis-root .chart-bg-wrapper span[title] {
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+.tag-analysis-root .chart-bg-wrapper span[title]:hover {
+  transform: scale(1.2) !important;
+  filter: brightness(1.15) drop-shadow(0 2px 8px rgba(99, 102, 241, 0.35));
+  z-index: 10;
+  position: relative;
+}
+
 .space-y-6 > * + * { margin-top: 24px; }
 
 /* ==========================================
