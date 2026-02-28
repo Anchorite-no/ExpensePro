@@ -209,6 +209,7 @@ html.dark .chart-bg-wrapper,
 .pb-2 { padding-bottom: 8px; }
 .min-h-\[200px\] { min-height: 200px; }
 .min-h-\[300px\] { min-height: 300px; }
+.min-h-\[480px\] { min-height: 480px; }
 .min-w-max { min-width: max-content; }
 .w-4 { width: 16px; }
 .h-4 { height: 16px; }
