@@ -535,7 +535,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
         left: isFullscreen ? 0 : undefined,
         right: isFullscreen ? 0 : undefined,
         bottom: isFullscreen ? 0 : undefined,
-        zIndex: isFullscreen ? 9999 : undefined,
+        zIndex: isFullscreen ? 10001 : undefined,
         width: isFullscreen ? '100vw' : '100%',
         height: isFullscreen ? '100vh' : dimensions.height,
         borderRadius: isFullscreen ? 0 : undefined,
@@ -554,7 +554,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       <button
         onClick={toggleFullscreen}
         style={{
-          position: 'absolute', top: 8, right: 8, zIndex: 50,
+          position: 'absolute', top: isFullscreen ? 'max(12px, env(safe-area-inset-top, 12px))' : 8, right: 8, zIndex: 10000,
           padding: 6, borderRadius: 6, cursor: 'pointer',
           background: 'none', border: 'none',
           color: isDark ? '#64748b' : '#94a3b8',
@@ -578,7 +578,7 @@ const CustomOrganicNetwork = ({ expenses, theme }: any) => {
       {/* 右下角缩放指示 + 重置 */}
       <div
         style={{
-          position: 'absolute', bottom: 8, right: 8, zIndex: 50,
+          position: 'absolute', bottom: isFullscreen ? 'max(12px, env(safe-area-inset-bottom, 12px))' : 8, right: 8, zIndex: 10000,
           display: 'flex', alignItems: 'center', gap: 6,
           color: isDark ? '#64748b' : '#94a3b8',
           fontSize: 12, pointerEvents: 'auto',

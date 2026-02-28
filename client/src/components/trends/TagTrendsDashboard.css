@@ -43,6 +43,13 @@
   grid-template-columns: 8fr 6fr;
 }
 
+/* 移动端：四卡片竖向单列排列 */
+@media (max-width: 768px) {
+  .tag-analysis-root .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Ensure no double gaps */
 .tag-analysis-root > .chart-card:last-child,
 .tag-analysis-root .charts-grid:last-child {
