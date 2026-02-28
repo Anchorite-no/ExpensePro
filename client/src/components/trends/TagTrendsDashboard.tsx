@@ -888,7 +888,7 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
             <div
               onClick={e => e.stopPropagation()}
               style={{
-                width: '88%', maxWidth: 920, height: '88%',
+                width: '88%', maxWidth: 920, height: '72%',
                 background: isDark ? '#1e293b' : '#fff',
                 borderRadius: 16, padding: '24px 20px 20px',
                 boxShadow: '0 25px 60px rgba(0,0,0,0.3)',

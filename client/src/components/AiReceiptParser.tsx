@@ -248,7 +248,7 @@ interface ImageEntry {
 interface AiReceiptParserProps {
   theme: "light" | "dark";
   categories: Record<string, string>;
-  onAddExpense: (title: string, amount: number, category: string, date?: string) => void;
+  onAddExpense: (title: string, amount: number, category: string, date?: string, note?: string) => void;
   currency: string;
   token: string | null;
   tags: string[];

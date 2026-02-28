@@ -42,7 +42,7 @@ export default function QuickAddCard({ categories, onAdd, currency, theme, token
       <AiReceiptParser 
         theme={theme} 
         categories={categories} 
-        onAddExpense={(t, a, c, d) => onAdd(t, a, c, d)} 
+        onAddExpense={(t, a, c, d, n) => onAdd(t, a, c, d, n)}
         currency={currency} 
         token={token}
         tags={tags}
