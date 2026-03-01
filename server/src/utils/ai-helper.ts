@@ -15,7 +15,7 @@ export function buildPrompt(categories?: string[]): string {
       "amount": 金额数字（不带货币符号），
       "category": "分类",
       "date": "YYYY-MM-DD 格式的日期，如果图片中只有月日没有年份，请默认为当年（${new Date().getFullYear()}年）",
-      "note": "备注标签，格式为 #标签1 #标签2"
+      "note": "备注标签，格式为 #标签1 #标签2（注意：标签绝不能与分类名称相同）"
     }
   ]
 }
@@ -34,7 +34,7 @@ export function buildPrompt(categories?: string[]): string {
    - 娱乐：电影、KTV、游戏、流媒体会员
    - 服务订阅：软件订阅、会员费、iCloud
    - 投资：理财、股票、基金
-6. 必须为每条记录生成 1-2 个备注标签（note 字段），用于后续分析。标签应反映消费的具体场景或用途，例如：
+6. 必须为每条记录生成 1-2 个备注标签（note 字段），用于后续分析。标签应反映消费的具体场景或用途，且标签内容绝对不能与当前所选的分类（category）名称相同，例如：
    - 打车 → #通勤 或 #出行
    - 美团外卖 → #外卖
    - 星巴克 → #咖啡

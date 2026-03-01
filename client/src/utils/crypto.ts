@@ -79,7 +79,7 @@ export async function encryptExpense(
         encryptString(expense.category, masterKey),
     ]);
     let note: string | undefined;
-    if (expense.note) {
+    if (expense.note && expense.note.trim() !== '') {
         note = await encryptString(expense.note, masterKey);
     }
     return { title, category, note };
