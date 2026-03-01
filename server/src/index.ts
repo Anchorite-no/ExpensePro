@@ -1,3 +1,7 @@
+import dotenv from "dotenv";
+// 必须在所有其他模块之前加载 .env，确保环境变量对全局可用
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
 import path from "path";
