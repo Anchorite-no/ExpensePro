@@ -44,8 +44,9 @@ console.log("Cleanup done.\n");
 
 // ---- Launch npm start ----
 const isWin = os.platform() === "win32";
-const child = spawn(isWin ? "npm.cmd" : "npm", ["start"], {
+const child = spawn("npm start", {
   stdio: "inherit",
+  shell: true,
   // Do NOT detach — we want the child tied to this process
 });
 
