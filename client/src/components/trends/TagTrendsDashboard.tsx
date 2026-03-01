@@ -6,7 +6,8 @@ import * as d3Zoom from "d3-zoom";
 import "d3-transition";
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, ZAxis,
-  ReferenceLine, ReferenceArea, BarChart, Bar, Cell, Tooltip as RechartsTooltip, ResponsiveContainer
+  ReferenceLine, ReferenceArea, BarChart, Bar, Cell, Tooltip as RechartsTooltip, ResponsiveContainer,
+  AreaChart, Area
 } from "recharts";
 import { extractTags } from "../../utils/tags";
 import "./TagTrendsDashboard.css";
@@ -789,6 +790,43 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
     return data;
   }, [heatmapTag, dailyData, timeRange]);
 
+  // 星期分布（所有视图）
+  const weekdayDist = useMemo(() => {
+    if (!heatmapTag) return null;
+    const dist = [0, 0, 0, 0, 0, 0, 0]; // 索引 0=周一, 6=周日
+    Object.entries(dailyData).forEach(([date, tags]) => {
+      const count = tags[heatmapTag] || 0;
+      if (count > 0) {
+        const dow = new Date(date).getDay(); // 0=Sun
+        dist[dow === 0 ? 6 : dow - 1] += count;
+      }
+    });
+    return dist;
+  }, [dailyData, heatmapTag]);
+
+  // 周同比（仅单周视图）
+  const weekCompare = useMemo(() => {
+    if (timeRange !== 'current-week' || !heatmapTag) return null;
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const todayDow = now.getDay() || 7;
+
+    let thisWeek = 0, lastWeek = 0;
+    for (let d = 0; d < 7; d++) {
+      const tw = new Date(now);
+      tw.setDate(now.getDate() - (todayDow - 1 - d));
+      const twStr = new Date(tw.getTime() - (tw.getTimezoneOffset() * 60000)).toISOString().substring(0, 10);
+      thisWeek += dailyData[twStr]?.[heatmapTag] || 0;
+      const lw = new Date(tw);
+      lw.setDate(tw.getDate() - 7);
+      const lwStr = new Date(lw.getTime() - (lw.getTimezoneOffset() * 60000)).toISOString().substring(0, 10);
+      lastWeek += dailyData[lwStr]?.[heatmapTag] || 0;
+    }
+    const diff = thisWeek - lastWeek;
+    const pct = lastWeek > 0 ? ((diff / lastWeek) * 100).toFixed(1) : (thisWeek > 0 ? '+∞' : '0');
+    return { thisWeek, lastWeek, diff, pct };
+  }, [dailyData, heatmapTag, timeRange]);
+
   const isMonthView = timeRange === 'current-month';
 
   const getHeatmapColor = (count: number) => {
@@ -936,114 +974,260 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
           </div>
           ); })()}
 
-        <div className="chart-card flex flex-col">
-          <h3>习惯追踪</h3>
-          <div className="heatmap-top-controls">
-            <div className="heatmap-select-wrapper">
-              <Select 
-                value={heatmapTag} 
-                onChange={setHeatmapTag} 
-                options={allTags.map((tag, i) => ({ value: tag, label: `#${tag}`, color: COLOR_PALETTE[i % COLOR_PALETTE.length] }))}
-                placeholder="选择标签..."
-              />
-            </div>
-            <div className="heatmap-legend">
-              <span className="heatmap-legend-label">少</span>
-              <div className="heatmap-legend-cell" style={{ backgroundColor: isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(241, 245, 249, 1)' }} />
-              <div className="heatmap-legend-cell" style={{ backgroundColor: 'rgba(99, 102, 241, 0.3)' }} />
-              <div className="heatmap-legend-cell" style={{ backgroundColor: 'rgba(99, 102, 241, 0.6)' }} />
-              <div className="heatmap-legend-cell" style={{ backgroundColor: 'rgba(99, 102, 241, 1)' }} />
-              <span className="heatmap-legend-label">多</span>
+        <div className="chart-card flex flex-col habit-track-card gap-6">
+          <div className="flex flex-col gap-2">
+            <h3>习惯追踪</h3>
+            <div className="heatmap-top-controls">
+              <div className="heatmap-select-wrapper">
+                <Select
+                  value={heatmapTag}
+                  onChange={setHeatmapTag}
+                  options={allTags.map((tag, i) => ({ value: tag, label: `#${tag}`, color: COLOR_PALETTE[i % COLOR_PALETTE.length] }))}
+                  placeholder="选择标签..."
+                />
+              </div>
+              <div className="heatmap-legend">
+                <span className="heatmap-legend-label">少</span>
+                <div className="heatmap-legend-cell" style={{ backgroundColor: isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(241, 245, 249, 1)' }} />
+                <div className="heatmap-legend-cell" style={{ backgroundColor: 'rgba(99, 102, 241, 0.3)' }} />
+                <div className="heatmap-legend-cell" style={{ backgroundColor: 'rgba(99, 102, 241, 0.6)' }} />
+                <div className="heatmap-legend-cell" style={{ backgroundColor: 'rgba(99, 102, 241, 1)' }} />
+                <span className="heatmap-legend-label">多</span>
+              </div>
             </div>
           </div>
-          <div className="flex-1 overflow-x-auto w-full custom-scrollbar heatmap-container">
-            {isMonthView ? (
-              <div className="heatmap-calendar">
-                <div className="heatmap-calendar-header">
-                  <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
-                </div>
-                {heatmapGridData.map((week, wIndex) => (
-                  <div key={wIndex} className="heatmap-calendar-row">
-                    {week.map((day) => (
-                      <div 
-                        key={day.id} 
-                        className={`heatmap-cell ${day.count < 0 ? 'heatmap-cell-empty' : ''}`}
-                        style={{ backgroundColor: getHeatmapColor(day.count) }} 
-                        data-tooltip={day.date ? `${day.date}: ${day.count} 次` : undefined}
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            ) : timeRange === 'current-week' ? (
-              <div className="flex flex-col gap-4">
-                <div className="heatmap-single-week">
-                  <div className="heatmap-single-week-header">
-                    <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
-                  </div>
-                  <div className="heatmap-single-week-row">
-                    {heatmapGridData[0]?.map((day) => (
-                      <div 
-                        key={day.id} 
-                        className="heatmap-cell" 
-                        style={{ backgroundColor: getHeatmapColor(day.count) }} 
-                        data-tooltip={`${day.date}: ${day.count} 次`}
-                      />
-                    ))}
+
+          {/* 星期分布与热力区布局 */}
+          {timeRange === 'current-week' ? (
+            /* 单周视图：上下结构。上部分分为左右，下部分是星期点阵 */
+            <div className="flex flex-col gap-6 w-full">
+              {/* 上半部：左右分栏 */}
+              <div className="flex flex-row flex-wrap gap-4 w-full">
+                {/* 左侧：热力图及其Top3 */}
+                <div className="flex-[2] min-w-[280px]">
+                  <div className="flex-1 overflow-x-auto w-full custom-scrollbar heatmap-container">
+                    <div className="flex flex-col gap-4">
+                      <div className="heatmap-single-week">
+                        <div className="heatmap-single-week-header">
+                          <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+                        </div>
+                        <div className="heatmap-single-week-row">
+                          {heatmapGridData[0]?.map((day) => (
+                            <div
+                              key={day.id}
+                              className="heatmap-cell"
+                              style={{ backgroundColor: getHeatmapColor(day.count) }}
+                              data-tooltip={`${day.date}: ${day.count} 次`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      <div
+                        className="text-sm mt-2 font-bold"
+                        style={{ color: 'var(--primary)', display: 'inline-block' }}
+                      >
+                        Top 3 活跃标签
+                      </div>
+                      <div className="flex flex-col gap-2 -mt-1">
+                        {allTags.slice(0, 3).map(tag => {
+                          const tagData = heatmapGridData[0]?.map(day => {
+                            const count = dailyData[day.date]?.[tag] || 0;
+                            return { ...day, count };
+                          });
+                          return (
+                            <div className="heatmap-single-week" key={tag}>
+                              <div className="heatmap-single-week-header" style={{opacity: 0.6}}>
+                                <span style={{width: 'auto', minWidth: '40px', paddingRight: '8px', textAlign: 'left', fontWeight: 'bold'}}>#{tag}</span>
+                              </div>
+                              <div className="heatmap-single-week-row">
+                                {tagData?.map((day) => (
+                                  <div
+                                    key={day.id}
+                                    className="heatmap-cell"
+                                    style={{ backgroundColor: getHeatmapColor(day.count) }}
+                                    data-tooltip={`${day.date}: ${day.count} 次 (#${tag})`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* 增加 Top 2/3 热力图补充单周模式下的空白 */}
-                <div
-                  className="text-sm mt-2 font-bold"
-                  style={{ color: 'var(--primary)', display: 'inline-block' }}
-                >
-                  Top 3 活跃标签
-                </div>
-                <div className="flex flex-col gap-2 -mt-1">
-                  {allTags.slice(0, 3).map(tag => {
-                  const tagData = heatmapGridData[0]?.map(day => {
-                    const count = dailyData[day.date]?.[tag] || 0;
-                    return { ...day, count };
-                  });
-                  return (
-                    <div className="heatmap-single-week" key={tag}>
-                      <div className="heatmap-single-week-header" style={{opacity: 0.6}}>
-                        <span style={{width: 'auto', minWidth: '40px', paddingRight: '8px', textAlign: 'left', fontWeight: 'bold'}}>#{tag}</span>
+                {/* 右侧：周同比卡片（占据右侧空间） */}
+                {weekCompare && (
+                  <div className="flex-1 min-w-[160px] flex items-center justify-center">
+                    <div className="week-compare-card">
+                      <div className="week-compare-title">周同比</div>
+                      <div>
+                        <span className="week-compare-value">{weekCompare.thisWeek}</span>
+                        <span className="week-compare-value-unit">次</span>
                       </div>
-                      <div className="heatmap-single-week-row">
-                        {tagData?.map((day) => (
-                          <div 
-                            key={day.id} 
-                            className="heatmap-cell" 
-                            style={{ backgroundColor: getHeatmapColor(day.count) }} 
-                            data-tooltip={`${day.date}: ${day.count} 次 (#${tag})`}
-                          />
-                        ))}
+                      <div className="week-compare-last">上周 {weekCompare.lastWeek} 次</div>
+                      <div className={`week-compare-diff ${weekCompare.diff > 0 ? 'up' : weekCompare.diff < 0 ? 'down' : 'flat'}`}>
+                        {weekCompare.diff > 0 ? '↑' : weekCompare.diff < 0 ? '↓' : '→'}
+                        {' '}
+                        {weekCompare.diff > 0 ? '+' : ''}{weekCompare.pct === '+∞' ? '+∞' : `${weekCompare.pct}%`}
                       </div>
                     </div>
-                  );
-                })}
-                </div>
-              </div>
-            ) : (
-              <div className="heatmap-grid">
-                <div className="heatmap-day-labels"><span>一</span><span>三</span><span>五</span><span>日</span></div>
-                {heatmapGridData.map((week, wIndex) => (
-                  <div key={wIndex} className="heatmap-week-col">
-                    {week.map((day) => (
-                      <div 
-                        key={day.id} 
-                        className="heatmap-cell" 
-                        style={{ backgroundColor: getHeatmapColor(day.count) }} 
-                        data-tooltip={`${day.date}: ${day.count} 次`}
-                      />
-                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </div>
+
+              {/* 下半部：星期波动流体图 */}
+              <div className="w-full pt-4 mt-2 h-[140px] min-h-[140px] flex-shrink-0 relative">
+                {weekdayDist && (() => {
+                  const labels = ['一', '二', '三', '四', '五', '六', '日'];
+                  const areaData = weekdayDist.map((count, i) => ({
+                    name: labels[i],
+                    count: count
+                  }));
+                  // 判断是否全为 0，避免全 0 时 chart.js 渲染异常或撑不起来
+                  const isAllZero = areaData.every(d => d.count === 0);
+
+                  return (
+                    <ResponsiveContainer width="100%" height="100%" minHeight={140}>
+                      <AreaChart data={areaData} margin={{ top: 10, right: 15, left: 15, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorFreq1" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={isDark ? 0.6 : 0.4}/>
+                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: axisColor, fontSize: 13, fontWeight: 500}} dy={5} />
+                        <YAxis hide domain={[0, isAllZero ? 1 : 'dataMax + 1']} />
+                        <RechartsTooltip
+                          cursor={{ stroke: '#8b5cf6', strokeWidth: 1, strokeDasharray: '4 4' }}
+                          content={({ active, payload, label }) => {
+                            if (active && payload && payload.length) {
+                              return (
+                                <div className="custom-tooltip" style={{ padding: '4px 10px', fontSize: '12px', background: isDark ? 'rgba(30,41,59,0.95)' : 'rgba(255,255,255,0.95)', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, borderRadius: '6px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontWeight: 600, color: isDark ? '#f1f5f9' : '#1e293b' }}>{label}</span>
+                                    <span style={{ color: '#8b5cf6', fontWeight: 600 }}>{payload[0].value} 次</span>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="count"
+                          stroke="#8b5cf6"
+                          strokeWidth={3}
+                          fillOpacity={1}
+                          fill="url(#colorFreq1)"
+                          isAnimationActive={true}
+                          activeDot={{ r: 6, fill: "#8b5cf6", stroke: isDark ? "#1e293b" : "#ffffff", strokeWidth: 2 }}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  );
+                })()}
+              </div>
+            </div>
+          ) : (
+            /* 月/3月/全部视图 */
+            <div className="flex-1 overflow-x-auto w-full custom-scrollbar heatmap-container flex flex-col gap-6">
+
+              {/* 上半部：热力图 */}
+              {isMonthView ? (
+                <div className="heatmap-calendar">
+                  <div className="heatmap-calendar-header">
+                    <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+                  </div>
+                  {heatmapGridData.map((week, wIndex) => (
+                    <div key={wIndex} className="heatmap-calendar-row">
+                      {week.map((day) => (
+                        <div
+                          key={day.id}
+                          className={`heatmap-cell ${day.count < 0 ? 'heatmap-cell-empty' : ''}`}
+                          style={{ backgroundColor: getHeatmapColor(day.count) }}
+                          data-tooltip={day.date ? `${day.date}: ${day.count} 次` : undefined}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="heatmap-grid">
+                  <div className="heatmap-day-labels"><span>一</span><span>三</span><span>五</span><span>日</span></div>
+                  {heatmapGridData.map((week, wIndex) => (
+                    <div key={wIndex} className="heatmap-week-col">
+                      {week.map((day) => (
+                        <div
+                          key={day.id}
+                          className="heatmap-cell"
+                          style={{ backgroundColor: getHeatmapColor(day.count) }}
+                          data-tooltip={`${day.date}: ${day.count} 次`}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 下半部：星期波动流体图 */}
+              <div className="w-full pt-4 mt-2 h-[140px] min-h-[140px] flex-shrink-0 relative">
+                {weekdayDist && (() => {
+                  const labels = ['一', '二', '三', '四', '五', '六', '日'];
+                  const areaData = weekdayDist.map((count, i) => ({
+                    name: labels[i],
+                    count: count
+                  }));
+                  // 判断是否全为 0，避免全 0 时 chart.js 渲染异常或撑不起来
+                  const isAllZero = areaData.every(d => d.count === 0);
+
+                  return (
+                    <ResponsiveContainer width="100%" height="100%" minHeight={140}>
+                      <AreaChart data={areaData} margin={{ top: 10, right: 15, left: 15, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorFreq2" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={isDark ? 0.6 : 0.4}/>
+                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: axisColor, fontSize: 13, fontWeight: 500}} dy={5} />
+                        <YAxis hide domain={[0, isAllZero ? 1 : 'dataMax + 1']} />
+                        <RechartsTooltip
+                          cursor={{ stroke: '#8b5cf6', strokeWidth: 1, strokeDasharray: '4 4' }}
+                          content={({ active, payload, label }) => {
+                            if (active && payload && payload.length) {
+                              return (
+                                <div className="custom-tooltip" style={{ padding: '4px 10px', fontSize: '12px', background: isDark ? 'rgba(30,41,59,0.95)' : 'rgba(255,255,255,0.95)', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, borderRadius: '6px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontWeight: 600, color: isDark ? '#f1f5f9' : '#1e293b' }}>{label}</span>
+                                    <span style={{ color: '#8b5cf6', fontWeight: 600 }}>{payload[0].value} 次</span>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="count"
+                          stroke="#8b5cf6"
+                          strokeWidth={3}
+                          fillOpacity={1}
+                          fill="url(#colorFreq2)"
+                          isAnimationActive={true}
+                          activeDot={{ r: 6, fill: "#8b5cf6", stroke: isDark ? "#1e293b" : "#ffffff", strokeWidth: 2 }}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
         </div>
 
       </div>
