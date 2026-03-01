@@ -1,4 +1,5 @@
 import { Router } from "express";
+import net from "net";
 import { ProxyAgent, fetch as undiciFetch } from "undici";
 import { buildPrompt, parseDataUrl, extractJson } from "../utils/ai-helper";
 
@@ -10,16 +11,48 @@ function getServerAiKey() { return process.env.SERVER_AI_KEY || ""; }
 function getAiBaseUrl() { return process.env.AI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta"; }
 function getProxyUrl() { return process.env.HTTPS_PROXY || process.env.HTTP_PROXY || ""; }
 
+// ---- 本地代理自动探测 ----
+const LOCAL_PROXY = "http://127.0.0.1:7890";
+let _probeResult: boolean | null = null;  // null=未探测, true=可用, false=不可用
+
+/** 探测本地 7890 端口是否在监听（仅执行一次，200ms 超时） */
+function probeLocalProxy(): Promise<boolean> {
+  if (_probeResult !== null) return Promise.resolve(_probeResult);
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ host: "127.0.0.1", port: 7890 }, () => {
+      socket.destroy();
+      _probeResult = true;
+      resolve(true);
+    });
+    socket.on("error", () => { _probeResult = false; resolve(false); });
+    socket.setTimeout(200, () => { socket.destroy(); _probeResult = false; resolve(false); });
+  });
+}
+
 // 缓存 ProxyAgent 实例，避免每次请求都创建
 let _cachedProxyUrl: string | null = null;
 let _cachedDispatcher: ProxyAgent | undefined;
-function getProxyDispatcher(): ProxyAgent | undefined {
-  const url = getProxyUrl();
+function buildDispatcher(url: string): ProxyAgent | undefined {
   if (url !== _cachedProxyUrl) {
     _cachedProxyUrl = url;
     _cachedDispatcher = url ? new ProxyAgent(url) : undefined;
   }
   return _cachedDispatcher;
+}
+
+/**
+ * 获取当前应使用的代理 dispatcher
+ * 优先级：环境变量 > 本地 7890 自动探测（仅非 production）
+ */
+async function getProxyDispatcher(): Promise<ProxyAgent | undefined> {
+  const envProxy = getProxyUrl();
+  if (envProxy) return buildDispatcher(envProxy);
+  // 非 production 时自动探测本地常见代理端口
+  if (process.env.NODE_ENV !== "production") {
+    const ok = await probeLocalProxy();
+    if (ok) return buildDispatcher(LOCAL_PROXY);
+  }
+  return undefined;
 }
 
 // AI 状态端点 (无需认证)
@@ -71,15 +104,15 @@ router.post("/parse-receipt", async (req: any, res: any) => {
     };
 
     const proxyUrl = getProxyUrl();
+    const dispatcher = await getProxyDispatcher();
+    const actualProxy = dispatcher ? (_cachedProxyUrl || proxyUrl) : "(none)";
     console.log("[AI] request:", {
       model: modelName,
       mimeType,
       base64Length: base64.length,
       baseUrl,
-      proxy: proxyUrl || "(none)",
+      proxy: actualProxy,
     });
-
-    const dispatcher = getProxyDispatcher();
 
     const maxRetries = 3;
     for (let i = 0; i < maxRetries; i++) {
