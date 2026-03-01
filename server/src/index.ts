@@ -26,8 +26,9 @@ app.use("/api/ai", aiRoutes);
 const clientBuildPath = path.join(__dirname, "../public");
 app.use(express.static(clientBuildPath));
 
-// 所有未匹配的 API 请求，都返回 React 的 index.html (支持 SPA 路由)
-app.get(/(.*)/, (req, res) => {
+// SPA 兜底：未匹配的非 API 请求返回 index.html（支持前端路由）
+// 排除 /api/ 前缀，避免吞掉 API GET 端点（如 /api/ai/debug）
+app.get(/^\/(?!api\/).*/, (_req, res) => {
   res.sendFile(path.join(clientBuildPath, "index.html"));
 });
 
