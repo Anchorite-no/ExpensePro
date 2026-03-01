@@ -1091,74 +1091,46 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
 
                   return (
                     <ResponsiveContainer width="100%" height="100%" minHeight={140}>
-                      <BarChart data={areaData} margin={{ top: 15, right: 15, left: 15, bottom: 0 }} barCategoryGap="5%" barGap={2}>
+                      <AreaChart data={areaData} margin={{ top: 15, right: 15, left: 15, bottom: 0 }}>
                         <defs>
+                          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#6366f1" floodOpacity="0.12" />
+                            <feDropShadow dx="0" dy="0" stdDeviation="2" floodColor="#6366f1" floodOpacity="0.2" />
+                          </filter>
                           <linearGradient id="eqGradient1" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#8b5cf6" stopOpacity={1}/>
-                            <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.1}/>
+                            <stop offset="0%" stopColor="#6366f1" stopOpacity={0.15}/>
+                            <stop offset="100%" stopColor="#6366f1" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: axisColor, fontSize: 13, fontWeight: 500}} dy={5} />
                         <YAxis hide domain={[0, isAllZero ? 1 : 'dataMax + 1']} />
                         <RechartsTooltip
-                          cursor={{ fill: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)' }}
+                          cursor={{ stroke: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)', strokeWidth: 1, strokeDasharray: '4 4' }}
                           content={({ active, payload }) => {
                             if (active && payload && payload.length) {
                               return (
-                                <div className="custom-tooltip" style={{ padding: '4px 10px', fontSize: '13px', background: isDark ? 'rgba(30,41,59,0.95)' : 'rgba(255,255,255,0.95)', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, borderRadius: '6px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
-                                  <span style={{ color: '#8b5cf6', fontWeight: 600 }}>{payload[0].value} 次</span>
+                                <div className="custom-tooltip" style={{ padding: '4px 10px', fontSize: '13px', background: isDark ? 'rgba(30,41,59,0.75)' : 'rgba(255,255,255,0.75)', backdropFilter: 'blur(8px)', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, borderRadius: '6px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)' }}>
+                                  <span style={{ color: '#6366f1', fontWeight: 600 }}>{payload[0].value} 次</span>
                                 </div>
                               );
                             }
                             return null;
                           }}
                         />
-                        {/* 我们通过渲染极其密集的细柱状模拟一根柱子其实由很多刻度拼成的感觉 */}
-                        <Bar
+                        <Area
+                          type="natural"
                           dataKey="count"
+                          stroke="rgba(99, 102, 241, 0.85)"
+                          strokeWidth={2}
+                          fillOpacity={1}
                           fill="url(#eqGradient1)"
-                          radius={[4, 4, 4, 4]}
+                          style={{ filter: 'url(#glow)' }}
+                          activeDot={{ r: 5, fill: "rgba(99, 102, 241, 0.9)", stroke: isDark ? "#1e293b" : "#ffffff", strokeWidth: 2 }}
                           isAnimationActive={true}
                           animationDuration={800}
                           animationEasing="ease-out"
-                          shape={(props: any) => {
-                            const { x, y, width, height, fill } = props;
-                            // 每根主柱体，切割成数个微细的小竖条（如音频网格一样密集）
-                            const TICK_WIDTH = 4;
-                            const TICK_GAP = 2;
-                            const ticks = Math.floor(width / (TICK_WIDTH + TICK_GAP));
-                            const actualWidth = ticks * TICK_WIDTH + (ticks - 1) * TICK_GAP;
-                            const startX = x + (width - actualWidth) / 2; // 居中
-
-                            // 如果高度不够，只画底部的一根
-                            if (height < 2) {
-                              return <rect x={x} y={y} width={width} height={height} fill={fill} rx={2} ry={2} />;
-                            }
-
-                            const bars = [];
-                            for (let i = 0; i < ticks; i++) {
-                              // 添加细微的高度差让边缘呈抛物线状，更有音频感
-                              const centerDist = Math.abs((i - (ticks - 1) / 2) / ((ticks - 1) / 2 || 1));
-                              const heightScale = 1 - Math.pow(centerDist, 2) * 0.3; // 边缘最低下降 30%
-                              const tickHeight = height * heightScale;
-                              const tickY = y + (height - tickHeight);
-                              bars.push(
-                                <rect
-                                  key={i}
-                                  x={startX + i * (TICK_WIDTH + TICK_GAP)}
-                                  y={tickY}
-                                  width={TICK_WIDTH}
-                                  height={tickHeight}
-                                  fill={fill}
-                                  rx={2}
-                                  ry={2}
-                                />
-                              );
-                            }
-                            return <g>{bars}</g>;
-                          }}
                         />
-                      </BarChart>
+                      </AreaChart>
                     </ResponsiveContainer>
                   );
                 })()}
@@ -1218,75 +1190,46 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
 
                   return (
                     <ResponsiveContainer width="100%" height="100%" minHeight={140}>
-                      <BarChart data={areaData} margin={{ top: 15, right: 15, left: 15, bottom: 0 }} barCategoryGap="5%" barGap={2}>
+                      <AreaChart data={areaData} margin={{ top: 15, right: 15, left: 15, bottom: 0 }}>
                         <defs>
+                          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#6366f1" floodOpacity="0.12" />
+                            <feDropShadow dx="0" dy="0" stdDeviation="2" floodColor="#6366f1" floodOpacity="0.2" />
+                          </filter>
                           <linearGradient id="eqGradient2" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#8b5cf6" stopOpacity={1}/>
-                            <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.1}/>
+                            <stop offset="0%" stopColor="#6366f1" stopOpacity={0.15}/>
+                            <stop offset="100%" stopColor="#6366f1" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: axisColor, fontSize: 13, fontWeight: 500}} dy={5} />
                         <YAxis hide domain={[0, isAllZero ? 1 : 'dataMax + 1']} />
                         <RechartsTooltip
-                          cursor={{ fill: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)' }}
+                          cursor={{ stroke: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)', strokeWidth: 1, strokeDasharray: '4 4' }}
                           content={({ active, payload }) => {
                             if (active && payload && payload.length) {
                               return (
-                                <div className="custom-tooltip" style={{ padding: '4px 10px', fontSize: '13px', background: isDark ? 'rgba(30,41,59,0.95)' : 'rgba(255,255,255,0.95)', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, borderRadius: '6px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
-                                  <span style={{ color: '#8b5cf6', fontWeight: 600 }}>{payload[0].value} 次</span>
+                                <div className="custom-tooltip" style={{ padding: '4px 10px', fontSize: '13px', background: isDark ? 'rgba(30,41,59,0.75)' : 'rgba(255,255,255,0.75)', backdropFilter: 'blur(8px)', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, borderRadius: '6px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)' }}>
+                                  <span style={{ color: '#6366f1', fontWeight: 600 }}>{payload[0].value} 次</span>
                                 </div>
                               );
                             }
                             return null;
                           }}
                         />
-                        {/* 我们通过渲染极其密集的细柱状模拟一根柱子其实由很多刻度拼成的感觉 */}
-                        <Bar
+                        <Area
+                          type="natural"
                           dataKey="count"
+                          stroke="rgba(99, 102, 241, 0.85)"
+                          strokeWidth={2}
+                          fillOpacity={1}
                           fill="url(#eqGradient2)"
-                          radius={[4, 4, 4, 4]}
+                          style={{ filter: 'url(#glow)' }}
+                          activeDot={{ r: 5, fill: "rgba(99, 102, 241, 0.9)", stroke: isDark ? "#1e293b" : "#ffffff", strokeWidth: 2 }}
                           isAnimationActive={true}
                           animationDuration={800}
                           animationEasing="ease-out"
-                          shape={(props: any) => {
-                            const { x, y, width, height, fill } = props;
-                            // 每根主柱体，切割成数个微细的小竖条（如音频网格一样密集）
-                            const TICK_WIDTH = 4;
-                            const TICK_GAP = 2;
-                            const ticks = Math.floor(width / (TICK_WIDTH + TICK_GAP));
-                            if (ticks <= 0) return <g />;
-                            const actualWidth = ticks * TICK_WIDTH + (ticks - 1) * TICK_GAP;
-                            const startX = x + (width - actualWidth) / 2; // 居中
-
-                            // 如果高度不够，只画底部的一根
-                            if (height < 2) {
-                              return <rect x={x} y={y} width={width} height={height} fill={fill} rx={2} ry={2} />;
-                            }
-
-                            const bars = [];
-                            for (let i = 0; i < ticks; i++) {
-                              // 添加细微的高度差让边缘呈抛物线状，更有音频感
-                              const centerDist = Math.abs((i - (ticks - 1) / 2) / ((ticks - 1) / 2 || 1));
-                              const heightScale = 1 - Math.pow(centerDist, 2) * 0.3; // 边缘最低下降 30%
-                              const tickHeight = height * heightScale;
-                              const tickY = y + (height - tickHeight);
-                              bars.push(
-                                <rect
-                                  key={i}
-                                  x={startX + i * (TICK_WIDTH + TICK_GAP)}
-                                  y={tickY}
-                                  width={TICK_WIDTH}
-                                  height={tickHeight}
-                                  fill={fill}
-                                  rx={2}
-                                  ry={2}
-                                />
-                              );
-                            }
-                            return <g>{bars}</g>;
-                          }}
                         />
-                      </BarChart>
+                      </AreaChart>
                     </ResponsiveContainer>
                   );
                 })()}
