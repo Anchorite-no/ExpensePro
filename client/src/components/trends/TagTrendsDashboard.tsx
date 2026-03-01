@@ -1091,42 +1091,37 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
 
                   return (
                     <ResponsiveContainer width="100%" height="100%" minHeight={140}>
-                      <AreaChart data={areaData} margin={{ top: 10, right: 15, left: 15, bottom: 0 }}>
+                      <BarChart data={areaData} margin={{ top: 15, right: 15, left: 15, bottom: 0 }} barCategoryGap="30%">
                         <defs>
-                          <linearGradient id="colorFreq1" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={isDark ? 0.6 : 0.4}/>
-                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                          <linearGradient id="eqGradient1" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.9}/>
+                            <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.15}/>
                           </linearGradient>
                         </defs>
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: axisColor, fontSize: 13, fontWeight: 500}} dy={5} />
                         <YAxis hide domain={[0, isAllZero ? 1 : 'dataMax + 1']} />
                         <RechartsTooltip
-                          cursor={{ stroke: '#8b5cf6', strokeWidth: 1, strokeDasharray: '4 4' }}
-                          content={({ active, payload, label }) => {
+                          cursor={{ fill: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)' }}
+                          content={({ active, payload }) => {
                             if (active && payload && payload.length) {
                               return (
-                                <div className="custom-tooltip" style={{ padding: '4px 10px', fontSize: '12px', background: isDark ? 'rgba(30,41,59,0.95)' : 'rgba(255,255,255,0.95)', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, borderRadius: '6px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ fontWeight: 600, color: isDark ? '#f1f5f9' : '#1e293b' }}>{label}</span>
-                                    <span style={{ color: '#8b5cf6', fontWeight: 600 }}>{payload[0].value} 次</span>
-                                  </div>
+                                <div className="custom-tooltip" style={{ padding: '4px 10px', fontSize: '13px', background: isDark ? 'rgba(30,41,59,0.95)' : 'rgba(255,255,255,0.95)', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, borderRadius: '6px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
+                                  <span style={{ color: '#8b5cf6', fontWeight: 600 }}>{payload[0].value} 次</span>
                                 </div>
                               );
                             }
                             return null;
                           }}
                         />
-                        <Area
-                          type="monotone"
+                        <Bar
                           dataKey="count"
-                          stroke="#8b5cf6"
-                          strokeWidth={3}
-                          fillOpacity={1}
-                          fill="url(#colorFreq1)"
+                          fill="url(#eqGradient1)"
+                          radius={[6, 6, 6, 6]}
                           isAnimationActive={true}
-                          activeDot={{ r: 6, fill: "#8b5cf6", stroke: isDark ? "#1e293b" : "#ffffff", strokeWidth: 2 }}
+                          animationDuration={800}
+                          animationEasing="ease-out"
                         />
-                      </AreaChart>
+                      </BarChart>
                     </ResponsiveContainer>
                   );
                 })()}
@@ -1186,42 +1181,37 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
 
                   return (
                     <ResponsiveContainer width="100%" height="100%" minHeight={140}>
-                      <AreaChart data={areaData} margin={{ top: 10, right: 15, left: 15, bottom: 0 }}>
+                      <BarChart data={areaData} margin={{ top: 15, right: 15, left: 15, bottom: 0 }} barCategoryGap="30%">
                         <defs>
-                          <linearGradient id="colorFreq2" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={isDark ? 0.6 : 0.4}/>
-                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                          <linearGradient id="eqGradient2" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.9}/>
+                            <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.15}/>
                           </linearGradient>
                         </defs>
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: axisColor, fontSize: 13, fontWeight: 500}} dy={5} />
                         <YAxis hide domain={[0, isAllZero ? 1 : 'dataMax + 1']} />
                         <RechartsTooltip
-                          cursor={{ stroke: '#8b5cf6', strokeWidth: 1, strokeDasharray: '4 4' }}
-                          content={({ active, payload, label }) => {
+                          cursor={{ fill: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)' }}
+                          content={({ active, payload }) => {
                             if (active && payload && payload.length) {
                               return (
-                                <div className="custom-tooltip" style={{ padding: '4px 10px', fontSize: '12px', background: isDark ? 'rgba(30,41,59,0.95)' : 'rgba(255,255,255,0.95)', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, borderRadius: '6px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ fontWeight: 600, color: isDark ? '#f1f5f9' : '#1e293b' }}>{label}</span>
-                                    <span style={{ color: '#8b5cf6', fontWeight: 600 }}>{payload[0].value} 次</span>
-                                  </div>
+                                <div className="custom-tooltip" style={{ padding: '4px 10px', fontSize: '13px', background: isDark ? 'rgba(30,41,59,0.95)' : 'rgba(255,255,255,0.95)', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, borderRadius: '6px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
+                                  <span style={{ color: '#8b5cf6', fontWeight: 600 }}>{payload[0].value} 次</span>
                                 </div>
                               );
                             }
                             return null;
                           }}
                         />
-                        <Area
-                          type="monotone"
+                        <Bar
                           dataKey="count"
-                          stroke="#8b5cf6"
-                          strokeWidth={3}
-                          fillOpacity={1}
-                          fill="url(#colorFreq2)"
+                          fill="url(#eqGradient2)"
+                          radius={[6, 6, 6, 6]}
                           isAnimationActive={true}
-                          activeDot={{ r: 6, fill: "#8b5cf6", stroke: isDark ? "#1e293b" : "#ffffff", strokeWidth: 2 }}
+                          animationDuration={800}
+                          animationEasing="ease-out"
                         />
-                      </AreaChart>
+                      </BarChart>
                     </ResponsiveContainer>
                   );
                 })()}
