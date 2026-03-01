@@ -1091,11 +1091,11 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
 
                   return (
                     <ResponsiveContainer width="100%" height="100%" minHeight={140}>
-                      <BarChart data={areaData} margin={{ top: 15, right: 15, left: 15, bottom: 0 }} barCategoryGap="30%">
+                      <BarChart data={areaData} margin={{ top: 15, right: 15, left: 15, bottom: 0 }} barCategoryGap="5%" barGap={2}>
                         <defs>
                           <linearGradient id="eqGradient1" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.9}/>
-                            <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.15}/>
+                            <stop offset="0%" stopColor="#8b5cf6" stopOpacity={1}/>
+                            <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.1}/>
                           </linearGradient>
                         </defs>
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: axisColor, fontSize: 13, fontWeight: 500}} dy={5} />
@@ -1113,13 +1113,50 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                             return null;
                           }}
                         />
+                        {/* 我们通过渲染极其密集的细柱状模拟一根柱子其实由很多刻度拼成的感觉 */}
                         <Bar
                           dataKey="count"
                           fill="url(#eqGradient1)"
-                          radius={[6, 6, 6, 6]}
+                          radius={[4, 4, 4, 4]}
                           isAnimationActive={true}
                           animationDuration={800}
                           animationEasing="ease-out"
+                          shape={(props: any) => {
+                            const { x, y, width, height, fill } = props;
+                            // 每根主柱体，切割成数个微细的小竖条（如音频网格一样密集）
+                            const TICK_WIDTH = 4;
+                            const TICK_GAP = 2;
+                            const ticks = Math.floor(width / (TICK_WIDTH + TICK_GAP));
+                            const actualWidth = ticks * TICK_WIDTH + (ticks - 1) * TICK_GAP;
+                            const startX = x + (width - actualWidth) / 2; // 居中
+
+                            // 如果高度不够，只画底部的一根
+                            if (height < 2) {
+                              return <rect x={x} y={y} width={width} height={height} fill={fill} rx={2} ry={2} />;
+                            }
+
+                            const bars = [];
+                            for (let i = 0; i < ticks; i++) {
+                              // 添加细微的高度差让边缘呈抛物线状，更有音频感
+                              const centerDist = Math.abs((i - (ticks - 1) / 2) / ((ticks - 1) / 2 || 1));
+                              const heightScale = 1 - Math.pow(centerDist, 2) * 0.3; // 边缘最低下降 30%
+                              const tickHeight = height * heightScale;
+                              const tickY = y + (height - tickHeight);
+                              bars.push(
+                                <rect
+                                  key={i}
+                                  x={startX + i * (TICK_WIDTH + TICK_GAP)}
+                                  y={tickY}
+                                  width={TICK_WIDTH}
+                                  height={tickHeight}
+                                  fill={fill}
+                                  rx={2}
+                                  ry={2}
+                                />
+                              );
+                            }
+                            return <g>{bars}</g>;
+                          }}
                         />
                       </BarChart>
                     </ResponsiveContainer>
@@ -1181,11 +1218,11 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
 
                   return (
                     <ResponsiveContainer width="100%" height="100%" minHeight={140}>
-                      <BarChart data={areaData} margin={{ top: 15, right: 15, left: 15, bottom: 0 }} barCategoryGap="30%">
+                      <BarChart data={areaData} margin={{ top: 15, right: 15, left: 15, bottom: 0 }} barCategoryGap="5%" barGap={2}>
                         <defs>
                           <linearGradient id="eqGradient2" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.9}/>
-                            <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.15}/>
+                            <stop offset="0%" stopColor="#8b5cf6" stopOpacity={1}/>
+                            <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.1}/>
                           </linearGradient>
                         </defs>
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: axisColor, fontSize: 13, fontWeight: 500}} dy={5} />
@@ -1203,13 +1240,51 @@ export default function TagTrendsDashboard({ expenses, theme, categories, curren
                             return null;
                           }}
                         />
+                        {/* 我们通过渲染极其密集的细柱状模拟一根柱子其实由很多刻度拼成的感觉 */}
                         <Bar
                           dataKey="count"
                           fill="url(#eqGradient2)"
-                          radius={[6, 6, 6, 6]}
+                          radius={[4, 4, 4, 4]}
                           isAnimationActive={true}
                           animationDuration={800}
                           animationEasing="ease-out"
+                          shape={(props: any) => {
+                            const { x, y, width, height, fill } = props;
+                            // 每根主柱体，切割成数个微细的小竖条（如音频网格一样密集）
+                            const TICK_WIDTH = 4;
+                            const TICK_GAP = 2;
+                            const ticks = Math.floor(width / (TICK_WIDTH + TICK_GAP));
+                            if (ticks <= 0) return <g />;
+                            const actualWidth = ticks * TICK_WIDTH + (ticks - 1) * TICK_GAP;
+                            const startX = x + (width - actualWidth) / 2; // 居中
+
+                            // 如果高度不够，只画底部的一根
+                            if (height < 2) {
+                              return <rect x={x} y={y} width={width} height={height} fill={fill} rx={2} ry={2} />;
+                            }
+
+                            const bars = [];
+                            for (let i = 0; i < ticks; i++) {
+                              // 添加细微的高度差让边缘呈抛物线状，更有音频感
+                              const centerDist = Math.abs((i - (ticks - 1) / 2) / ((ticks - 1) / 2 || 1));
+                              const heightScale = 1 - Math.pow(centerDist, 2) * 0.3; // 边缘最低下降 30%
+                              const tickHeight = height * heightScale;
+                              const tickY = y + (height - tickHeight);
+                              bars.push(
+                                <rect
+                                  key={i}
+                                  x={startX + i * (TICK_WIDTH + TICK_GAP)}
+                                  y={tickY}
+                                  width={TICK_WIDTH}
+                                  height={tickHeight}
+                                  fill={fill}
+                                  rx={2}
+                                  ry={2}
+                                />
+                              );
+                            }
+                            return <g>{bars}</g>;
+                          }}
                         />
                       </BarChart>
                     </ResponsiveContainer>
