@@ -1,7 +1,9 @@
+import dotenv from "dotenv";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 
-// dotenv.config() 已在入口 index.ts 最顶部调用，此处无需重复
+// db 是最早被 import 的模块，在此加载 .env 确保全局可用
+dotenv.config();
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is missing in .env");
