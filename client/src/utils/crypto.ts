@@ -30,7 +30,7 @@ export async function decryptMasterKey(
     const masterKeyBase64 = await decryptString(encryptedMasterKeyStr, passwordKey);
     const masterKeyBytes = base64ToBuffer(masterKeyBase64);
     return crypto.subtle.importKey(
-        "raw", masterKeyBytes, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]
+        "raw", masterKeyBytes, { name: "AES-GCM" }, true, ["encrypt", "decrypt"]
     );
 }
 
