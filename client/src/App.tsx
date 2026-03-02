@@ -261,6 +261,28 @@ function AppContent() {
     }
   }, [token, addToast, logout]);
 
+  const batchDeleteExpenses = useCallback(async (ids: number[]) => {
+    if (!token || ids.length === 0) return;
+    try {
+      const res = await fetch("/api/expenses/batch-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ids }),
+      });
+      if (res.status === 401) { logout(); return; }
+      if (res.ok) {
+        const idSet = new Set(ids);
+        setExpenses(prev => prev.filter(e => !idSet.has(e.id)));
+        addToast(`已删除 ${ids.length} 条记录`, "info");
+      } else {
+        addToast("批量删除失败", "error");
+      }
+    } catch (err) {
+      console.error("Batch delete error", err);
+      addToast("批量删除失败", "error");
+    }
+  }, [token, addToast, logout]);
+
   const importExpenses = useCallback(async (items: any[]) => {
     if (!token || items.length === 0) return;
     try {
@@ -374,6 +396,7 @@ function AppContent() {
             theme={theme}
             categories={categories}
             onDelete={deleteExpense}
+            onBatchDelete={batchDeleteExpenses}
             onAdd={addExpense}
             onEdit={editExpense}
             onImport={importExpenses}

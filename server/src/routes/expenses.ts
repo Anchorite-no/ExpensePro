@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import { db } from "../db";
 import { expenses } from "../db/schema";
 import { authenticateToken, AuthRequest } from "../middleware/auth";
@@ -77,7 +77,36 @@ router.delete("/:id", authenticateToken, async (req: AuthRequest, res: any) => {
   }
 });
 
-// 4. 编辑账单
+// 4. 批量删除
+router.post("/batch-delete", authenticateToken, async (req: AuthRequest, res: any) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ error: "请提供要删除的记录ID" });
+      return;
+    }
+
+    const numericIds = ids.map(Number).filter(id => !isNaN(id));
+    if (numericIds.length === 0) {
+      res.status(400).json({ error: "无效的ID列表" });
+      return;
+    }
+
+    const result = await db.delete(expenses).where(
+      and(
+        inArray(expenses.id, numericIds),
+        eq(expenses.userId, req.user.id)
+      )
+    );
+
+    res.json({ deleted: result[0].affectedRows || 0 });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "批量删除失败" });
+  }
+});
+
+// 5. 编辑账单
 router.put("/:id", authenticateToken, async (req: AuthRequest, res: any) => {
   try {
     const id = Number(req.params.id);

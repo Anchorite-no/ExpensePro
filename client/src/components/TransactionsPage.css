@@ -351,6 +351,181 @@
   font-size: 14px;
 }
 
+/* Checkbox */
+.txn-checkbox-th,
+.txn-checkbox-td {
+  width: 40px;
+  text-align: center;
+  padding-left: 12px !important;
+  padding-right: 4px !important;
+}
+
+.txn-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+/* Selected row highlight */
+.selected-row {
+  background-color: rgba(99, 102, 241, 0.06) !important;
+}
+
+.selected-row:hover {
+  background-color: rgba(99, 102, 241, 0.1) !important;
+}
+
+/* Batch operation bar */
+.txn-batch-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.txn-batch-count {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.txn-batch-delete-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 14px;
+  background-color: var(--bg-card);
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.txn-batch-delete-btn:hover {
+  background-color: #ef4444;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);
+}
+
+.txn-batch-cancel-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 14px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.txn-batch-cancel-btn:hover {
+  border-color: var(--text-secondary);
+  background-color: var(--bg-input);
+}
+
+/* Delete confirmation overlay */
+.txn-delete-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.txn-delete-confirm {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 32px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  animation: scaleIn 0.15s ease;
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.txn-delete-confirm h3 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.txn-delete-confirm p {
+  margin: 0 0 24px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.txn-delete-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.txn-confirm-cancel {
+  padding: 9px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.txn-confirm-cancel:hover {
+  background: var(--bg-input);
+}
+
+.txn-confirm-delete {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  background: #ef4444;
+  border: none;
+  color: white;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.txn-confirm-delete:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.4);
+}
+
 /* Responsive adjustments */
 @media (max-width: 900px) {
   .txn-toolbar {
@@ -412,20 +587,26 @@
 
   .txn-edit-mode-btn .btn-text,
   .txn-export-btn .btn-text,
-  .txn-import-btn .btn-text {
+  .txn-import-btn .btn-text,
+  .txn-batch-delete-btn .btn-text,
+  .txn-batch-cancel-btn .btn-text {
     display: none;
   }
 
   .txn-edit-mode-btn,
   .txn-export-btn,
-  .txn-import-btn {
+  .txn-import-btn,
+  .txn-batch-delete-btn,
+  .txn-batch-cancel-btn {
     padding: 9px;
     justify-content: center;
   }
 
   .txn-edit-mode-btn svg,
   .txn-export-btn svg,
-  .txn-import-btn svg {
+  .txn-import-btn svg,
+  .txn-batch-delete-btn svg,
+  .txn-batch-cancel-btn svg {
     margin-right: 0;
   }
 

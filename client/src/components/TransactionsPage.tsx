@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import {
   Search, SlidersHorizontal, ChevronLeft, ChevronRight,
   Trash2, ArrowUpDown, ArrowUp, ArrowDown, Tag,
@@ -40,6 +40,7 @@ interface Props {
   theme: "light" | "dark";
   categories: Record<string, string>;
   onDelete: (id: number) => void;
+  onBatchDelete: (ids: number[]) => void;
   onAdd: (title: string, amount: number, category: string, date?: string, note?: string) => void;
   onEdit: (id: number, title: string, amount: number, category: string, date: string, note?: string) => void;
   onImport: (items: any[]) => void;
@@ -49,7 +50,7 @@ interface Props {
   onRemoveTag: (tag: string) => void;
 }
 
-export default function TransactionsPage({ expenses, categories, onDelete, onAdd, onEdit, onImport, currency, tags, onAddTag, onRemoveTag }: Props) {
+export default function TransactionsPage({ expenses, categories, onDelete, onBatchDelete, onAdd, onEdit, onImport, currency, tags, onAddTag, onRemoveTag }: Props) {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("全部");
   const [sortField, setSortField] = useState<SortField>("date");
@@ -71,6 +72,43 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
   // 单条编辑
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<EditDraft>({ title: "", amount: "", category: "", date: "", note: "" });
+
+  // 批量选择
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // 切换页面、筛选条件变化时清空选中
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [currentPage, pageSize, search, categoryFilter, sortField, sortOrder]);
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (pagedData.length === 0) return;
+    const allSelected = pagedData.every(item => selectedIds.has(item.id));
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(pagedData.map(item => item.id)));
+    }
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const handleBatchDelete = () => {
+    if (selectedIds.size === 0) return;
+    onBatchDelete(Array.from(selectedIds));
+    setSelectedIds(new Set());
+    setShowDeleteConfirm(false);
+  };
 
   // CSV 导入
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -164,6 +202,7 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
 
   // === 批量编辑 ===
   const enterBatchEdit = () => {
+    setSelectedIds(new Set()); // 编辑模式与选择模式互斥
     setBatchEditMode(true);
     const drafts: Record<number, EditDraft> = {};
     pagedData.forEach(item => {
@@ -338,7 +377,17 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
           <span className="txn-summary">
             共 {processedData.length} 条 · 合计 {currency}{filteredTotal.toFixed(2)}
           </span>
-          {batchEditMode ? (
+          {selectedIds.size > 0 ? (
+            <div className="txn-batch-bar">
+              <span className="txn-batch-count">已选 {selectedIds.size} 条</span>
+              <button className="txn-batch-delete-btn" onClick={() => setShowDeleteConfirm(true)}>
+                <Trash2 size={16} /> <span className="btn-text">删除</span>
+              </button>
+              <button className="txn-batch-cancel-btn" onClick={clearSelection}>
+                <X size={16} /> <span className="btn-text">取消</span>
+              </button>
+            </div>
+          ) : batchEditMode ? (
             <>
               <button className="txn-save-btn" onClick={saveBatchEdit}>
                 <CheckCheck size={16} /> 保存全部
@@ -437,6 +486,16 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
           <table>
             <thead>
               <tr>
+                {!batchEditMode && (
+                  <th className="txn-checkbox-th">
+                    <input
+                      type="checkbox"
+                      className="txn-checkbox"
+                      checked={pagedData.length > 0 && pagedData.every(item => selectedIds.has(item.id))}
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
+                )}
                 <th className="sortable" onClick={() => handleSort("date")}>
                   日期 <SortIcon field="date" />
                 </th>
@@ -455,7 +514,7 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
             <tbody>
               {pagedData.length > 0 ? (
                 pagedData.map(item => (
-                  <tr key={item.id} className={isEditing(item.id) ? "editing-row" : ""}>
+                  <tr key={item.id} className={`${isEditing(item.id) ? "editing-row" : ""} ${selectedIds.has(item.id) ? "selected-row" : ""}`}>
                     {isEditing(item.id) ? (
                       <>
                         <td>
@@ -517,6 +576,14 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
                       </>
                     ) : (
                       <>
+                        <td className="txn-checkbox-td">
+                          <input
+                            type="checkbox"
+                            className="txn-checkbox"
+                            checked={selectedIds.has(item.id)}
+                            onChange={() => toggleSelect(item.id)}
+                          />
+                        </td>
                         <td className="text-muted">{item.date}</td>
                         <td className="font-medium">
                           <div className="txn-title-cell">
@@ -553,7 +620,7 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="empty-hint">
+                  <td colSpan={6} className="empty-hint">
                     {search || categoryFilter !== "全部" ? "没有匹配的记录" : "还没有任何消费记录"}
                   </td>
                 </tr>
@@ -599,6 +666,24 @@ export default function TransactionsPage({ expenses, categories, onDelete, onAdd
             <button className="page-btn" disabled={safeCurrentPage >= totalPages} onClick={() => setCurrentPage(safeCurrentPage + 1)}>
               <ChevronRight size={16} />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 批量删除确认弹窗 */}
+      {showDeleteConfirm && (
+        <div className="txn-delete-confirm-overlay" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="txn-delete-confirm" onClick={e => e.stopPropagation()}>
+            <h3>确认删除</h3>
+            <p>确定删除 <strong>{selectedIds.size}</strong> 条记录？此操作不可撤销。</p>
+            <div className="txn-delete-confirm-actions">
+              <button className="txn-confirm-cancel" onClick={() => setShowDeleteConfirm(false)}>
+                取消
+              </button>
+              <button className="txn-confirm-delete" onClick={handleBatchDelete}>
+                <Trash2 size={16} /> 确认删除
+              </button>
+            </div>
           </div>
         </div>
       )}
