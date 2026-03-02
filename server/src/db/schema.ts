@@ -9,10 +9,10 @@ export const users = mysqlTable('users', {
 
 export const expenses = mysqlTable('expense', {
   id: int('id').primaryKey().autoincrement(),
-  title: varchar('title', { length: 255 }).notNull(),
+  title: text('title').notNull(),
   amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
-  category: varchar('category', { length: 50 }).notNull(),
-  note: varchar('note', { length: 500 }),
+  category: text('category').notNull(),
+  note: text('note'),
   date: timestamp('date').defaultNow(),
   userId: int('user_id'),
 });
