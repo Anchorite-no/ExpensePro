@@ -517,6 +517,16 @@ export default function TransactionsPage({ expenses, categories, onDelete, onBat
                   <tr key={item.id} className={`${isEditing(item.id) ? "editing-row" : ""} ${selectedIds.has(item.id) ? "selected-row" : ""}`}>
                     {isEditing(item.id) ? (
                       <>
+                        {batchEditMode && (
+                          <td className="txn-checkbox-td">
+                            <input
+                              type="checkbox"
+                              className="txn-checkbox"
+                              checked={selectedIds.has(item.id)}
+                              onChange={() => toggleSelect(item.id)}
+                            />
+                          </td>
+                        )}
                         <td>
                           <input
                             className="txn-edit-input"
