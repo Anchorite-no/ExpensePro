@@ -486,7 +486,7 @@ export default function TransactionsPage({ expenses, categories, onDelete, onBat
           <table>
             <thead>
               <tr>
-                {!batchEditMode && (
+                {batchEditMode && (
                   <th className="txn-checkbox-th">
                     <input
                       type="checkbox"
@@ -576,14 +576,16 @@ export default function TransactionsPage({ expenses, categories, onDelete, onBat
                       </>
                     ) : (
                       <>
-                        <td className="txn-checkbox-td">
-                          <input
-                            type="checkbox"
-                            className="txn-checkbox"
-                            checked={selectedIds.has(item.id)}
-                            onChange={() => toggleSelect(item.id)}
-                          />
-                        </td>
+                        {batchEditMode && (
+                          <td className="txn-checkbox-td">
+                            <input
+                              type="checkbox"
+                              className="txn-checkbox"
+                              checked={selectedIds.has(item.id)}
+                              onChange={() => toggleSelect(item.id)}
+                            />
+                          </td>
+                        )}
                         <td className="text-muted">{item.date}</td>
                         <td className="font-medium">
                           <div className="txn-title-cell">
