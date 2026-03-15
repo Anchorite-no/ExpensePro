@@ -2,6 +2,7 @@ import { Router } from "express";
 import net from "net";
 import { ProxyAgent, fetch as undiciFetch } from "undici";
 import { buildPrompt, parseDataUrl, extractJson } from "../utils/ai-helper";
+import { authenticateToken } from "../middleware/auth";
 
 const router = Router();
 
@@ -55,8 +56,8 @@ router.get("/status", (_req, res) => {
   res.json({ serverAi: !!getServerAiKey() });
 });
 
-// 诊断端点
-router.get("/debug", async (_req, res) => {
+// 诊断端点（需要登录，避免暴露服务器代理配置等信息）
+router.get("/debug", authenticateToken, async (_req, res) => {
   const info: Record<string, any> = {
     NODE_ENV: process.env.NODE_ENV || "(unset)",
     AI_BASE_URL: getAiBaseUrl(),

@@ -333,9 +333,12 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
           const canvas = document.createElement("canvas");
           let width = img.width;
           let height = img.height;
-          
-          // 限制最大边长为 1280px (平衡速度与清晰度)
-          const MAX_SIZE = 1280;
+
+          // 根据高宽比分级限制最大边长，兼顾长截图的识别质量
+          // 普通图 (≤2:1): 1280px | 长图 (2:1~4:1): 1920px | 超长图 (>4:1): 2560px
+          const aspectRatio = Math.max(width, height) / Math.min(width, height);
+          const MAX_SIZE = aspectRatio > 4 ? 2560 : aspectRatio > 2 ? 1920 : 1280;
+
           if (width > MAX_SIZE || height > MAX_SIZE) {
             if (width > height) {
               height = Math.round((height * MAX_SIZE) / width);
