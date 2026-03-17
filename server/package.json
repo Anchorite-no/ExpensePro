@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc",
-    "start": "npx drizzle-kit push --force && node dist/index.js"
+    "start": "npx drizzle-kit push --force && node dist/index.js",
+    "extract:weread": "tsx src/scripts/extractWereadArticle.ts"
   },
   "keywords": [],
   "author": "",
