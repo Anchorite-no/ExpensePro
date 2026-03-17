@@ -25,7 +25,6 @@ Thumbs.db
 dist/
 build/
 coverage/
-server/output/
 
 # IDEs
 .vscode/
