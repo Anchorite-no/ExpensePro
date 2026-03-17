@@ -11,6 +11,9 @@ import aiRoutes from "./routes/ai";
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// 信任反向代理（nginx），使 HTTPS 检测正常工作（PWA Service Worker 要求 HTTPS）
+app.set('trust proxy', 1);
+
 app.use(cors());
 app.use(express.json({ limit: "20mb" }));
 
@@ -24,6 +27,18 @@ app.use("/api/ai", aiRoutes);
 // ========== 静态文件托管 (必须放在 API 路由之后) ==========
 // 生产环境下，由 Express 托管 React 构建产物
 const clientBuildPath = path.join(__dirname, "../public");
+
+// 修复 PWA 相关文件的 MIME 类型和响应头
+app.get('/manifest.webmanifest', (_req, res) => {
+  res.setHeader('Content-Type', 'application/manifest+json');
+  res.sendFile(path.join(clientBuildPath, 'manifest.webmanifest'));
+});
+app.get('/sw.js', (_req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Service-Worker-Allowed', '/');
+  res.sendFile(path.join(clientBuildPath, 'sw.js'));
+});
+
 app.use(express.static(clientBuildPath));
 
 // SPA 兜底：未匹配的非 API 请求返回 index.html（支持前端路由）

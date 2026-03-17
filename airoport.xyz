@@ -1,0 +1,46 @@
+server {
+    server_name www.airoport.xyz;
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 20m;
+    }
+    listen 443 ssl;
+    ssl_certificate /etc/letsencrypt/live/www.airoport.xyz/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/www.airoport.xyz/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+
+# 裸域名 airoport.xyz → 跳转到 www
+server {
+    server_name airoport.xyz;
+    return 301 https://www.airoport.xyz$request_uri;
+    listen 443 ssl;
+    ssl_certificate /etc/letsencrypt/live/www.airoport.xyz/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/www.airoport.xyz/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+
+server {
+    if ($host = www.airoport.xyz) {
+        return 301 https://$host$request_uri;
+    }
+    server_name www.airoport.xyz;
+    listen 80;
+    return 404;
+}
+
+# 裸域名 HTTP → HTTPS 跳转
+server {
+    if ($host = airoport.xyz) {
+        return 301 https://www.airoport.xyz$request_uri;
+    }
+    server_name airoport.xyz;
+    listen 80;
+    return 404;
+}
