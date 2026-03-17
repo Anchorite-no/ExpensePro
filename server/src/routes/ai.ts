@@ -76,8 +76,8 @@ router.get("/debug", authenticateToken, async (_req, res) => {
   res.json(info);
 });
 
-// 小票识别主端点
-router.post("/parse-receipt", async (req: any, res: any) => {
+// 小票识别主端点（需要登录，防止匿名滥用 SERVER_AI_KEY）
+router.post("/parse-receipt", authenticateToken, async (req: any, res: any) => {
   try {
     const { image, apiKey: clientApiKey, model, categories } = req.body;
 

@@ -2,12 +2,23 @@ import express, { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { eq } from "drizzle-orm";
+import rateLimit from "express-rate-limit";
 import { db } from "../db";
 import { users, userSettings, expenses } from "../db/schema";
 import { generateMasterKey, generateSalt, deriveKeyFromPassword, encryptMasterKey } from "../crypto";
 import { isNull } from "drizzle-orm";
 
 const router = Router();
+
+// 登录/注册接口：每 IP 每 15 分钟最多 20 次（防暴力破解）
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: '尝试次数过多，请 15 分钟后再试' },
+});
+router.use(authLimiter);
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-it";
 const INVITE_CODE = process.env.INVITE_CODE || "";
 const ENCRYPTION_ENABLED = process.env.ENCRYPTION_ENABLED === "true";

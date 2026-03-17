@@ -152,21 +152,30 @@ router.post("/import", authenticateToken, async (req: AuthRequest, res: any) => 
       return;
     }
 
-    let imported = 0;
-    for (const item of items) {
-      if (!item.title || !item.amount || !item.category) continue;
-      await db.insert(expenses).values({
+    // 最多一次导入 500 条，防止 DoS
+    if (items.length > 500) {
+      res.status(400).json({ error: '单次最多导入 500 条记录' });
+      return;
+    }
+
+    const rows = items
+      .filter((item: any) => item.title && item.amount && item.category)
+      .map((item: any) => ({
         title: String(item.title).slice(0, 255),
         amount: String(Number(item.amount) || 0),
         category: String(item.category).slice(0, 50),
         note: item.note ? String(item.note).slice(0, 500) : null,
         date: item.date ? new Date(item.date) : new Date(),
         userId: req.user.id,
-      });
-      imported++;
+      }));
+
+    if (rows.length === 0) {
+      res.json({ imported: 0 });
+      return;
     }
 
-    res.json({ imported });
+    await db.insert(expenses).values(rows);
+    res.json({ imported: rows.length });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "导入失败" });

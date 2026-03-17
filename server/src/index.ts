@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import path from "path";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 // 引入拆分的路由模块
 import authRoutes from "./routes/auth";
@@ -14,7 +16,37 @@ const PORT = process.env.PORT || 3001;
 // 信任反向代理（nginx），使 HTTPS 检测正常工作（PWA Service Worker 要求 HTTPS）
 app.set('trust proxy', 1);
 
-app.use(cors());
+// 安全响应头（防点击劫持、MIME嗅探、XSS等）
+app.use(helmet({
+  contentSecurityPolicy: false, // SPA 自带脚本，CSP 单独在 nginx 层配置
+  crossOriginEmbedderPolicy: false,
+}));
+
+// CORS 限制到自己域名
+const allowedOrigins = [
+  'https://www.airoport.xyz',
+  'https://airoport.xyz',
+  ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:5173', 'http://localhost:3001'] : [])
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    // 同源请求（origin 为 undefined）和允许列表内的域名放行
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
+
+// 全局限速：每 IP 每分钟最多 120 次请求（正常使用绰绰有余）
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: '请求过于频繁，请稍后再试' },
+});
+app.use(globalLimiter);
+
 app.use(express.json({ limit: "20mb" }));
 
 // 挂载路由模块
