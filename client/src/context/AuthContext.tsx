@@ -16,30 +16,61 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/** 将 CryptoKey 导出为 Base64 存入 localStorage */
+function getAuthStorage(): Storage | null {
+  if (typeof window === 'undefined') return null;
+  return window.sessionStorage;
+}
+
+function readStoredValue(key: string): string | null {
+  return getAuthStorage()?.getItem(key) ?? null;
+}
+
+function writeStoredValue(key: string, value: string) {
+  getAuthStorage()?.setItem(key, value);
+}
+
+function removeStoredValue(key: string) {
+  getAuthStorage()?.removeItem(key);
+}
+
+function clearStoredAuth() {
+  removeStoredValue('token');
+  removeStoredValue('username');
+  removeStoredValue('encryption');
+  removeStoredValue('masterKey');
+}
+
+/** Persist the tab-scoped master key in sessionStorage. */
 async function persistMasterKey(key: CryptoKey) {
   try {
     const raw = await crypto.subtle.exportKey('raw', key);
     const bytes = new Uint8Array(raw);
     let binary = '';
     for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-    localStorage.setItem('masterKey', btoa(binary));
-  } catch { /* non-extractable key, skip */ }
+    writeStoredValue('masterKey', btoa(binary));
+  } catch {
+    removeStoredValue('masterKey');
+  }
 }
 
-/** 从 localStorage 恢复 CryptoKey */
+/** Restore the master key from sessionStorage for same-tab refreshes. */
 async function restoreMasterKey(): Promise<CryptoKey | null> {
-  const stored = localStorage.getItem('masterKey');
+  const stored = readStoredValue('masterKey');
   if (!stored) return null;
+
   try {
     const binary = atob(stored);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
     return await crypto.subtle.importKey(
-      'raw', bytes.buffer, { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']
+      'raw',
+      bytes.buffer,
+      { name: 'AES-GCM' },
+      true,
+      ['encrypt', 'decrypt']
     );
   } catch {
-    localStorage.removeItem('masterKey');
+    removeStoredValue('masterKey');
     return null;
   }
 }
@@ -48,55 +79,61 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [masterKey, setMasterKey] = useState<CryptoKey | null>(null);
-  const [encryption, setEncryption] = useState(() => localStorage.getItem('encryption') === 'true');
+  const [encryption, setEncryption] = useState(() => readStoredValue('encryption') === 'true');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUsername = localStorage.getItem('username');
-    const storedEncryption = localStorage.getItem('encryption') === 'true';
+    const storedToken = readStoredValue('token');
+    const storedUsername = readStoredValue('username');
+    const storedEncryption = readStoredValue('encryption') === 'true';
 
     if (storedToken && storedUsername) {
       if (storedEncryption) {
-        // 异步恢复 masterKey，完成后再设置登录态
-        restoreMasterKey().then(key => {
-          if (key) {
-            setMasterKey(key);
-            setEncryption(true);
+        restoreMasterKey().then((key) => {
+          if (!key) {
+            clearStoredAuth();
+            setIsLoading(false);
+            return;
           }
+
+          setMasterKey(key);
+          setEncryption(true);
           setToken(storedToken);
           setUser({ username: storedUsername });
           setIsLoading(false);
         });
         return;
       }
+
       setToken(storedToken);
       setUser({ username: storedUsername });
     }
+
     setIsLoading(false);
   }, []);
 
   const login = (newToken: string, newUsername: string, newMasterKey?: CryptoKey, encryptionEnabled?: boolean) => {
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('username', newUsername);
-    if (encryptionEnabled) localStorage.setItem('encryption', 'true');
-    else localStorage.removeItem('encryption');
-    // 先设置 masterKey 和 encryption，再设置 token，避免 token 触发 fetch 时 key 还没就绪
+    writeStoredValue('token', newToken);
+    writeStoredValue('username', newUsername);
+
+    if (encryptionEnabled) writeStoredValue('encryption', 'true');
+    else removeStoredValue('encryption');
+
     if (newMasterKey) {
       setMasterKey(newMasterKey);
-      persistMasterKey(newMasterKey);
+      void persistMasterKey(newMasterKey);
+    } else {
+      removeStoredValue('masterKey');
+      setMasterKey(null);
     }
-    if (encryptionEnabled) setEncryption(true);
-    else setEncryption(false);
+
+    setEncryption(!!encryptionEnabled);
     setToken(newToken);
     setUser({ username: newUsername });
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    localStorage.removeItem('encryption');
-    localStorage.removeItem('masterKey');
+    clearStoredAuth();
     setToken(null);
     setUser(null);
     setMasterKey(null);

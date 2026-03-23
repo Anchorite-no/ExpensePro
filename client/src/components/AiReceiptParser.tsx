@@ -461,7 +461,7 @@ export default function AiReceiptParser({ theme, categories, onAddExpense, curre
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${localStorage.getItem("token")}`
+            "Authorization": `Bearer ${token}`
           },
           body: JSON.stringify({
             image: images[i].base64,
