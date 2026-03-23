@@ -421,6 +421,7 @@ function AppContent() {
         user={user}
         logout={logout}
         openSettings={() => setShowSettings(true)}
+        openTrustedDeviceManager={() => addToast("信任设备管理暂未开放", "info")}
         theme={theme}
         toggleTheme={toggleTheme}
       />
