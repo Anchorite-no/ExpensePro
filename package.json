@@ -4,6 +4,10 @@
   "description": "AI-powered personal expense tracker",
   "main": "index.js",
   "scripts": {
+    "dev": "npm start",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "db:push": "npm run db:push --prefix server",
     "start": "concurrently -n \"SERVER,CLIENT\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

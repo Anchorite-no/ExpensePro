@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx src/index.ts",
+    "db:push": "drizzle-kit push --force",
     "build": "tsc",
     "start": "npx drizzle-kit push --force && node dist/index.js"
   },
