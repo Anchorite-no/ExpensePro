@@ -550,6 +550,28 @@ body:has(.auth-page-container) {
   line-height: 1.4;
 }
 
+.auth-trust-group {
+  margin: 6px 0 2px;
+}
+
+.auth-trust-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+}
+
+.auth-trust-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.auth-trust-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 .auth-link {
   color: var(--primary);
   cursor: pointer;

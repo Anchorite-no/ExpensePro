@@ -15,6 +15,7 @@ export const AuthForm = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [trustDevice, setTrustDevice] = useState(true);
 
   // 服务端配置
   const [requireInvite, setRequireInvite] = useState(false);
@@ -44,6 +45,7 @@ export const AuthForm = () => {
     setAgreeToTerms(false);
     setShowPassword(false);
     setShowConfirmPassword(false);
+    setTrustDevice(true);
 
     if (isLogin && registeredCredentials.current) {
       // 注册成功回到登录，自动填写
@@ -116,12 +118,16 @@ export const AuthForm = () => {
           try {
             const passwordKey = await deriveKeyFromPassword(password, data.masterKeySalt);
             const masterKey = await decryptMasterKey(data.encryptedMasterKey, passwordKey);
-            login(data.token, data.username, masterKey, true);
+            await login(data.token, data.username, {
+              masterKey,
+              encryption: true,
+              trustedDevice: trustDevice,
+            });
           } catch {
             throw new Error('密钥解密失败，请确认密码正确');
           }
         } else {
-          login(data.token, data.username);
+          await login(data.token, data.username);
         }
       } else {
         // 暂存注册时填写的用户名密码
@@ -281,6 +287,22 @@ export const AuthForm = () => {
             <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '4px 0 0', opacity: 0.8 }}>
               🔒 此服务已启用端到端加密，您的账单数据将使用您的密码加密存储
             </p>
+          )}
+
+          {isLogin && encryptionEnabled && (
+            <div className="auth-checkbox-group auth-trust-group">
+              <input
+                type="checkbox"
+                id="trust-device"
+                checked={trustDevice}
+                onChange={(e) => setTrustDevice(e.target.checked)}
+                className="auth-checkbox"
+              />
+              <label htmlFor="trust-device" className="auth-checkbox-label auth-trust-label">
+                <span className="auth-trust-title">信任此设备</span>
+                <span className="auth-trust-hint">关闭后仅保留当前标签页会话</span>
+              </label>
+            </div>
           )}
 
           {/* 提交按钮 */}
