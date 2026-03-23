@@ -1,8 +1,14 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { loadTrustedMasterKey, saveTrustedMasterKey } from '../utils/trustedDevice';
+import { clearTrustedMasterKey, loadTrustedMasterKey, saveTrustedMasterKey } from '../utils/trustedDevice';
 
 interface User {
   username: string;
+}
+
+interface LoginOptions {
+  encryption?: boolean;
+  masterKey?: CryptoKey;
+  trustedDevice?: boolean;
 }
 
 interface AuthContextType {
@@ -10,134 +16,185 @@ interface AuthContextType {
   token: string | null;
   masterKey: CryptoKey | null;
   encryption: boolean;
-  login: (token: string, username: string, masterKey?: CryptoKey, encryption?: boolean) => void;
+  login: (token: string, username: string, options?: LoginOptions) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function getAuthStorage(): Storage | null {
+type StorageKind = 'local' | 'session';
+
+const AUTH_KEYS = ['token', 'username', 'encryption', 'masterKey'] as const;
+
+function getStorage(kind: StorageKind): Storage | null {
   if (typeof window === 'undefined') return null;
-  return window.localStorage;
+  return kind === 'local' ? window.localStorage : window.sessionStorage;
 }
 
-function getLegacyStorage(): Storage | null {
-  if (typeof window === 'undefined') return null;
-  return window.sessionStorage;
+function readStoredValue(kind: StorageKind, key: typeof AUTH_KEYS[number]): string | null {
+  return getStorage(kind)?.getItem(key) ?? null;
 }
 
-function readStoredValue(key: string): string | null {
-  return getAuthStorage()?.getItem(key) ?? null;
+function writeStoredValue(kind: StorageKind, key: typeof AUTH_KEYS[number], value: string) {
+  getStorage(kind)?.setItem(key, value);
 }
 
-function writeStoredValue(key: string, value: string) {
-  getAuthStorage()?.setItem(key, value);
+function removeStoredValue(kind: StorageKind, key: typeof AUTH_KEYS[number]) {
+  getStorage(kind)?.removeItem(key);
 }
 
-function removeStoredValue(key: string) {
-  getAuthStorage()?.removeItem(key);
+function clearStoredAuth(kind?: StorageKind) {
+  const targets: StorageKind[] = kind ? [kind] : ['local', 'session'];
+  targets.forEach((target) => {
+    AUTH_KEYS.forEach((key) => removeStoredValue(target, key));
+  });
 }
 
-function clearStoredAuth() {
-  removeStoredValue('token');
-  removeStoredValue('username');
-  removeStoredValue('encryption');
+function bufferToBase64(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
 }
 
-function clearLegacyStoredAuth() {
-  const legacyStorage = getLegacyStorage();
-  legacyStorage?.removeItem('token');
-  legacyStorage?.removeItem('username');
-  legacyStorage?.removeItem('encryption');
-  legacyStorage?.removeItem('masterKey');
+function base64ToBuffer(base64: string) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
 }
 
-function migrateLegacyStoredAuth() {
-  const legacyStorage = getLegacyStorage();
-  if (!legacyStorage) return;
+async function exportMasterKey(masterKey: CryptoKey) {
+  const rawMasterKey = await crypto.subtle.exportKey('raw', masterKey);
+  return bufferToBase64(rawMasterKey);
+}
 
-  const legacyToken = legacyStorage.getItem('token');
-  const legacyUsername = legacyStorage.getItem('username');
-  const legacyEncryption = legacyStorage.getItem('encryption');
+async function importMasterKey(serializedMasterKey: string) {
+  return crypto.subtle.importKey(
+    'raw',
+    base64ToBuffer(serializedMasterKey),
+    { name: 'AES-GCM' },
+    true,
+    ['encrypt', 'decrypt']
+  );
+}
 
-  if (!readStoredValue('token') && legacyToken && legacyUsername) {
-    writeStoredValue('token', legacyToken);
-    writeStoredValue('username', legacyUsername);
-    if (legacyEncryption === 'true') {
-      writeStoredValue('encryption', 'true');
+function getStoredAuthSource() {
+  const kinds: StorageKind[] = ['local', 'session'];
+
+  for (const kind of kinds) {
+    const token = readStoredValue(kind, 'token');
+    const username = readStoredValue(kind, 'username');
+
+    if (token && username) {
+      return {
+        kind,
+        token,
+        username,
+        encryption: readStoredValue(kind, 'encryption') === 'true',
+        sessionMasterKey: readStoredValue(kind, 'masterKey'),
+      };
     }
   }
 
-  clearLegacyStoredAuth();
+  return null;
 }
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [masterKey, setMasterKey] = useState<CryptoKey | null>(null);
-  const [encryption, setEncryption] = useState(() => readStoredValue('encryption') === 'true');
+  const [encryption, setEncryption] = useState(() => {
+    const storedAuth = getStoredAuthSource();
+    return storedAuth?.encryption ?? false;
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    migrateLegacyStoredAuth();
+    const storedAuth = getStoredAuthSource();
 
-    const storedToken = readStoredValue('token');
-    const storedUsername = readStoredValue('username');
-    const storedEncryption = readStoredValue('encryption') === 'true';
-
-    if (!storedToken || !storedUsername) {
+    if (!storedAuth) {
       setIsLoading(false);
       return;
     }
 
-    if (!storedEncryption) {
-      setToken(storedToken);
-      setUser({ username: storedUsername });
+    if (!storedAuth.encryption) {
+      setToken(storedAuth.token);
+      setUser({ username: storedAuth.username });
       setIsLoading(false);
       return;
     }
 
-    loadTrustedMasterKey(storedUsername)
+    if (storedAuth.kind === 'session' && storedAuth.sessionMasterKey) {
+      importMasterKey(storedAuth.sessionMasterKey)
+        .then((restoredMasterKey) => {
+          setMasterKey(restoredMasterKey);
+          setEncryption(true);
+          setToken(storedAuth.token);
+          setUser({ username: storedAuth.username });
+        })
+        .catch(() => {
+          clearStoredAuth('session');
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+      return;
+    }
+
+    loadTrustedMasterKey(storedAuth.username)
       .then((restoredMasterKey) => {
         if (!restoredMasterKey) {
-          clearStoredAuth();
+          clearStoredAuth(storedAuth.kind);
           return;
         }
 
         setMasterKey(restoredMasterKey);
         setEncryption(true);
-        setToken(storedToken);
-        setUser({ username: storedUsername });
+        setToken(storedAuth.token);
+        setUser({ username: storedAuth.username });
       })
       .catch(() => {
-        clearStoredAuth();
+        clearStoredAuth(storedAuth.kind);
       })
       .finally(() => {
         setIsLoading(false);
       });
   }, []);
 
-  const login = (newToken: string, newUsername: string, newMasterKey?: CryptoKey, encryptionEnabled?: boolean) => {
-    writeStoredValue('token', newToken);
-    writeStoredValue('username', newUsername);
+  const login = async (newToken: string, newUsername: string, options?: LoginOptions) => {
+    const encryptionEnabled = !!options?.encryption;
+    const trustedDevice = options?.trustedDevice ?? true;
+    const newMasterKey = options?.masterKey ?? null;
+    const storageKind: StorageKind = encryptionEnabled && newMasterKey && !trustedDevice ? 'session' : 'local';
+
+    clearStoredAuth();
+
+    writeStoredValue(storageKind, 'token', newToken);
+    writeStoredValue(storageKind, 'username', newUsername);
 
     if (encryptionEnabled) {
-      writeStoredValue('encryption', 'true');
-    } else {
-      removeStoredValue('encryption');
+      writeStoredValue(storageKind, 'encryption', 'true');
     }
 
     if (newMasterKey) {
       setMasterKey(newMasterKey);
-      void saveTrustedMasterKey(newUsername, newMasterKey).catch(() => {
-        console.warn('Failed to persist trusted device key material');
-      });
+
+      if (encryptionEnabled && !trustedDevice) {
+        await clearTrustedMasterKey(newUsername);
+        const serializedMasterKey = await exportMasterKey(newMasterKey);
+        writeStoredValue('session', 'masterKey', serializedMasterKey);
+      } else if (encryptionEnabled) {
+        await saveTrustedMasterKey(newUsername, newMasterKey).catch(() => {
+          console.warn('Failed to persist trusted device key material');
+        });
+      }
     } else {
       setMasterKey(null);
     }
 
-    setEncryption(!!encryptionEnabled);
+    setEncryption(encryptionEnabled);
     setToken(newToken);
     setUser({ username: newUsername });
   };

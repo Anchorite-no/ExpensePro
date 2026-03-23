@@ -15,6 +15,7 @@ export const AuthForm = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [trustDevice, setTrustDevice] = useState(true);
 
   // 服务端配置
   const [requireInvite, setRequireInvite] = useState(false);
@@ -44,6 +45,7 @@ export const AuthForm = () => {
     setAgreeToTerms(false);
     setShowPassword(false);
     setShowConfirmPassword(false);
+    setTrustDevice(true);
 
     if (isLogin && registeredCredentials.current) {
       // 注册成功回到登录，自动填写
@@ -116,12 +118,16 @@ export const AuthForm = () => {
           try {
             const passwordKey = await deriveKeyFromPassword(password, data.masterKeySalt);
             const masterKey = await decryptMasterKey(data.encryptedMasterKey, passwordKey);
-            login(data.token, data.username, masterKey, true);
+            await login(data.token, data.username, {
+              masterKey,
+              encryption: true,
+              trustedDevice: trustDevice,
+            });
           } catch {
             throw new Error('密钥解密失败，请确认密码正确');
           }
         } else {
-          login(data.token, data.username);
+          await login(data.token, data.username);
         }
       } else {
         // 暂存注册时填写的用户名密码
@@ -284,6 +290,26 @@ export const AuthForm = () => {
           )}
 
           {/* 提交按钮 */}
+          {isLogin && encryptionEnabled && (
+            <div className="auth-trusted-device">
+              <label htmlFor="trust-device" className="auth-trusted-device-toggle">
+                <span className="auth-trusted-device-copy">
+                  <span className="auth-trusted-device-title">信任此设备</span>
+                  <span className="auth-trusted-device-subtitle">
+                    勾选后可在此设备自动恢复解锁；关闭后仅保留当前标签页会话。
+                  </span>
+                </span>
+                <input
+                  id="trust-device"
+                  type="checkbox"
+                  checked={trustDevice}
+                  onChange={(e) => setTrustDevice(e.target.checked)}
+                  className="auth-checkbox auth-trusted-device-checkbox"
+                />
+              </label>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
