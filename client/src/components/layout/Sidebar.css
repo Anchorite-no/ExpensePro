@@ -183,11 +183,26 @@
 }
 
 .sidebar-user-trigger {
+  display: flex;
+  align-items: center;
+  width: 100%;
   width: 100%;
   border: none;
   background: transparent;
-  padding: 0;
+  padding: 8px 12px;
   cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sidebar-user-trigger:hover,
+.sidebar-user-trigger.open {
+  background: var(--bg-input);
+}
+
+.sidebar-user-trigger:focus-visible {
+  outline: 2px solid var(--primary-bg);
+  outline-offset: 2px;
 }
 
 .sidebar-user-trigger .sidebar-user {
@@ -196,10 +211,32 @@
   border-top: none;
   width: 100%;
   justify-content: flex-end;
+  transition: color 0.2s ease;
 }
 
 .sidebar-user-trigger .user-info {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
+  gap: 8px;
+}
+
+.sidebar-user-trigger:hover .user-name,
+.sidebar-user-trigger.open .user-name {
+  color: var(--primary);
+}
+
+.sidebar-user-trigger:hover .user-avatar,
+.sidebar-user-trigger.open .user-avatar {
+  box-shadow: 0 0 0 3px var(--primary-bg);
+}
+
+.user-menu-indicator {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.sidebar-user-trigger:hover .user-menu-indicator,
+.sidebar-user-trigger.open .user-menu-indicator {
+  color: var(--primary);
 }
 
 .sidebar-user-dropdown {

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   BarChart3,
+  ChevronsUpDown,
   ChevronLeft,
   ChevronRight,
   CreditCard,
@@ -144,9 +145,11 @@ const Sidebar = React.memo(({
 
         <div className="sidebar-user-menu" ref={userMenuRef}>
           <button
-            className="sidebar-user-trigger"
+            className={`sidebar-user-trigger ${showUserMenu ? "open" : ""}`}
             onClick={() => setShowUserMenu(!showUserMenu)}
             title={username}
+            aria-haspopup="menu"
+            aria-expanded={showUserMenu}
           >
             <div className="sidebar-user">
               <div className="user-avatar">
@@ -155,6 +158,7 @@ const Sidebar = React.memo(({
               {!sidebarCollapsed && (
                 <div className="user-info">
                   <span className="user-name">{username}</span>
+                  <ChevronsUpDown size={14} className="user-menu-indicator" />
                 </div>
               )}
             </div>
