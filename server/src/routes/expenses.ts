@@ -131,7 +131,9 @@ router.put("/:id", authenticateToken, async (req: AuthRequest, res: any) => {
       })
       .where(and(eq(expenses.id, id), eq(expenses.userId, req.user.id)));
 
-    const [updated] = await db.select().from(expenses).where(eq(expenses.id, id));
+    const [updated] = await db.select()
+      .from(expenses)
+      .where(and(eq(expenses.id, id), eq(expenses.userId, req.user.id)));
     if (!updated) {
       res.status(404).json({ error: "记录不存在" });
       return;

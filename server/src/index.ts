@@ -14,7 +14,23 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // 信任反向代理（nginx），使 HTTPS 检测正常工作（PWA Service Worker 要求 HTTPS）
-app.set('trust proxy', 1);
+function getTrustProxySetting(): string | number | boolean {
+  const rawValue = process.env.TRUST_PROXY?.trim();
+
+  if (!rawValue) {
+    return process.env.NODE_ENV === "production" ? "loopback" : false;
+  }
+
+  const normalized = rawValue.toLowerCase();
+
+  if (normalized === "true") return true;
+  if (normalized === "false") return false;
+  if (/^\d+$/.test(normalized)) return Number(normalized);
+
+  return rawValue;
+}
+
+app.set("trust proxy", getTrustProxySetting());
 
 // 安全响应头（防点击劫持、MIME嗅探、XSS等）
 app.use(helmet({

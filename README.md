@@ -98,6 +98,12 @@ ENCRYPTION_ENABLED=
 
 # 时区
 TZ=Asia/Shanghai
+ 
+# Reverse proxy trust:
+# loopback = trust only a local host proxy (safe default)
+# 1        = trust one proxy hop (for a proxy container on the same Docker network)
+# false    = disable forwarded header trust
+TRUST_PROXY=loopback
 ```
 
 **本地开发**：复制 `.env.example` 中的通用配置到 `server/.env`，并改用 `DATABASE_URL` 格式（见模板中的注释）。
@@ -122,7 +128,8 @@ docker compose up -d --build
 docker compose exec app npx drizzle-kit push
 ```
 
-应用将在 `http://localhost:3001` 启动。
+应用将在 `http://127.0.0.1:3001` 启动。
+默认 Compose 仅绑定到本机回环地址，避免绕过 Nginx/HTTPS 直接暴露 Node 端口。
 
 #### 常用命令
 
@@ -294,6 +301,8 @@ sudo systemctl enable certbot.timer
 services:
   app:
     # ... 现有配置 ...
+    environment:
+      - TRUST_PROXY=1
     networks:
       - nginx_network   # 加入 Nginx 所在网络
       - default

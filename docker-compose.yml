@@ -2,8 +2,10 @@ services:
   app:
     build:
       context: .
+    expose:
+      - "3001"
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
     environment:
       - NODE_ENV=production
       - DB_HOST=mysql
@@ -17,7 +19,7 @@ services:
       - HTTPS_PROXY=${HTTPS_PROXY:-}
       - NO_PROXY=localhost,127.0.0.1,mysql
       - TZ=${TZ:-Asia/Shanghai}
-      # 私有版功能开关（留空则不启用）
+      - TRUST_PROXY=${TRUST_PROXY:-loopback}
       - INVITE_CODE=${INVITE_CODE:-}
       - SERVER_AI_KEY=${SERVER_AI_KEY:-}
       - ENCRYPTION_ENABLED=${ENCRYPTION_ENABLED:-}
@@ -40,7 +42,7 @@ services:
     restart: always
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
