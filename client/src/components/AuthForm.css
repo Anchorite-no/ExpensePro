@@ -550,50 +550,6 @@ body:has(.auth-page-container) {
   line-height: 1.4;
 }
 
-.auth-trusted-device {
-  margin: 18px 0 6px;
-  padding: 14px 16px;
-  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
-  background:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--primary) 16%, transparent), transparent 48%),
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-card) 82%, white 18%), var(--bg-card));
-  border-radius: 16px;
-}
-
-.auth-trusted-device-toggle {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-  cursor: pointer;
-}
-
-.auth-trusted-device-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.auth-trusted-device-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.auth-trusted-device-subtitle {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--text-secondary);
-}
-
-.auth-trusted-device-checkbox {
-  width: 18px;
-  height: 18px;
-  margin-top: 2px;
-  accent-color: var(--primary);
-  flex-shrink: 0;
-}
-
 .auth-link {
   color: var(--primary);
   cursor: pointer;
