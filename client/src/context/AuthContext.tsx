@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { loadTrustedMasterKey, saveTrustedMasterKey } from '../utils/trustedDevice';
 
 interface User {
   username: string;
@@ -17,6 +18,11 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function getAuthStorage(): Storage | null {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage;
+}
+
+function getLegacyStorage(): Storage | null {
   if (typeof window === 'undefined') return null;
   return window.sessionStorage;
 }
@@ -37,42 +43,33 @@ function clearStoredAuth() {
   removeStoredValue('token');
   removeStoredValue('username');
   removeStoredValue('encryption');
-  removeStoredValue('masterKey');
 }
 
-/** Persist the tab-scoped master key in sessionStorage. */
-async function persistMasterKey(key: CryptoKey) {
-  try {
-    const raw = await crypto.subtle.exportKey('raw', key);
-    const bytes = new Uint8Array(raw);
-    let binary = '';
-    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-    writeStoredValue('masterKey', btoa(binary));
-  } catch {
-    removeStoredValue('masterKey');
-  }
+function clearLegacyStoredAuth() {
+  const legacyStorage = getLegacyStorage();
+  legacyStorage?.removeItem('token');
+  legacyStorage?.removeItem('username');
+  legacyStorage?.removeItem('encryption');
+  legacyStorage?.removeItem('masterKey');
 }
 
-/** Restore the master key from sessionStorage for same-tab refreshes. */
-async function restoreMasterKey(): Promise<CryptoKey | null> {
-  const stored = readStoredValue('masterKey');
-  if (!stored) return null;
+function migrateLegacyStoredAuth() {
+  const legacyStorage = getLegacyStorage();
+  if (!legacyStorage) return;
 
-  try {
-    const binary = atob(stored);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return await crypto.subtle.importKey(
-      'raw',
-      bytes.buffer,
-      { name: 'AES-GCM' },
-      true,
-      ['encrypt', 'decrypt']
-    );
-  } catch {
-    removeStoredValue('masterKey');
-    return null;
+  const legacyToken = legacyStorage.getItem('token');
+  const legacyUsername = legacyStorage.getItem('username');
+  const legacyEncryption = legacyStorage.getItem('encryption');
+
+  if (!readStoredValue('token') && legacyToken && legacyUsername) {
+    writeStoredValue('token', legacyToken);
+    writeStoredValue('username', legacyUsername);
+    if (legacyEncryption === 'true') {
+      writeStoredValue('encryption', 'true');
+    }
   }
+
+  clearLegacyStoredAuth();
 }
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -83,47 +80,60 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    migrateLegacyStoredAuth();
+
     const storedToken = readStoredValue('token');
     const storedUsername = readStoredValue('username');
     const storedEncryption = readStoredValue('encryption') === 'true';
 
-    if (storedToken && storedUsername) {
-      if (storedEncryption) {
-        restoreMasterKey().then((key) => {
-          if (!key) {
-            clearStoredAuth();
-            setIsLoading(false);
-            return;
-          }
-
-          setMasterKey(key);
-          setEncryption(true);
-          setToken(storedToken);
-          setUser({ username: storedUsername });
-          setIsLoading(false);
-        });
-        return;
-      }
-
-      setToken(storedToken);
-      setUser({ username: storedUsername });
+    if (!storedToken || !storedUsername) {
+      setIsLoading(false);
+      return;
     }
 
-    setIsLoading(false);
+    if (!storedEncryption) {
+      setToken(storedToken);
+      setUser({ username: storedUsername });
+      setIsLoading(false);
+      return;
+    }
+
+    loadTrustedMasterKey(storedUsername)
+      .then((restoredMasterKey) => {
+        if (!restoredMasterKey) {
+          clearStoredAuth();
+          return;
+        }
+
+        setMasterKey(restoredMasterKey);
+        setEncryption(true);
+        setToken(storedToken);
+        setUser({ username: storedUsername });
+      })
+      .catch(() => {
+        clearStoredAuth();
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
   const login = (newToken: string, newUsername: string, newMasterKey?: CryptoKey, encryptionEnabled?: boolean) => {
     writeStoredValue('token', newToken);
     writeStoredValue('username', newUsername);
 
-    if (encryptionEnabled) writeStoredValue('encryption', 'true');
-    else removeStoredValue('encryption');
+    if (encryptionEnabled) {
+      writeStoredValue('encryption', 'true');
+    } else {
+      removeStoredValue('encryption');
+    }
 
     if (newMasterKey) {
       setMasterKey(newMasterKey);
-      void persistMasterKey(newMasterKey);
+      void saveTrustedMasterKey(newUsername, newMasterKey).catch(() => {
+        console.warn('Failed to persist trusted device key material');
+      });
     } else {
-      removeStoredValue('masterKey');
       setMasterKey(null);
     }
 
